@@ -24,6 +24,18 @@ async function createKiosk(req, res) {
   const tenant_id = req.user.tenant_id;
   const data = createSchema.parse(req.body);
 
+  // Kiểm tra trùng mã Kiosk trong cùng một tenant
+  const [existingKiosk] = await pool.execute(
+    `SELECT kiosk_id FROM kiosk WHERE tenant_id = ? AND maKiosk = ? LIMIT 1`,
+    [tenant_id, data.maKiosk],
+  );
+
+  if (existingKiosk.length > 0) {
+    return res
+      .status(409)
+      .json({ message: "Mã Kiosk này đã tồn tại trong hệ thống." });
+  }
+
   // check zone thuộc tenant
   const [zRows] = await pool.execute(
     `SELECT zone_id, trangThai FROM zone WHERE tenant_id=? AND zone_id=?`,
@@ -157,4 +169,30 @@ async function listKiosk(req, res) {
   res.json(rows);
 }
 
-module.exports = { createKiosk, updateKiosk, lockKiosk, listKiosk };
+async function getKioskById(req, res) {
+  const tenant_id = req.user.tenant_id;
+  const kiosk_id = Number(req.params.id);
+
+  const [rows] = await pool.execute(
+    `SELECT k.*, z.tenKhu, kt.tenLoai 
+     FROM kiosk k
+     JOIN zone z ON k.zone_id = z.zone_id
+     JOIN kiosk_type kt ON k.type_id = kt.type_id
+     WHERE k.tenant_id = ? AND k.kiosk_id = ?`,
+    [tenant_id, kiosk_id],
+  );
+
+  if (rows.length === 0)
+    return res.status(404).json({ message: "Kiosk not found" });
+
+  res.json(rows[0]);
+}
+
+// Đừng quên export thêm nó
+module.exports = {
+  createKiosk,
+  updateKiosk,
+  lockKiosk,
+  listKiosk,
+  getKioskById,
+};

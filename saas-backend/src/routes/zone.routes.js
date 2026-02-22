@@ -9,5 +9,6 @@ router.post("/", auth, requirePerm("CREATE_ZONE"), c.createZone); // #23
 router.put("/:id", auth, requirePerm("UPDATE_ZONE"), c.updateZone); // #24
 router.put("/:id/lock", auth, requirePerm("LOCK_ZONE"), c.lockZone); // #25
 router.get("/", auth, requirePerm("VIEW_ZONE"), c.listZone); // #26
+router.get("/:id", auth, requirePerm("VIEW_ZONE"), c.getZoneById);
 
 module.exports = router;

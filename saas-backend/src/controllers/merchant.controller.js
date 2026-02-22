@@ -16,6 +16,21 @@ async function createMerchant(req, res) {
   const tenant_id = req.user.tenant_id;
   const data = createSchema.parse(req.body);
 
+  // 1. Kiểm tra trùng CCCD (nếu có nhập CCCD)
+  if (data.CCCD) {
+    const [existing] = await pool.execute(
+      `SELECT merchant_id FROM merchant WHERE tenant_id = ? AND CCCD = ? LIMIT 1`,
+      [tenant_id, data.CCCD],
+    );
+
+    if (existing.length > 0) {
+      return res.status(409).json({
+        message: "Số CCCD này đã tồn tại trong hệ thống của bạn.",
+      });
+    }
+  }
+
+  // 2. Tiến hành thêm mới
   const [rs] = await pool.execute(
     `INSERT INTO merchant (tenant_id, hoTen, soDienThoai, CCCD, maSoThue, diaChiThuongTru, ngayThamGiaKinhDoanh)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -82,4 +97,28 @@ async function listMerchant(req, res) {
   res.json(rows);
 }
 
-module.exports = { createMerchant, updateMerchant, listMerchant };
+// Lấy chi tiết 1 thương nhân
+async function getMerchantById(req, res) {
+  const tenant_id = req.user.tenant_id;
+  const merchant_id = Number(req.params.id);
+
+  const [rows] = await pool.execute(
+    `SELECT merchant_id, hoTen, soDienThoai, CCCD, maSoThue, diaChiThuongTru, ngayThamGiaKinhDoanh
+     FROM merchant
+     WHERE tenant_id = ? AND merchant_id = ?`,
+    [tenant_id, merchant_id],
+  );
+
+  if (rows.length === 0)
+    return res.status(404).json({ message: "Merchant not found" });
+
+  res.json(rows[0]);
+}
+
+// Thêm vào module.exports
+module.exports = {
+  createMerchant,
+  updateMerchant,
+  listMerchant,
+  getMerchantById,
+};
