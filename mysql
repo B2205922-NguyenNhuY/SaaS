@@ -12,7 +12,8 @@ CREATE TABLE tenant (
   diaChi VARCHAR(255),
   soDienThoai VARCHAR(15) NOT NULL,
   email VARCHAR(150) NOT NULL,
-  trangThai ENUM('active','suspended','expired') DEFAULT 'active',
+  matkhau VARCHAR(255) NOT NULL,
+  trangThai ENUM('active','suspended') DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_tenant_email (email),
@@ -38,7 +39,6 @@ CREATE TABLE plan_subscription (
   trangThai ENUM('active','expired','trial','cancelled') DEFAULT 'active',
   ngayBatDau DATETIME NOT NULL,
   ngayKetThuc DATETIME NOT NULL,
-  autoRenew BOOLEAN DEFAULT FALSE,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_ps_tenant (tenant_id),
@@ -70,6 +70,7 @@ CREATE TABLE role (
   role_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id INT UNSIGNED NOT NULL,
   tenVaiTro VARCHAR(100) NOT NULL,
+  danhSachQuyen json,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_role_tenant_name (tenant_id, tenVaiTro),
@@ -258,6 +259,8 @@ CREATE TABLE fee_assignment (
 
   ngayApDung DATE NOT NULL,
   trangThai ENUM('active','inactive') DEFAULT 'active',
+  mucMienGiam decimal(5,2) not null default 0,
+	check (mucMienGiam between 0 and 100),
 
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -362,8 +365,8 @@ CREATE TABLE receipt (
   anhChupThanhToan VARCHAR(255),
   thoiGianThu DATETIME NOT NULL,
 
-  charge_id INT UNSIGNED NOT NULL,
-  user_id INT UNSIGNED NOT NULL,
+  charge_id LIST NOT NULL,
+  user_id INT UNSIGNED NULL,
   shift_id INT UNSIGNED NULL,
 
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -381,46 +384,6 @@ CREATE TABLE receipt (
   
   CONSTRAINT fk_receipt_tenant FOREIGN KEY (tenant_id)            REFERENCES tenant(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
-CREATE TABLE merchant_wallet (
-  wallet_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  tenant_id INT UNSIGNED NOT NULL,
-  merchant_id INT UNSIGNED NOT NULL,
-  soDu DECIMAL(12,2) NOT NULL DEFAULT 0,
-
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  UNIQUE KEY uq_wallet_tenant_merchant (tenant_id, merchant_id),
-
-  CONSTRAINT fk_wallet_merchant FOREIGN KEY (merchant_id, tenant_id) REFERENCES merchant(merchant_id, tenant_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_wallet_tenant   FOREIGN KEY (tenant_id)             REFERENCES tenant(tenant_id) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE wallet_transaction (
-  transaction_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  tenant_id INT UNSIGNED NOT NULL,
-  merchant_id INT UNSIGNED NOT NULL,
-
-  loai ENUM('nap','tru','hoan') NOT NULL,
-  soTien DECIMAL(12,2) NOT NULL,
-  charge_id INT UNSIGNED NULL,
-
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-  KEY idx_wt_tenant (tenant_id),
-  KEY idx_wt_merchant (tenant_id, merchant_id),
-  KEY idx_wt_charge (tenant_id, charge_id),
-
-  CONSTRAINT fk_wt_merchant FOREIGN KEY (merchant_id, tenant_id) REFERENCES merchant(merchant_id, tenant_id) ON DELETE RESTRICT,
-  
-  -- SỬA Ở ĐÂY: Đổi SET NULL thành RESTRICT để bảo vệ dữ liệu tenant_id
-  CONSTRAINT fk_wt_charge   FOREIGN KEY (charge_id, tenant_id)   REFERENCES charge(charge_id, tenant_id) ON DELETE RESTRICT,
-  
-  CONSTRAINT fk_wt_tenant   FOREIGN KEY (tenant_id)              REFERENCES tenant(tenant_id) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 
 CREATE TABLE payment_transaction (
   transaction_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -447,23 +410,6 @@ CREATE TABLE payment_transaction (
   CONSTRAINT fk_pt_charge   FOREIGN KEY (charge_id, tenant_id)   REFERENCES charge(charge_id, tenant_id) ON DELETE RESTRICT,
   
   CONSTRAINT fk_pt_tenant   FOREIGN KEY (tenant_id)              REFERENCES tenant(tenant_id) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
-CREATE TABLE charge_history (
-  history_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  tenant_id INT UNSIGNED NOT NULL,
-  charge_id INT UNSIGNED NOT NULL,
-
-  trangThaiCu VARCHAR(50),
-  trangThaiMoi VARCHAR(50),
-  changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-  KEY idx_ch_tenant (tenant_id),
-  KEY idx_ch_charge (tenant_id, charge_id),
-
-  CONSTRAINT fk_ch_charge FOREIGN KEY (charge_id, tenant_id) REFERENCES charge(charge_id, tenant_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_ch_tenant FOREIGN KEY (tenant_id)            REFERENCES tenant(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
@@ -497,3 +443,10 @@ VALUES ('Ban quan ly Cho Demo', 'Can Tho', '0901111222', 'tenant1@demo.com', 'ac
 
 SELECT LAST_INSERT_ID() AS new_tenant_id;
 SELECT * FROM market;
+
+
+/* 
+- Khi bắt đầu và kết thúc ca sẽ bấm nút
+- Chỉnh lại payment cho plan và payment cho charge/reciept
+- nếu dùng trial thì sau khi hết hạn mà ko đăng kí gói thì sẽ khóa dữ liệu
+*/
