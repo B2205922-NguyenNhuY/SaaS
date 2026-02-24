@@ -364,7 +364,7 @@ CREATE TABLE receipt (
   soTienThu DECIMAL(12,2) NOT NULL,
   hinhThucThanhToan ENUM('tien_mat','chuyen_khoan') NOT NULL,
   ghiChu VARCHAR(255),
-  anhChupThanhToan VARCHAR(255),
+  anhChupThanhToan VARCHAR(255) null,
   thoiGianThu DATETIME NOT NULL,
 
   charge_id LIST NOT NULL,
