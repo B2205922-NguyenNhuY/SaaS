@@ -1,0 +1,466 @@
+
+CREATE DATABASE IF NOT EXISTS saas
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+USE saas;
+
+-- =========================================================
+-- 1) TENANT + BILLING (SaaS)
+-- =========================================================
+CREATE TABLE tenant (
+  tenant_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenBanQuanLy VARCHAR(150) NOT NULL,
+  diaChi VARCHAR(255),
+  soDienThoai VARCHAR(15) NOT NULL,
+  email VARCHAR(150) NOT NULL,
+  matkhau VARCHAR(255) NOT NULL,
+  trangThai ENUM('active','suspended') DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_tenant_email (email),
+  UNIQUE KEY uq_tenant_phone (soDienThoai)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE plan (
+  plan_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenGoi VARCHAR(100) NOT NULL,
+  giaTien DECIMAL(12,2) NOT NULL DEFAULT 0,
+  gioiHanSoKiosk INT UNSIGNED NOT NULL,
+  gioiHanUser INT UNSIGNED NOT NULL,
+  gioiHanSoCho INT UNSIGNED NOT NULL,
+  moTa TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE plan_subscription (
+  subscription_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  plan_id INT UNSIGNED NOT NULL,
+  trangThai ENUM('active','expired','trial','cancelled') DEFAULT 'active',
+  ngayBatDau DATETIME NOT NULL,
+  ngayKetThuc DATETIME NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_ps_tenant (tenant_id),
+  KEY idx_ps_plan (plan_id),
+  CONSTRAINT fk_ps_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_ps_plan   FOREIGN KEY (plan_id)   REFERENCES plan(plan_id)     ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE payment (
+  payment_id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT unsigned NOT NULL,
+
+  subscription_id INT unsigned NULL,
+  charge_id INT unsigned NULL,
+
+  stripe_payment_intent_id VARCHAR(255),
+  stripe_invoice_id VARCHAR(255),
+
+  amount DECIMAL(12,2) NOT NULL,
+
+  payment_type ENUM('subscription','charge') NOT NULL,
+  status ENUM('pending','succeeded','failed') DEFAULT 'pending',
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (tenant_id)
+    REFERENCES tenant(tenant_id),
+
+  FOREIGN KEY (subscription_id)
+    REFERENCES plan_subscription(subscription_id)
+    ON DELETE restrict,
+
+  FOREIGN KEY (charge_id)
+    REFERENCES charge(charge_id)
+    ON DELETE restrict
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 2) RBAC + USERS (siết tenant bằng FK kép)
+-- =========================================================
+CREATE TABLE role (
+  role_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  tenVaiTro VARCHAR(100) NOT NULL,
+  danhSachQuyen json,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_role_tenant_name (tenant_id, tenVaiTro),
+  UNIQUE KEY uq_role_id_tenant (role_id, tenant_id),
+  CONSTRAINT fk_role_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE users (
+  user_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  role_id INT UNSIGNED NOT NULL,
+
+  email VARCHAR(150) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  hoTen VARCHAR(150),
+  soDienThoai VARCHAR(15),
+  trangThai ENUM('active','suspended','deleted') DEFAULT 'active',
+  deleted_at DATETIME NULL,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_user_tenant_email (tenant_id, email),
+  UNIQUE KEY uq_user_id_tenant (user_id, tenant_id),
+  KEY idx_user_tenant (tenant_id),
+  KEY idx_user_role (role_id),
+
+  CONSTRAINT fk_user_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_user_role   FOREIGN KEY (role_id, tenant_id) REFERENCES role(role_id, tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 3) MARKET / ZONE / KIOSK
+-- =========================================================
+CREATE TABLE market (
+  market_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  tenCho VARCHAR(150) NOT NULL,
+  diaChi VARCHAR(255),
+  dienTich INT UNSIGNED,
+  trangThai ENUM('active','locked') DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_market_tenant_name (tenant_id, tenCho),
+  UNIQUE KEY uq_market_id_tenant (market_id, tenant_id),
+
+  CONSTRAINT fk_market_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE zone (
+  zone_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  market_id INT UNSIGNED NOT NULL,
+  tenKhu VARCHAR(150) NOT NULL,
+  trangThai ENUM('active','locked') DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_zone_market_name (market_id, tenKhu),
+  UNIQUE KEY uq_zone_id_tenant (zone_id, tenant_id),
+
+  KEY idx_zone_market (market_id),
+  KEY idx_zone_tenant (tenant_id),
+
+  CONSTRAINT fk_zone_market FOREIGN KEY (market_id, tenant_id) REFERENCES market(market_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_zone_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE kiosk_type (
+  type_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenLoai VARCHAR(150) NOT NULL,
+  moTa VARCHAR(255),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_kiosk_type_name (tenLoai)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE kiosk (
+  kiosk_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  zone_id INT UNSIGNED NOT NULL,
+  type_id INT UNSIGNED NOT NULL,
+
+  maKiosk VARCHAR(100) NOT NULL,
+  viTri VARCHAR(255),
+  dienTich INT UNSIGNED,
+  trangThai ENUM('available','occupied','maintenance','locked') DEFAULT 'available',
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_kiosk_zone_code (zone_id, maKiosk),
+  UNIQUE KEY uq_kiosk_id_tenant (kiosk_id, tenant_id),
+
+  KEY idx_kiosk_zone (zone_id),
+  KEY idx_kiosk_tenant (tenant_id),
+  KEY idx_kiosk_status (tenant_id, trangThai),
+
+  CONSTRAINT fk_kiosk_zone  FOREIGN KEY (zone_id, tenant_id) REFERENCES zone(zone_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_kiosk_type  FOREIGN KEY (type_id) REFERENCES kiosk_type(type_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_kiosk_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- =========================================================
+-- 4) MERCHANT + ASSIGNMENT
+-- =========================================================
+CREATE TABLE merchant (
+  merchant_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+
+  hoTen VARCHAR(150) NOT NULL,
+  soDienThoai VARCHAR(15),
+  CCCD CHAR(12),
+  maSoThue VARCHAR(20),
+  diaChiThuongTru VARCHAR(255),
+  ngayThamGiaKinhDoanh DATE,
+  trangThai ENUM('active','inactive') default 'active',
+  inactive_at datetime null,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_merchant_tenant_cccd (tenant_id, CCCD),
+  UNIQUE KEY uq_merchant_id_tenant (merchant_id, tenant_id),
+  KEY idx_merchant_tenant (tenant_id),
+
+  CONSTRAINT fk_merchant_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE kiosk_assignment (
+  assignment_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  kiosk_id INT UNSIGNED NOT NULL,
+  merchant_id INT UNSIGNED NOT NULL,
+
+  ngayBatDau DATE NOT NULL,
+  ngayKetThuc DATE,
+  trangThai ENUM('active','ended') DEFAULT 'active',
+
+  -- trick để đảm bảo 1 kiosk chỉ có 1 bản ghi ACTIVE (cùng tenant)
+  active_kiosk_id INT GENERATED ALWAYS AS (
+    CASE WHEN trangThai='active' THEN kiosk_id ELSE NULL END
+  ) STORED,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  KEY idx_ka_tenant (tenant_id),
+  KEY idx_ka_kiosk (kiosk_id),
+  KEY idx_ka_merchant (merchant_id),
+
+  UNIQUE KEY uq_ka_active_one (tenant_id, active_kiosk_id),
+
+  CONSTRAINT fk_ka_kiosk    FOREIGN KEY (kiosk_id, tenant_id)    REFERENCES kiosk(kiosk_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_ka_merchant FOREIGN KEY (merchant_id, tenant_id) REFERENCES merchant(merchant_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_ka_tenant   FOREIGN KEY (tenant_id)             REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 5) FEE (BIEU PHI) + ASSIGNMENT
+-- =========================================================
+CREATE TABLE fee_schedule (
+  fee_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+
+  tenBieuPhi VARCHAR(150) NOT NULL,
+  hinhThuc ENUM('ngay','thang') NOT NULL,
+  donGia DECIMAL(12,2) NOT NULL,
+  moTa TEXT,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_fee_tenant_name (tenant_id, tenBieuPhi),
+  UNIQUE KEY uq_fee_id_tenant (fee_id, tenant_id),
+
+  CONSTRAINT fk_fee_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Lưu ý: target_type/target_id là polymorphic => không thể FK tới 3 bảng cùng lúc.
+CREATE TABLE fee_assignment (
+  assignment_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  fee_id INT UNSIGNED NOT NULL,
+
+  target_type ENUM('kiosk','zone','kiosk_type') NOT NULL,
+  target_id INT UNSIGNED NOT NULL,
+
+  ngayApDung DATE NOT NULL,
+  trangThai ENUM('active','inactive') DEFAULT 'active',
+  mucMienGiam decimal(5,2) not null default 0,
+	check (mucMienGiam between 0 and 100),
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_fee_assign (tenant_id, fee_id, target_type, target_id, ngayApDung),
+  KEY idx_fa_target (tenant_id, target_type, target_id),
+  KEY idx_fa_fee (fee_id),
+
+  CONSTRAINT fk_fa_fee   FOREIGN KEY (fee_id, tenant_id) REFERENCES fee_schedule(fee_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_fa_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 6) COLLECTION PERIOD + CHARGE (có fee_id + snapshot)
+-- =========================================================
+CREATE TABLE collection_period (
+  period_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+
+  tenKyThu VARCHAR(150),
+  ngayBatDau DATETIME NOT NULL,
+  ngayKetThuc DATETIME NOT NULL,
+  loaiKy ENUM('ngay','thang') NOT NULL,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_period_range (tenant_id, ngayBatDau, ngayKetThuc),
+  UNIQUE KEY uq_period_id_tenant (period_id, tenant_id),
+
+  CONSTRAINT fk_period_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE shift (
+  shift_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  user_id INT UNSIGNED NOT NULL,
+
+  thoiGianBatDauCa DATETIME NOT NULL,
+  thoiGianKetThucCa DATETIME,
+  tongTienMatThuDuoc DECIMAL(12,2) DEFAULT 0,
+  tongChuyenKhoanThuDuoc DECIMAL(12,2) DEFAULT 0,
+  trangThaiDoiSoat ENUM('pending','completed','discrepancy') DEFAULT 'pending',
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_shift_id_tenant (shift_id, tenant_id),
+  KEY idx_shift_tenant (tenant_id),
+  KEY idx_shift_user (user_id),
+
+  CONSTRAINT fk_shift_user   FOREIGN KEY (user_id, tenant_id) REFERENCES users(user_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_shift_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE charge (
+  charge_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+
+  period_id INT UNSIGNED NOT NULL,
+  kiosk_id INT UNSIGNED NOT NULL,
+  merchant_id INT UNSIGNED NOT NULL,
+  fee_id INT UNSIGNED NOT NULL,
+
+  -- snapshot để lịch sử không bị lệch khi đổi biểu phí
+  donGiaApDung DECIMAL(12,2) NOT NULL,
+  hinhThucApDung ENUM('ngay','thang') NOT NULL,
+
+  soTienPhaiThu DECIMAL(12,2) NOT NULL,
+  soTienDaThu DECIMAL(12,2) DEFAULT 0,
+
+  trangThai ENUM('chua_thu','da_thu','no','mien') DEFAULT 'chua_thu',
+  version INT DEFAULT 1,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_charge_one_per_kiosk_period (tenant_id, period_id, kiosk_id),
+  UNIQUE KEY uq_charge_id_tenant (charge_id, tenant_id),
+
+  KEY idx_charge_status (tenant_id, trangThai),
+  KEY idx_charge_merchant (tenant_id, merchant_id),
+  KEY idx_charge_kiosk (tenant_id, kiosk_id),
+
+  CONSTRAINT fk_charge_period   FOREIGN KEY (period_id, tenant_id)  REFERENCES collection_period(period_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_charge_kiosk    FOREIGN KEY (kiosk_id, tenant_id)   REFERENCES kiosk(kiosk_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_charge_merchant FOREIGN KEY (merchant_id, tenant_id) REFERENCES merchant(merchant_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_charge_fee      FOREIGN KEY (fee_id, tenant_id)     REFERENCES fee_schedule(fee_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_charge_tenant   FOREIGN KEY (tenant_id)             REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 7) RECEIPT + WALLET + TRANSACTIONS
+-- =========================================================
+CREATE TABLE receipt (
+  receipt_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+
+  soTienThu DECIMAL(12,2) NOT NULL,
+  hinhThucThanhToan ENUM('tien_mat','chuyen_khoan') NOT NULL,
+  ghiChu VARCHAR(255),
+  anhChupThanhToan VARCHAR(255) null,
+  thoiGianThu DATETIME NOT NULL,
+
+  user_id INT UNSIGNED NULL,
+  shift_id INT UNSIGNED NULL,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_receipt_id_tenant (receipt_id, tenant_id),
+  KEY idx_receipt_tenant_time (tenant_id, thoiGianThu),
+
+  CONSTRAINT fk_receipt_user   FOREIGN KEY (user_id, tenant_id)   REFERENCES users(user_id, tenant_id) ON DELETE RESTRICT,
+  
+  -- SỬA Ở ĐÂY: Đổi SET NULL thành RESTRICT
+  CONSTRAINT fk_receipt_shift  FOREIGN KEY (shift_id, tenant_id)  REFERENCES shift(shift_id, tenant_id) ON DELETE RESTRICT,
+  
+  CONSTRAINT fk_receipt_tenant FOREIGN KEY (tenant_id)            REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE receipt_charge (
+  receipt_id INT UNSIGNED NOT NULL,
+  charge_id  INT UNSIGNED NOT NULL,
+  tenant_id  INT UNSIGNED NOT NULL,
+
+  soTienDaTra DECIMAL(12,2) NOT NULL,
+
+  PRIMARY KEY (receipt_id, charge_id),
+
+  KEY idx_rc_charge (tenant_id, charge_id),
+
+  CONSTRAINT fk_rc_receipt
+    FOREIGN KEY (receipt_id, tenant_id)
+    REFERENCES receipt(receipt_id, tenant_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_rc_charge
+    FOREIGN KEY (charge_id, tenant_id)
+    REFERENCES charge(charge_id, tenant_id)
+    ON DELETE CASCADE
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 8) AUDIT LOG
+-- =========================================================
+CREATE TABLE audit_log (
+  log_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  user_id INT UNSIGNED NOT NULL,
+
+  hanhDong VARCHAR(255) NOT NULL,
+  thoiGianThucHien DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  entity_type VARCHAR(50),
+  entity_id BIGINT UNSIGNED NULL,
+
+  giaTriCu TEXT,
+  giaTriMoi TEXT,
+
+  KEY idx_audit_tenant_time (tenant_id, thoiGianThucHien),
+  KEY idx_audit_user (tenant_id, user_id),
+
+  CONSTRAINT fk_audit_user   FOREIGN KEY (user_id, tenant_id) REFERENCES users(user_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_audit_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+/* bảng local_payment tạo ở frontend (khỏi vẽ vào ERD)
+CREATE TABLE local_payment (
+          local_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          tenant_id INTEGER NOT NULL,
+          charge_id INTEGER NOT NULL,
+          merchant_id INTEGER NOT NULL,
+          amount REAL NOT NULL,
+          payment_method TEXT NOT NULL,
+          paid_at TEXT NOT NULL,
+          note TEXT,
+          local_image_path TEXT,
+          server_receipt_id INTEGER,
+          sync_status TEXT DEFAULT 'pending'
+        )
+*/
+
+INSERT INTO tenant (tenBanQuanLy, diaChi, soDienThoai, email, matkhau, trangThai)
+VALUES ('Ban quan ly Cho Demo', 'Can Tho', '0987654321', '', 'tenant1@demo.com', 'active');
+-- Chỗ mật khẩu chạy file hash.js để ra mật khẩu sau khi băm rồi thêm vào
