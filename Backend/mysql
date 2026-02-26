@@ -4,6 +4,14 @@ CREATE DATABASE IF NOT EXISTS saas
   COLLATE utf8mb4_unicode_ci;
 USE saas;
 
+CREATE TABLE super_admin (
+  admin_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  trangThai ENUM('active','suspended') DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 -- =========================================================
 -- 1) TENANT + BILLING (SaaS)
 -- =========================================================
@@ -13,7 +21,6 @@ CREATE TABLE tenant (
   diaChi VARCHAR(255),
   soDienThoai VARCHAR(15) NOT NULL,
   email VARCHAR(150) NOT NULL,
-  matkhau VARCHAR(255) NOT NULL,
   trangThai ENUM('active','suspended') DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -42,39 +49,18 @@ CREATE TABLE plan_subscription (
   ngayKetThuc DATETIME NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  active_flag TINYINT GENERATED ALWAYS AS (
+    CASE WHEN trangThai = 'active' THEN 1 ELSE NULL END
+  ) STORED,
+  UNIQUE KEY unique_active_per_tenant (tenant_id, active_flag),
+
   KEY idx_ps_tenant (tenant_id),
   KEY idx_ps_plan (plan_id),
+  UNIQUE KEY uq_subscription_id_tenant (subscription_id, tenant_id),
+  
   CONSTRAINT fk_ps_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_ps_plan   FOREIGN KEY (plan_id)   REFERENCES plan(plan_id)     ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE payment (
-  payment_id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_id INT unsigned NOT NULL,
-
-  subscription_id INT unsigned NULL,
-  charge_id INT unsigned NULL,
-
-  stripe_payment_intent_id VARCHAR(255),
-  stripe_invoice_id VARCHAR(255),
-
-  amount DECIMAL(12,2) NOT NULL,
-
-  payment_type ENUM('subscription','charge') NOT NULL,
-  status ENUM('pending','succeeded','failed') DEFAULT 'pending',
-
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-  FOREIGN KEY (tenant_id)
-    REFERENCES tenant(tenant_id),
-
-  FOREIGN KEY (subscription_id)
-    REFERENCES plan_subscription(subscription_id)
-    ON DELETE restrict,
-
-  FOREIGN KEY (charge_id)
-    REFERENCES charge(charge_id)
-    ON DELETE restrict
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
@@ -197,7 +183,7 @@ CREATE TABLE merchant (
 
   hoTen VARCHAR(150) NOT NULL,
   soDienThoai VARCHAR(15),
-  CCCD CHAR(12),
+  CCCD CHAR(12) not null,
   maSoThue VARCHAR(20),
   diaChiThuongTru VARCHAR(255),
   ngayThamGiaKinhDoanh DATE,
@@ -347,7 +333,8 @@ CREATE TABLE charge (
 
   soTienPhaiThu DECIMAL(12,2) NOT NULL,
   soTienDaThu DECIMAL(12,2) DEFAULT 0,
-
+  CHECK (soTienDaThu <= soTienPhaiThu),
+  
   trangThai ENUM('chua_thu','da_thu','no','mien') DEFAULT 'chua_thu',
   version INT DEFAULT 1,
 
@@ -409,16 +396,32 @@ CREATE TABLE receipt_charge (
 
   KEY idx_rc_charge (tenant_id, charge_id),
 
-  CONSTRAINT fk_rc_receipt
-    FOREIGN KEY (receipt_id, tenant_id)
-    REFERENCES receipt(receipt_id, tenant_id)
-    ON DELETE CASCADE,
+  CONSTRAINT fk_rc_receipt FOREIGN KEY (receipt_id, tenant_id) REFERENCES receipt(receipt_id, tenant_id) ON DELETE restrict,
+  CONSTRAINT fk_rc_charge FOREIGN KEY (charge_id, tenant_id) REFERENCES charge(charge_id, tenant_id) ON DELETE restrict
 
-  CONSTRAINT fk_rc_charge
-    FOREIGN KEY (charge_id, tenant_id)
-    REFERENCES charge(charge_id, tenant_id)
-    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE payment (
+  payment_id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT unsigned NOT NULL,
+
+  subscription_id INT unsigned NULL,
+  receipt_id INT unsigned NULL,
+
+  stripe_payment_intent_id VARCHAR(255),
+  stripe_invoice_id VARCHAR(255),
+
+  amount DECIMAL(12,2) NOT NULL,
+
+  payment_type ENUM('subscription','charge') NOT NULL,
+  status ENUM('pending','succeeded','failed') DEFAULT 'pending',
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  
+  UNIQUE KEY uq_payment_id_tenant (payment_id, tenant_id),
+  
+  FOREIGN KEY (subscription_id, tenant_id) REFERENCES plan_subscription(subscription_id, tenant_id) ON DELETE RESTRICT,
+  FOREIGN KEY (receipt_id, tenant_id) REFERENCES receipt(receipt_id, tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
@@ -426,23 +429,26 @@ CREATE TABLE receipt_charge (
 -- =========================================================
 CREATE TABLE audit_log (
   log_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  tenant_id INT UNSIGNED NOT NULL,
-  user_id INT UNSIGNED NOT NULL,
-
+  tenant_id INT UNSIGNED NULL,
+  user_id INT UNSIGNED NULL,
+  super_admin_id INT UNSIGNED NULL,
+  
   hanhDong VARCHAR(255) NOT NULL,
   thoiGianThucHien DATETIME DEFAULT CURRENT_TIMESTAMP,
 
   entity_type VARCHAR(50),
   entity_id BIGINT UNSIGNED NULL,
 
-  giaTriCu TEXT,
-  giaTriMoi TEXT,
+  giaTriCu json,
+  giaTriMoi json,
 
   KEY idx_audit_tenant_time (tenant_id, thoiGianThucHien),
   KEY idx_audit_user (tenant_id, user_id),
+  KEY idx_audit_superadmin (super_admin_id),
 
-  CONSTRAINT fk_audit_user   FOREIGN KEY (user_id, tenant_id) REFERENCES users(user_id, tenant_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_audit_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_audit_user   FOREIGN KEY (user_id, tenant_id) REFERENCES users(user_id, tenant_id) ON DELETE set null,
+  CONSTRAINT fk_audit_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant(tenant_id) ON DELETE set null,
+  CONSTRAINT fk_audit_superadmin FOREIGN KEY (super_admin_id) REFERENCES super_admin(admin_id) ON DELETE set null
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /* bảng local_payment tạo ở frontend (khỏi vẽ vào ERD)
@@ -461,6 +467,18 @@ CREATE TABLE local_payment (
         )
 */
 
-INSERT INTO tenant (tenBanQuanLy, diaChi, soDienThoai, email, matkhau, trangThai)
-VALUES ('Ban quan ly Cho Demo', 'Can Tho', '0987654321', '', 'tenant1@demo.com', 'active');
+INSERT INTO tenant (tenBanQuanLy, diaChi, soDienThoai, email, trangThai)
+VALUES ('Ban quan ly Cho Demo', 'Can Tho', '0987654321', 'tenant1@demo.com', 'active');
 -- Chỗ mật khẩu chạy file hash.js để ra mật khẩu sau khi băm rồi thêm vào
+
+/* 
+- Khi bắt đầu và kết thúc ca sẽ bấm nút
+- Chỉnh lại payment cho plan và payment cho charge/reciept (dùng stripe api test)
+- nếu dùng trial thì sau khi hết hạn mà ko đăng kí gói thì sẽ khóa dữ liệu
+- Đăng nhập rồi có thể đổi mật khẩu
+- 
+- Mỗi charge = mỗi kiosk, frontend hiển thị hết charge của merchant đó, tổng charge = 1 receipt
+- 1 Merchant có nhiều kiosk, Thanh toán sẽ  thanh toán tổng, thanh toán chung sẽ trừ từ kỳ xa nhất
+- Khi đăng ký gói mới còn hạn gói cũ -> đổi suscription cũ thành 'expired' và tạo suscription mới 
+- target_id và entity_id dùng frontend xử lý lấy list
+*/
