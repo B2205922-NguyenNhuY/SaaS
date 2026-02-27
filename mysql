@@ -367,7 +367,6 @@ CREATE TABLE receipt (
   ghiChu VARCHAR(255),
   anhChupThanhToan VARCHAR(255) null,
   thoiGianThu DATETIME NOT NULL,
-
   user_id INT UNSIGNED NULL,
   shift_id INT UNSIGNED NULL,
 
@@ -422,6 +421,33 @@ CREATE TABLE payment (
   
   FOREIGN KEY (subscription_id, tenant_id) REFERENCES plan_subscription(subscription_id, tenant_id) ON DELETE RESTRICT,
   FOREIGN KEY (receipt_id, tenant_id) REFERENCES receipt(receipt_id, tenant_id) ON DELETE RESTRICT
+=======
+CREATE TABLE payment_transaction (
+  transaction_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
+  merchant_id INT UNSIGNED NOT NULL,
+  charge_id INT UNSIGNED NULL,
+
+  gateway VARCHAR(50),
+  gateway_transaction_id VARCHAR(100),
+  amount DECIMAL(12,2),
+  status ENUM('pending','success','failed') DEFAULT 'pending',
+  raw_payload JSON,
+
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  KEY idx_pt_status (status),
+  KEY idx_pt_tenant (tenant_id),
+  KEY idx_pt_charge (tenant_id, charge_id),
+
+  CONSTRAINT fk_pt_merchant FOREIGN KEY (merchant_id, tenant_id) REFERENCES merchant(merchant_id, tenant_id) ON DELETE RESTRICT,
+  
+  -- SỬA Ở ĐÂY: Đổi SET NULL thành RESTRICT
+  CONSTRAINT fk_pt_charge   FOREIGN KEY (charge_id, tenant_id)   REFERENCES charge(charge_id, tenant_id) ON DELETE RESTRICT,
+  
+  CONSTRAINT fk_pt_tenant   FOREIGN KEY (tenant_id)              REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+>>>>>>> f251f2d63a59c6f1f15753b4c89496a9da75fde6
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
@@ -481,4 +507,3 @@ VALUES ('Ban quan ly Cho Demo', 'Can Tho', '0987654321', 'tenant1@demo.com', 'ac
 - 1 Merchant có nhiều kiosk, Thanh toán sẽ  thanh toán tổng, thanh toán chung sẽ trừ từ kỳ xa nhất
 - Khi đăng ký gói mới còn hạn gói cũ -> đổi suscription cũ thành 'expired' và tạo suscription mới 
 - target_id và entity_id dùng frontend xử lý lấy list
-*/
