@@ -1,17 +1,11 @@
-const express = require("express");
-const { auth } = require("../middleware/auth");
-const { requirePerm } = require("../middleware/permission");
-const c = require("../controllers/kioskAssignment.controller");
+const router = require("express").Router();
+const auth = require("../middlewares/auth");
+const permission = require("../middlewares/permission");
+const paginate = require("../middlewares/paginate");
+const C = require("../controllers/kioskAssignment.controller");
 
-const router = express.Router();
-
-router.post("/", auth, requirePerm("ASSIGN_KIOSK"), c.assignKiosk); // #36
-router.put(
-  "/:id/terminate",
-  auth,
-  requirePerm("ASSIGN_KIOSK"),
-  c.terminateAssignment,
-);
-router.get("/", auth, requirePerm("VIEW_ASSIGNMENT"), c.listAssignments);
+router.post("/", auth, permission("ASSIGN_KIOSK"), C.assign); // POST create active
+router.put("/:id/end", auth, permission("ASSIGN_KIOSK"), C.end); // PUT end => ended + ngayKetThuc auto
+router.get("/", auth, permission("ASSIGN_KIOSK"), paginate, C.list); // list
 
 module.exports = router;

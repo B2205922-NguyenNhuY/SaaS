@@ -1,18 +1,11 @@
-const express = require("express");
-const { auth } = require("../middleware/auth");
-const { requirePerm } = require("../middleware/permission");
-const c = require("../controllers/kioskType.controller");
+const router = require("express").Router();
+const auth = require("../middlewares/auth");
+const permission = require("../middlewares/permission");
+const paginate = require("../middlewares/paginate");
+const C = require("../controllers/kioskType.controller");
 
-const router = express.Router();
-
-router.post("/", auth, requirePerm("CREATE_KIOSK_TYPE"), c.createKioskType); // #27
-router.get("/", auth, requirePerm("VIEW_KIOSK_TYPE"), c.listKioskType); // #28
-router.put("/:id", auth, requirePerm("UPDATE_KIOSK_TYPE"), c.updateKioskType);
-router.delete(
-  "/:id",
-  auth,
-  requirePerm("DELETE_KIOSK_TYPE"),
-  c.deleteKioskType,
-);
+router.post("/", auth, permission("CREATE_KIOSK_TYPE"), C.create); // 27
+router.put("/:id", auth, permission("UPDATE_KIOSK_TYPE"), C.update); // NEW
+router.get("/", auth, permission("VIEW_KIOSK_TYPE"), paginate, C.list); // 28
 
 module.exports = router;

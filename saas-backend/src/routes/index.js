@@ -1,19 +1,10 @@
-const express = require("express");
+const router = require("express").Router();
 
-const marketRoutes = require("./market.routes");
-const zoneRoutes = require("./zone.routes");
-const kioskTypeRoutes = require("./kioskType.routes");
-const kioskRoutes = require("./kiosk.routes");
-const merchantRoutes = require("./merchant.routes");
-const kioskAssignmentRoutes = require("./kioskAssignment.routes");
-
-const router = express.Router();
-
-router.use("/markets", marketRoutes);
-router.use("/zones", zoneRoutes);
-router.use("/kiosk_types", kioskTypeRoutes);
-router.use("/kiosk", kioskRoutes);
-router.use("/merchants", merchantRoutes);
-router.use("/kiosk_assignments", kioskAssignmentRoutes);
+router.use("/markets", require("./market.routes"));
+router.use("/zones", require("./zone.routes"));
+router.use("/kiosk_types", require("./kioskType.routes"));
+router.use("/kiosks", require("./kiosk.routes"));
+router.use("/merchants", require("./merchant.routes"));
+router.use("/kiosk_assignments", require("./kioskAssignment.routes"));
 
 module.exports = router;

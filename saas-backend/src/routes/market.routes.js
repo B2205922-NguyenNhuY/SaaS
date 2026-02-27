@@ -1,14 +1,12 @@
-const express = require("express");
-const { auth } = require("../middleware/auth");
-const { requirePerm } = require("../middleware/permission");
-const c = require("../controllers/market.controller");
+const router = require("express").Router();
+const auth = require("../middlewares/auth");
+const permission = require("../middlewares/permission");
+const paginate = require("../middlewares/paginate");
+const C = require("../controllers/market.controller");
 
-const router = express.Router();
-
-router.post("/", auth, requirePerm("CREATE_MARKET"), c.createMarket); // #19
-router.put("/:id", auth, requirePerm("UPDATE_MARKET"), c.updateMarket); // #20
-router.put("/:id/lock", auth, requirePerm("LOCK_MARKET"), c.lockMarket); // #21
-router.get("/", auth, requirePerm("VIEW_MARKET"), c.listMarket); // #22
-router.get("/:id", auth, requirePerm("VIEW_MARKET"), c.getMarketById);
+router.post("/", auth, permission("CREATE_MARKET"), C.create); // 19
+router.put("/:id", auth, permission("UPDATE_MARKET"), C.update); // 20
+router.patch("/:id/status", auth, permission("LOCK_MARKET"), C.updateStatus); // 21
+router.get("/", auth, permission("VIEW_MARKET"), paginate, C.list); // 22
 
 module.exports = router;
