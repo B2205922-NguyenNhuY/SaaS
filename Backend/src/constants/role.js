@@ -1,0 +1,16 @@
+const ROLES = {
+  SUPER_ADMIN: "super_admin",
+  TENANT_ADMIN: "tenant_admin",
+  COLLECTOR: "collector",
+  MERCHANT: "merchant",
+};
+
+const ROLE_CREATE_PERMISSION = {
+  [ROLES.SUPER_ADMIN]: [ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN],
+  [ROLES.TENANT_ADMIN]: [ROLES.COLLECTOR, ROLES.MERCHANT],
+};
+
+module.exports = {
+  ROLES,
+  ROLE_CREATE_PERMISSION,
+};
