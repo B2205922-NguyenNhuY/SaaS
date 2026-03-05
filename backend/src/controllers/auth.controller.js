@@ -1,132 +1,160 @@
-const jwt = require('jsonwebtoken');
-const { User, Role, Tenant } = require('../models');
-const { JWT_SECRET, JWT_EXPIRE } = require('../config/auth');
-const AuditService = require('../services/auditlog.service');
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const authModel = require("../models/auth.model");
+const userModel = require("../models/users.model");
+const role = require("../constants/role");
+const admin = require("../config/firebase");
 
-class AuthController {
-  // Đăng nhập
-  async login(req, res) {
-    try {
-      const { email, password, tenant_id } = req.body;
+const SALT_ROUNDS = 10;
 
-      const user = await User.findOne({
-        where: {
-          email,
-          tenant_id,
-          trangThai: 'active'
-        },
-        include: [{
-          model: Role,
-          as: 'role',
-          attributes: ['tenVaiTro', 'danhSachQuyen']
-        }]
-      });
+//Đăng ký
+exports.register = async (req, res) => {
+    try{
+        const {
+            email,
+            password,
+            hoTen,
+            soDienThoai,
+            tenant_id,
+            role_id
+        } = req.body;
 
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-
-      const isValidPassword = await user.comparePassword(password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-
-      const token = jwt.sign(
-        {
-          user_id: user.user_id,
-          tenant_id: user.tenant_id,
-          role: user.role?.tenVaiTro
-        },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRE }
-      );
-
-      await AuditService.log({
-        tenant_id: user.tenant_id,
-        user_id: user.user_id,
-        hanhDong: 'LOGIN',
-        entity_type: 'user',
-        entity_id: user.user_id
-      });
-
-      res.json({
-        message: 'Login successful',
-        token,
-        user: {
-          user_id: user.user_id,
-          email: user.email,
-          hoTen: user.hoTen,
-          role: user.role?.tenVaiTro,
-          permissions: user.role?.danhSachQuyen || []
+        if (!email || !password || !hoTen || !soDienThoai || !tenant_id || !role_id) {
+            return res.status(400).json({
+                message: "Missing required fields",
+            });
         }
-      });
+        
+        const duplicate = await userModel.checkDuplicate(email, soDienThoai);
+
+        if (duplicate.length>0) {
+            return res.status(400).json({
+                message: "Email hoặc Số điện thoại đã tồn tại"
+            });
+        }
+
+        const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+
+        const result = await authModel.createUser({email, password_hash, hoTen, soDienThoai, tenant_id, role_id});
+
+        res.status(201).json({
+            message: "Register successfully",
+            user_id: result.insertId
+        });
+
     } catch (error) {
-      res.status(500).json({ message: error.message });
+        if (error.code === "ER_DUP_ENTRY") {
+            return res.status(400).json({ message: "Email hoặc số điện thoại đã tồn tại"});
+        }
+
+        res.status(500).json({error: error.message});
     }
-  }
+};
 
-  // Đăng xuất
-  async logout(req, res) {
-    try {
-      await AuditService.log({
-        tenant_id: req.tenant_id,
-        user_id: req.user.user_id,
-        hanhDong: 'LOGOUT',
-        entity_type: 'user',
-        entity_id: req.user.user_id
-      });
+//login
+exports.login = async (req, res) => {
+    try{
+        const {email, password} = req.body;
 
-      res.json({ message: 'Logout successful' });
+        if (!email || !password) {
+            return res.status(400).json({
+                message: "Email and password are required",
+            });
+        }
+
+        const superAdmin = await authModel.findSuperAdminByEmail(email);
+
+        if(superAdmin) {
+            if(superAdmin.trangThai !== 'active') {
+                return res.status(403).json({message: "Account is not active",});
+            }
+            
+            const isMatch = await bcrypt.compare(password,superAdmin.password_hash);
+
+            if(!isMatch) {
+                return res.status(401).json({message: "Password is wrong",});
+            }
+
+            const token = jwt.sign(
+                {
+                    id: superAdmin.admin_id,
+                    role: "super_admin",
+                    tenant_id: null,
+                },
+                process.env.JWT_SECRET, 
+                { expiresIn: "1h" }
+            );
+
+            return res.json({
+                message: "Super admin login successful",
+                token,
+                user: {
+                    id: superAdmin.admin_id,
+                    email: superAdmin.email,
+                    tenant_id: null,
+                    role: "super_admin",
+                },
+            });
+        }
+        
+        const user = await authModel.findUserByEmail(email);
+            
+        if(!user) {
+            return res.status(401).json({message: "Email not found",});
+        }
+
+        if(user.trangThai !== 'active') {
+            return res.status(403).json({message: "Account is not active",});
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+
+        if(!isMatch) {
+            return res.status(401).json({message: "Password is wrong",});
+        }
+
+        const token = jwt.sign(
+            {
+                id: user.user_id,
+                role: user.tenVaiTro,
+                tenant_id: user.tenant_id
+            },
+            process.env.JWT_SECRET, 
+            { expiresIn: "1h" }
+        );
+
+        return res.json({
+            message: "User login successful",
+            token,
+            user: {
+                id: user.user_id,
+                email: user.email,
+                tenant_id: user.tenant_id,
+                role: user.tenVaiTro
+            },
+        });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+        console.error(error);
+        return res.status(500).json({error: "Server error",});
     }
+};
+
+
+exports.googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+
+    console.log(decoded);
+
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid token" });
   }
+};
 
-  // Đổi mật khẩu
-  async changePassword(req, res) {
-    try {
-      const { oldPassword, newPassword } = req.body;
-      const user = await User.findByPk(req.user.user_id);
-
-      const isValidPassword = await user.comparePassword(oldPassword);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: 'Current password is incorrect' });
-      }
-
-      user.password_hash = newPassword;
-      await user.save();
-
-      await AuditService.log({
-        tenant_id: req.tenant_id,
-        user_id: req.user.user_id,
-        hanhDong: 'CHANGE_PASSWORD',
-        entity_type: 'user',
-        entity_id: req.user.user_id
-      });
-
-      res.json({ message: 'Password changed successfully' });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
-
-  // Lấy thông tin profile
-  async getProfile(req, res) {
-    try {
-      const user = await User.findByPk(req.user.user_id, {
-        attributes: { exclude: ['password_hash'] },
-        include: [{
-          model: Role,
-          as: 'role',
-          attributes: ['tenVaiTro', 'danhSachQuyen']
-        }]
-      });
-
-      res.json(user);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
-}
-
-module.exports = new AuthController();
+exports.logout = async (req, res) => {
+  return res.status(200).json({
+    message: "Logout successful - please remove token on client",
+  });
+};

@@ -1,18 +1,44 @@
-const express = require('express');
-const { body } = require('express-validator');
+const express = require("express");
 const router = express.Router();
-const feeAssignmentController = require('../controllers/feeAssignmentcontrollerr');
-const { protect, restrictTo } = require('../middleware/auth.middleware');
-const validate = require('../middleware/validate');
 
-const applyFeeValidation = [
-  body('fee_id').isInt().withMessage('ID biểu phí không hợp lệ'),
-  body('target_type').isIn(['kiosk', 'khu', 'loai_kiosk']).withMessage('Loại đối tượng không hợp lệ'),
-  body('target_ids').isArray().withMessage('Danh sách đối tượng không hợp lệ')
-];
+const controller = require("../controllers/feeAssignment.controller");
+const ROLES = require("../constants/role");
 
-router.use(protect, restrictTo(1, 2));
+const { verifyToken } = require("../middlewares/auth.middleware");
+const { authorizeRoles } = require("../middlewares/role.middleware");
 
-router.post('/', applyFeeValidation, validate, feeAssignmentController.applyFeeToTarget);
+
+// Tạo fee assignment
+router.post(
+    "/",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.createAssignment
+);
+
+
+// Lấy assignment theo target
+router.get(
+    "/target",
+    verifyToken,
+    controller.getAssignmentsByTarget
+);
+
+
+// Lấy assignment theo fee
+router.get(
+    "/fee/:fee_id",
+    verifyToken,
+    controller.getAssignmentsByFee
+);
+
+
+// Deactivate
+router.patch(
+    "/:id/deactivate",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.deactivateAssignment
+);
 
 module.exports = router;

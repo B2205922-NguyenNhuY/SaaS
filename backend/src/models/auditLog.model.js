@@ -1,0 +1,65 @@
+const db = require("../config/database");
+
+// Tạo audit log
+exports.createAuditLog = async (data) => {
+
+    const {
+        tenant_id,
+        user_id,
+        super_admin_id,
+        hanhDong,
+        entity_type,
+        entity_id,
+        giaTriCu,
+        giaTriMoi
+    } = data;
+
+    const [result] = await db.execute(
+        `INSERT INTO audit_log 
+        (tenant_id, user_id, super_admin_id, hanhDong, entity_type, entity_id, giaTriCu, giaTriMoi)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            tenant_id || null,
+            user_id || null,
+            super_admin_id || null,
+            hanhDong,
+            entity_type || null,
+            entity_id || null,
+            giaTriCu ? JSON.stringify(giaTriCu) : null,
+            giaTriMoi ? JSON.stringify(giaTriMoi) : null
+        ]
+    );
+
+    return result;
+};
+
+
+// Lấy audit log theo tenant
+exports.getAuditLogsByTenant = async (tenant_id) => {
+
+    const [rows] = await db.execute(
+        `SELECT *
+         FROM audit_log
+         WHERE tenant_id = ?
+         ORDER BY thoiGianThucHien DESC`,
+        [tenant_id]
+    );
+
+    return rows;
+};
+
+
+// Lấy audit log theo entity
+exports.getAuditLogsByEntity = async (entity_type, entity_id) => {
+
+    const [rows] = await db.execute(
+        `SELECT *
+         FROM audit_log
+         WHERE entity_type = ?
+         AND entity_id = ?
+         ORDER BY thoiGianThucHien DESC`,
+        [entity_type, entity_id]
+    );
+
+    return rows;
+};

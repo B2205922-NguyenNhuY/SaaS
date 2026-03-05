@@ -1,29 +1,28 @@
-const { AuditLog } = require('../models');
+const auditLogModel = require("../models/auditLog.model");
 
-class AuditService {
-  static async log({
-    tenant_id,
-    user_id,
-    hanhDong,
-    entity_type,
-    entity_id,
-    giaTriCu = null,
-    giaTriMoi = null
-  }) {
-    try {
-      await AuditLog.create({
-        tenant_id,
-        user_id,
-        hanhDong,
+
+// Tạo audit log
+exports.createAuditLog = async (data) => {
+
+    return await auditLogModel.createAuditLog(data);
+
+};
+
+
+// Lấy audit log của tenant
+exports.getTenantLogs = async (tenant_id) => {
+
+    return await auditLogModel.getAuditLogsByTenant(tenant_id);
+
+};
+
+
+// Lấy audit log theo entity
+exports.getEntityLogs = async (entity_type, entity_id) => {
+
+    return await auditLogModel.getAuditLogsByEntity(
         entity_type,
-        entity_id,
-        giaTriCu: giaTriCu ? JSON.stringify(giaTriCu) : null,
-        giaTriMoi: giaTriMoi ? JSON.stringify(giaTriMoi) : null
-      });
-    } catch (error) {
-      console.error('Audit log error:', error);
-    }
-  }
-}
+        entity_id
+    );
 
-module.exports = AuditService;
+};

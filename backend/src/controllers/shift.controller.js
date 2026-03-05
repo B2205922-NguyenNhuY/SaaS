@@ -1,217 +1,63 @@
-const { shift, payment, user, auditlog } = require('../models');
-const AppError = require('../utils/AppError');
-const catchAsync = require('../utils/catchAsync');
-const { successResponse, paginationResponse } = require('../utils/responseHandler');
-const { sequelize } = require('../config/database');
+const shiftService = require("../services/shift.service");
 
-// Bắt đầu ca thu
-// POST /api/shifts/start
-const startShift = catchAsync(async (req, res, next) => {
-  // Check if user already has active shift
-  const activeShift = await shift.findOne({
-    where: {
-      user_id: req.user.user_id,
-      thoiGianKetThucCa: null
+
+// Bắt đầu ca
+exports.startShift = async (req, res, next) => {
+
+    try {
+
+        const result = await shiftService.startShift(req.user);
+
+        res.status(201).json({
+            message: "Shift started",
+            shift_id: result.insertId
+        });
+
+    } catch (err) {
+
+        next(err);
+
     }
-  });
 
-  if (activeShift) {
-    return next(new AppError('Bạn đã có ca thu đang hoạt động', 400));
-  }
+};
 
-  const shift = await Shift.create({
-    user_id: req.user.user_id,
-    tenant_id: req.user.tenant_id
-  });
 
-  successResponse(res, shift, 'Bắt đầu ca thu thành công', 201);
-});
+// Kết thúc ca
+exports.endShift = async (req, res, next) => {
 
-// Kết thúc ca thu
-// POST /api/shifts/:id/end
-const endShift = catchAsync(async (req, res, next) => {
-  const shift = await Shift.findOne({
-    where: {
-      shift_id: req.params.id,
-      user_id: req.user.user_id,
-      thoiGianKetThucCa: null
+    try {
+
+        await shiftService.endShift(
+            req.params.id,
+            req.user
+        );
+
+        res.json({
+            message: "Shift ended"
+        });
+
+    } catch (err) {
+
+        next(err);
+
     }
-  });
 
-  if (!shift) {
-    return next(new AppError('Không tìm thấy ca thu hoặc ca đã kết thúc', 404));
-  }
+};
 
-  // Get transactions for this shift
-  const transactions = await PaymentTransaction.findAll({
-    where: { shift_id: shift.shift_id }
-  });
 
-  const tongTienMat = transactions
-    .filter(t => t.hinhThucThu === 'tien_mat')
-    .reduce((sum, t) => sum + parseFloat(t.soTien), 0);
+// Lấy shift đang mở
+exports.getShifts = async (req, res, next) => {
 
-  const tongChuyenKhoan = transactions
-    .filter(t => t.hinhThucThu === 'chuyen_khoan')
-    .reduce((sum, t) => sum + parseFloat(t.soTien), 0);
+    try {
 
-  await shift.update({
-    thoiGianKetThucCa: new Date(),
-    tongTienMatThuDuoc: tongTienMat,
-    tongChuyenKhoanThuDuoc: tongChuyenKhoan
-  });
+        const data = await shiftService.getShifts(req.user);
 
-  successResponse(res, {
-    shift,
-    summary: {
-      totalTransactions: transactions.length,
-      cash: tongTienMat,
-      bankTransfer: tongChuyenKhoan,
-      total: tongTienMat + tongChuyenKhoan
+        res.json(data);
+
+    } catch (err) {
+
+        next(err);
+
     }
-  }, 'Kết thúc ca thu thành công');
-});
 
-// Đối soát ca thu
-// POST /api/shifts/:id/reconcile
-const reconcileShift = catchAsync(async (req, res, next) => {
-  const { thucTeTienMat, thucTeChuyenKhoan, ghiChu } = req.body;
-
-  const shift = await Shift.findOne({
-    where: {
-      shift_id: req.params.id,
-      tenant_id: req.user.tenant_id
-    }
-  });
-
-  if (!shift) {
-    return next(new AppError('Không tìm thấy ca thu', 404));
-  }
-
-  if (shift.trangThaiDoiSoat !== 'chua_doi_soat') {
-    return next(new AppError('Ca thu đã được đối soát', 400));
-  }
-
-  const chenhLechTienMat = thucTeTienMat - parseFloat(shift.tongTienMatThuDuoc);
-  const chenhLechChuyenKhoan = thucTeChuyenKhoan - parseFloat(shift.tongChuyenKhoanThuDuoc);
-
-  let trangThaiDoiSoat = 'da_doi_soat';
-  if (chenhLechTienMat !== 0 || chenhLechChuyenKhoan !== 0) {
-    trangThaiDoiSoat = 'co_sai_lech';
-  }
-
-  await shift.update({
-    trangThaiDoiSoat,
-    ghiChuDoiSoat: ghiChu || `Chênh lệch: TM ${chenhLechTienMat}, CK ${chenhLechChuyenKhoan}`
-  });
-
-  // Create audit log
-  await AuditLog.create({
-    user_id: req.user.user_id,
-    hanhDong: 'RECONCILE_SHIFT',
-    entity_type: 'SHIFT',
-    entity_id: shift.shift_id,
-    giaTriMoi: {
-      thucTeTienMat,
-      thucTeChuyenKhoan,
-      chenhLechTienMat,
-      chenhLechChuyenKhoan
-    },
-    tenant_id: req.user.tenant_id,
-    ip_address: req.ip,
-    user_agent: req.headers['user-agent']
-  });
-
-  successResponse(res, {
-    shift,
-    reconciliation: {
-      chenhLechTienMat,
-      chenhLechChuyenKhoan
-    }
-  }, 'Đối soát ca thu thành công');
-});
-
-// Lấy danh sách ca thu
-// GET /api/shifts
-const getShifts = catchAsync(async (req, res, next) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const offset = (page - 1) * limit;
-
-  const where = { tenant_id: req.user.tenant_id };
-
-  if (req.query.user_id) {
-    where.user_id = req.query.user_id;
-  }
-  if (req.query.trangThaiDoiSoat) {
-    where.trangThaiDoiSoat = req.query.trangThaiDoiSoat;
-  }
-
-  const { count, rows } = await Shift.findAndCountAll({
-    where,
-    include: [
-      {
-        model: User,
-        as: 'user',
-        attributes: ['user_id', 'hoTen']
-      }
-    ],
-    limit,
-    offset,
-    order: [['created_at', 'DESC']]
-  });
-
-  paginationResponse(res, rows, count, page, limit, 'Lấy danh sách ca thu thành công');
-});
-
-// Lấy chi tiết ca thu
-// GET /api/shifts/:id
-const getShiftById = catchAsync(async (req, res, next) => {
-  const shift = await Shift.findOne({
-    where: {
-      shift_id: req.params.id,
-      tenant_id: req.user.tenant_id
-    },
-    include: [
-      {
-        model: User,
-        as: 'user',
-        attributes: ['user_id', 'hoTen']
-      },
-      {
-        model: PaymentTransaction,
-        as: 'transactions',
-        include: [
-          {
-            model: Charge,
-            as: 'charge',
-            include: [
-              {
-                model: Kiosk,
-                as: 'kiosk'
-              },
-              {
-                model: Merchant,
-                as: 'merchant'
-              }
-            ]
-          }
-        ]
-      }
-    ]
-  });
-
-  if (!shift) {
-    return next(new AppError('Không tìm thấy ca thu', 404));
-  }
-
-  successResponse(res, { shift }, 'Lấy thông tin ca thu thành công');
-});
-
-module.exports = {
-  startShift,
-  endShift,
-  reconcileShift,
-  getShifts,
-  getShiftById
 };

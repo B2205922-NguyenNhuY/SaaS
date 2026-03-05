@@ -1,94 +1,35 @@
-const receiptRoutes = require('./routes/receipt.routes');
-const debtRoutes = require('./routes/debt.routes');
-const reportRoutes = require('./routes/report.routes');
-const auditRoutes = require('./routes/auditlog.routes');
-const notificationRoutes = require('./routes/notification.routes');
-const authRoutes = require('./routes/auth.routes');
-const tenantRoutes = require('./routes/tenant.routes');
-const planRoutes = require('./routes/plan.routes');
-const userRoutes = require('./routes/user.routes');
-const marketRoutes = require('./routes/market.routes');
-const merchantRoutes = require('./routes/merchant.routes');
-const feeRoutes = require('./routes/fee.routes');
-const collectionRoutes = require('./routes/collectionperiod.routes');
-
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
-
-const { sequelize } = require('./models');
+const express = require("express");
+const cors = require("cors");
+require("dotenv").config();
+require("./cron/subscriptionCron");
 
 const app = express();
 
-// Middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true
-}));
+app.use(cors());
+
+// app.use("/api/webhook", require("./routes/webhook.routes"));
+
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// app.use("/", require("./routes/payment.routes"));
+// app.use("/api/tenant", require("./routes/tenant.routes"));
+// app.use("/api/plan", require("./routes/plan.routes"));
+// app.use("/api/plan_subscription", require("./routes/plan_subscription.routes"));
+// app.use("/api/role", require("./routes/role.routes"));
+// app.use("/api/users", require("./routes/users.routes"));
+// app.use("/api/auth", require("./routes/auth.routes"));
+// app.use("/api/super_admin", require("./routes/super_admin.routes"));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 
-});
-app.use('/api/', limiter);
+app.use("/api/fee_assignments", require("./routes/feeAssignment.routes"));
+app.use("/api/charge", require("./routes/charge.routes"));
+app.use("/api/collection", require("./routes/collectionperiod.routes"));
+app.use("/api/audit_log", require("./routes/auditlog.routes"));
+app.use("/api/notifications", require("./routes/notification.routes"));
+app.use("/api/fees", require("./routes/feeSchedule.routes"));
+app.use("/api/receipt_charge", require("./routes/receiptCharge.routes"));
+app.use("/api/receipt", require("./routes/receipt.routes"));
+app.use("/api/reports", require("./routes/report.routes"));
+app.use("/api/shifts", require("./routes/shift.routes"));
+app.use("/api/debts", require("./routes/debt.routes"));
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/tenants', tenantRoutes);
-app.use('/api/plans', planRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/markets', marketRoutes);
-app.use('/api/merchants', merchantRoutes);
-app.use('/api/fees', feeRoutes);
-app.use('/api/collection', collectionRoutes);
-app.use('/api/receipts', receiptRoutes);
-app.use('/api/debts', debtRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/audit-logs', auditRoutes);
-app.use('/api/notifications', notificationRoutes);
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date(),
-    database: sequelize.isAuthenticated() ? 'connected' : 'disconnected'
-  });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  
-  if (err.name === 'SequelizeValidationError') {
-    return res.status(400).json({ 
-      message: 'Validation error', 
-      errors: err.errors.map(e => e.message) 
-    });
-  }
-  
-  if (err.name === 'SequelizeUniqueConstraintError') {
-    return res.status(400).json({ 
-      message: 'Duplicate entry', 
-      errors: err.errors.map(e => e.message) 
-    });
-  }
-
-  res.status(500).json({ 
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
-});
 
 module.exports = app;

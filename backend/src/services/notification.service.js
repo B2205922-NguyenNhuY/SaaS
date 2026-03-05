@@ -1,50 +1,91 @@
-// const { Op } = require('sequelize');
-// const { User } = require('../models');
+const notificationModel = require("../models/notification.model");
+const auditLogModel = require("../models/auditLog.model");
 
-// class NotificationService {
-//   static async createNotification({
-//     tenant_id,
-//     type,
-//     title,
-//     content,
-//     target_users = 'all'
-//   }) {
-    
-//     if (target_users === 'all') {
-//       const users = await User.findAll({
-//         where: {
-//           tenant_id,
-//           trangThai: 'active'
-//         }
-//       });
-      
-//       // Gửi notification cho từng user
-//       users.forEach(user => {
-//         console.log(`Sending to user ${user.user_id}: ${title}`);
-//       });
-//     }
-//   }
 
-//   static async sendPaymentReminder(tenant_id, charge) {
-//     const merchant = await charge.getMerchant();
-//     await this.createNotification({
-//       tenant_id,
-//       type: 'payment_reminder',
-//       title: 'Nhắc thanh toán phí',
-//       content: `Kỳ thu ${charge.period_id} - Số tiền: ${charge.soTienPhaiThu}`,
-//       target_users: 'all'
-//     });
-//   }
+exports.createNotification = async (data, user) => {
 
-//   static async sendSubscriptionExpiryWarning(tenant_id, daysLeft) {
-//     await this.createNotification({
-//       tenant_id,
-//       type: 'subscription_warning',
-//       title: 'Gói dịch vụ sắp hết hạn',
-//       content: `Gói dịch vụ của bạn sẽ hết hạn sau ${daysLeft} ngày`,
-//       target_users: 'admin_only'
-//     });
-//   }
-// }
+    const result = await notificationModel.createNotification({
+        tenant_id: user.tenant_id,
+        title: data.title,
+        content: data.content,
+        type: "tenant",
+        created_by_user: user.id,
+        expires_at: data.expires_at
+    });
 
-// module.exports = NotificationService;
+    await auditLogModel.createAuditLog({
+        tenant_id: user.tenant_id,
+        user_id: user.id,
+        hanhDong: "CREATE_NOTIFICATION",
+        entity_type: "notification",
+        entity_id: result.insertId,
+        giaTriMoi: data
+    });
+
+    return result;
+};
+
+
+exports.getNotifications = async (user) => {
+
+    return await notificationModel.getNotifications(
+        user.tenant_id,
+        user.id
+    );
+};
+
+
+exports.getUnreadCount = async (user) => {
+
+    return await notificationModel.getUnreadCount(
+        user.tenant_id,
+        user.id
+    );
+};
+
+
+exports.markAsRead = async (notification_id, user) => {
+
+    const result = await notificationModel.markAsRead(
+        notification_id,
+        user.id,
+        user.tenant_id
+    );
+
+    await auditLogModel.createAuditLog({
+        tenant_id: user.tenant_id,
+        user_id: user.id,
+        hanhDong: "READ_NOTIFICATION",
+        entity_type: "notification",
+        entity_id: notification_id
+    });
+
+    return result;
+};
+
+
+exports.getNotificationDetail = async (notification_id, user) => {
+
+    const notification = await notificationModel.getNotificationById(
+        notification_id,
+        user.tenant_id,
+        user.id
+    );
+
+    if (!notification) {
+        throw new Error("Notification not found");
+    }
+
+    if (!notification.is_read) {
+
+        await notificationModel.markAsRead(
+            notification_id,
+            user.id,
+            user.tenant_id
+        );
+
+        notification.is_read = 1;
+    }
+
+    return notification;
+};

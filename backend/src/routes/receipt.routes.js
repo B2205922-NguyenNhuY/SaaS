@@ -1,28 +1,40 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const receiptController = require('../controllers/receipt.controller');
-const { protect, restrictTo } = require('../middleware/auth.middleware');
-const upload = require('../middleware/upload.middleware');
-const { PERMISSIONS } = require('../config/auth');
 
-router.use(protect);
+const controller = require("../controllers/receipt.controller");
 
-router.post(
-  '/',
-  restrictTo(PERMISSIONS.COLLECT_FEE),
-  upload.single('image'),
-  receiptController.create
-);
+const { verifyToken } = require("../middlewares/auth.middleware");
+const { authorizeRoles } = require("../middlewares/role.middleware");
+
+const ROLES = require("../constants/role");
+
 
 router.post(
-  '/upload-image',
-  restrictTo(PERMISSIONS.COLLECT_FEE),
-  upload.single('image'),
-  receiptController.uploadImage
+    "/",
+    verifyToken,
+    authorizeRoles(ROLES.COLLECTOR, ROLES.TENANT_ADMIN),
+    controller.createReceipt
 );
 
-router.post('/sync-offline', restrictTo(PERMISSIONS.COLLECT_FEE), receiptController.syncOffline);
-router.get('/', restrictTo(PERMISSIONS.VIEW_RECEIPT), receiptController.getAll);
-router.get('/:id', restrictTo(PERMISSIONS.VIEW_RECEIPT), receiptController.getById);
+
+router.get(
+    "/",
+    verifyToken,
+    controller.getReceipts
+);
+
+
+router.get(
+    "/:id",
+    verifyToken,
+    controller.getReceiptDetail
+);
+
+
+router.get(
+    "/:id/detail",
+    verifyToken,
+    controller.getReceiptDetail
+);
 
 module.exports = router;

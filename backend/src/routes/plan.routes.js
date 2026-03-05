@@ -1,16 +1,17 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const planController = require('../controllers/plan.controller');
-const { protect, restrictTo, checkSuperAdmin } = require('../middleware/auth.middleware');
-const { PERMISSIONS } = require('../config/auth');
+const planController = require("../controllers/plan.controller");
+const { verifyToken } = require("../middlewares/auth.middleware");
+const { authorizeRoles } = require("../middlewares/role.middleware");
+const { checkSubscriptionStatus } = require("../middlewares/checkSubscription.middlewares");
+const { checkTenantAccess } = require("../middlewares/checkTenantAccess.middleware");
+const { checkTenantActive } = require("../middlewares/checkTenantActive.middlewares");
+ 
+const { ROLES } = require("../constants/role");
 
-// Public routes
-router.get('/', protect, restrictTo(PERMISSIONS.VIEW_PLAN), planController.getAll);
-
-// Super Admin only
-router.post('/', protect, checkSuperAdmin, planController.create);
-router.put('/:id', protect, checkSuperAdmin, planController.update);
-router.post('/assign', protect, checkSuperAdmin, planController.assignToTenant);
-router.get('/checkexpired', protect, checkSuperAdmin, planController.checkExpiredSubscriptions);
+router.post("/", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), planController.createPlan);
+router.get("/", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN), checkTenantActive,planController.getAllPlans);
+router.get("/:id", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN), checkTenantActive, planController.getPlanById);
+router.put("/:id", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), planController.updatePlan);
 
 module.exports = router;

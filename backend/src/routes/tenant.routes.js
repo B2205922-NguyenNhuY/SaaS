@@ -1,14 +1,17 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const tenantController = require('../controllers/tenant.controller');
-const { protect, checkSuperAdmin } = require('../middleware/auth.middleware');
+const tenantController = require("../controllers/tenant.controller");
+const { verifyToken } = require("../middlewares/auth.middleware");
+const { authorizeRoles } = require("../middlewares/role.middleware");
+const { ROLES } = require("../constants/role");
+const { checkTenantAccess } = require("../middlewares/checkTenantAccess.middleware");
+const { checkTenantActive } = require("../middlewares/checkTenantActive.middlewares");
+const { checkSubscriptionStatus } = require("../middlewares/checkSubscription.middlewares");
 
-router.use(protect, checkSuperAdmin);
-
-router.post('/', tenantController.create);
-router.get('/', tenantController.getAll);
-router.get('/:id', tenantController.getById);
-router.put('/:id', tenantController.update);
-router.patch('/:id/toggle-status', tenantController.toggleStatus);
+router.post("/", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), tenantController.createTenant);
+router.get("/", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), tenantController.getAllTenants);
+router.get("/:id", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), tenantController.getTenantById);
+router.put("/:id", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN), checkTenantActive, checkTenantAccess, checkSubscriptionStatus, tenantController.updateTenantInfo);
+router.patch("/:id/status", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), tenantController.updateTenantStatus);
 
 module.exports = router;

@@ -1,12 +1,47 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const debtController = require('../controllers/debt.controller');
-const { protect, restrictTo } = require('../middleware/auth.middleware');
-const { PERMISSIONS } = require('../config/auth');
 
-router.use(protect);
+const controller = require("../controllers/debt.controller");
 
-router.get('/', restrictTo(PERMISSIONS.VIEW_DEBT), debtController.getDebts);
-router.get('/summary', restrictTo(PERMISSIONS.VIEW_DEBT), debtController.getDebtSummary);
+const { verifyToken } = require("../middlewares/auth.middleware");
+const { authorizeRoles } = require("../middlewares/role.middleware");
+
+const ROLES = require("../constants/role");
+
+
+
+router.get(
+    "/",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.getDebts
+);
+
+
+
+router.get(
+    "/merchant/:merchant_id",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.getDebtsByMerchant
+);
+
+
+
+router.get(
+    "/total",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.getTotalDebt
+);
+
+
+
+router.get(
+    "/top",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.getTopDebtors
+);
 
 module.exports = router;

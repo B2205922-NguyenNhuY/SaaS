@@ -1,15 +1,51 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const notificationController = require('../controllers/notification.controller');
-const {protect, restrictTo} = require('../middleware/auth.middleware');
-const { PERMISSIONS } = require('../config/auth');
 
-router.use(protect);
+const notificationController = require("../controllers/notification.controller");
+const ROLES = require("../constants/role");
 
-router.post('/', restrictTo(2), notificationController.create);
-router.get('/', restrictTo(2), notificationController.getAll);
-router.patch('/:id/read', restrictTo(2), notificationController.markAsRead);
-router.post('/mark-all-read', restrictTo(2), notificationController.markAllAsRead);
-router.get('/:id', restrictTo(2), notificationController.getNotificationById);
+const { verifyToken } = require("../middlewares/auth.middleware");
+const { authorizeRoles } = require("../middlewares/role.middleware");
+
+
+// Tạo thông báo (tenant admin)
+router.post(
+    "/",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    notificationController.createNotification
+);
+
+
+// Danh sách notification
+router.get(
+    "/",
+    verifyToken,
+    notificationController.getNotifications
+);
+
+
+// Unread count
+router.get(
+    "/unread-count",
+    verifyToken,
+    notificationController.getUnreadCount
+);
+
+
+// Mark read
+router.post(
+    "/:id/read",
+    verifyToken,
+    notificationController.markAsRead
+);
+
+
+// Chi tiết notification
+router.get(
+    "/:id",
+    verifyToken,
+    notificationController.getNotificationDetail
+);
 
 module.exports = router;

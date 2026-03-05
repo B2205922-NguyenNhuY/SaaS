@@ -1,106 +1,93 @@
-const { Notification } = require('../models');
-const { Op } = require('sequelize');
+const notificationService = require("../services/notification.service");
 
-class NotificationController {
-  // Tạo thông báo
-  async create(req, res) {
+
+// Tạo notification
+exports.createNotification = async (req, res, next) => {
+
     try {
-      const { type, title, content, target_users, expires_at } = req.body;
 
-      const notification = {
-        notification_id: Date.now(),
-        tenant_id: req.tenant_id,
-        created_by: req.user.user_id,
-        type,
-        title,
-        content,
-        target_users,
-        expires_at,
-        created_at: new Date()
-      };
+        const result = await notificationService.createNotification(
+            req.body,
+            req.user
+        );
 
-      res.status(201).json(notification);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
-
-  // Lấy danh sách thông báo
-  async getAll(req, res) {
-    try {
-      const { page = 1, limit = 20, type, is_read } = req.query;
-      const offset = (page - 1) * limit;
-
-      const notifications = [];
-
-      res.json({
-        total: 0,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        data: notifications
-      });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
-
-  // Đánh dấu đã đọc
-  async markAsRead(req, res) {
-    try {
-      const { id } = req.params;
-
-      res.json({ message: 'Notification marked as read' });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
-
-  // Đánh dấu tất cả đã đọc
-  async markAllAsRead(req, res) {
-    try {
-   
-      res.json({ message: 'All notifications marked as read' });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  }
-
-  //   Xem thông báo chi tiết
-  //   GET /api/notifications/:id
-     async getNotificationById(req, res, next) {
-      try {
-        const notification = await Notification.findOne({
-          where: {
-            notification_id: req.params.id,
-            user_id: req.user.user_id,
-            tenant_id: req.user.tenant_id
-          },
-          include: [
-            {
-              model: User,
-              as: 'sender',
-              attributes: ['user_id', 'hoTen']
-            }
-          ]
+        res.status(201).json({
+            message: "Notification created",
+            notification_id: result.insertId
         });
 
-        if (!notification) {
-          return next(new AppError('Không tìm thấy thông báo', 404));
-        }
-
-        // Mark as read if not already
-        if (!notification.daDoc) {
-          await notification.update({
-            daDoc: true,
-            ngayDoc: new Date()
-          });
-        }
-
-        successResponse(res, { notification }, 'Lấy thông báo thành công');
-      } catch (error) {
-        next(error);
-      }
+    } catch (err) {
+        next(err);
     }
-  }
+};
 
-module.exports = new NotificationController();
+
+// Danh sách notification
+exports.getNotifications = async (req, res, next) => {
+
+    try {
+
+        const data = await notificationService.getNotifications(req.user);
+
+        res.json(data);
+
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+// Unread count
+exports.getUnreadCount = async (req, res, next) => {
+
+    try {
+
+        const data = await notificationService.getUnreadCount(req.user);
+
+        res.json(data);
+
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+// Mark read
+exports.markAsRead = async (req, res, next) => {
+
+    try {
+
+        await notificationService.markAsRead(
+            req.params.id,
+            req.user
+        );
+
+        res.json({
+            message: "Notification marked as read"
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+// Chi tiết notification
+exports.getNotificationDetail = async (req, res, next) => {
+
+    try {
+
+        const data = await notificationService.getNotificationDetail(
+            req.params.id,
+            req.user
+        );
+
+        res.json(data);
+
+    } catch (err) {
+
+        next(err);
+
+    }
+
+};

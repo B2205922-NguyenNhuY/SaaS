@@ -1,136 +1,76 @@
-const { Charge, Merchant, Kiosk, CollectionPeriod } = require('../models');
-const { Op } = require('sequelize');
+const debtService = require("../services/debt.service");
 
-class DebtController {
-  // Xem công nợ
-  async getDebts(req, res) {
+
+// Lấy danh sách công nợ
+exports.getDebts = async (req, res, next) => {
+
     try {
-      const {
-        page = 1,
-        limit = 10,
-        merchant_id,
-        kiosk_id,
-        fromDate,
-        toDate,
-        trangThai = 'no'
-      } = req.query;
-      const offset = (page - 1) * limit;
 
-      const where = {
-        tenant_id: req.tenant_id,
-        trangThai
-      };
+        const data = await debtService.getDebts(req.user);
 
-      if (merchant_id) where.merchant_id = merchant_id;
-      if (kiosk_id) where.kiosk_id = kiosk_id;
+        res.json(data);
 
-      if (fromDate || toDate) {
-        where.created_at = {};
-        if (fromDate) where.created_at[Op.gte] = fromDate;
-        if (toDate) where.created_at[Op.lte] = toDate;
-      }
+    } catch (err) {
 
-      const { count, rows } = await Charge.findAndCountAll({
-        where,
-        include: [
-          {
-            model: Merchant,
-            as: 'merchant',
-            attributes: ['hoTen', 'soDienThoai']
-          },
-          {
-            model: Kiosk,
-            as: 'kiosk',
-            attributes: ['maKiosk', 'viTri']
-          },
-          {
-            model: CollectionPeriod,
-            as: 'period',
-            attributes: ['tenKyThu', 'ngayBatDau', 'ngayKetThuc']
-          }
-        ],
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        order: [['created_at', 'DESC']]
-      });
+        next(err);
 
-      // Tính tổng nợ
-      const totalDebt = await Charge.sum('soTienPhaiThu - soTienDaThu', {
-        where: {
-          tenant_id: req.tenant_id,
-          trangThai: 'no'
-        }
-      });
-
-      res.json({
-        total: count,
-        totalDebt: totalDebt || 0,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        data: rows
-      });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
     }
-  }
 
-  // Tổng hợp công nợ theo tiểu thương
-  async getDebtSummary(req, res) {
+};
+
+
+// Lấy công nợ theo merchant
+exports.getDebtsByMerchant = async (req, res, next) => {
+
     try {
-      const { fromDate, toDate } = req.query;
 
-      const where = {
-        tenant_id: req.tenant_id,
-        trangThai: 'no'
-      };
+        const data = await debtService.getDebtsByMerchant(
+            req.params.merchant_id,
+            req.user
+        );
 
-      if (fromDate || toDate) {
-        where.created_at = {};
-        if (fromDate) where.created_at[Op.gte] = fromDate;
-        if (toDate) where.created_at[Op.lte] = toDate;
-      }
+        res.json(data);
 
-      const charges = await Charge.findAll({
-        where,
-        include: [
-          {
-            model: Merchant,
-            as: 'merchant'
-          }
-        ]
-      });
+    } catch (err) {
 
-      // Nhóm theo merchant
-      const summary = {};
-      charges.forEach(charge => {
-        const merchantId = charge.merchant_id;
-        const debt = parseFloat(charge.soTienPhaiThu) - parseFloat(charge.soTienDaThu);
+        next(err);
 
-        if (!summary[merchantId]) {
-          summary[merchantId] = {
-            merchant_id: merchantId,
-            merchant_name: charge.merchant?.hoTen,
-            total_debt: 0,
-            charges: []
-          };
-        }
-
-        summary[merchantId].total_debt += debt;
-        summary[merchantId].charges.push({
-          charge_id: charge.charge_id,
-          soTienPhaiThu: charge.soTienPhaiThu,
-          soTienDaThu: charge.soTienDaThu,
-          debt: debt,
-          period: charge.period_id
-        });
-      });
-
-      res.json(Object.values(summary));
-    } catch (error) {
-      res.status(500).json({ message: error.message });
     }
-  }
-}
 
-module.exports = new DebtController();
+};
 
+
+// Lấy tổng công nợ
+exports.getTotalDebt = async (req, res, next) => {
+
+    try {
+
+        const data = await debtService.getTotalDebt(req.user);
+
+        res.json(data);
+
+    } catch (err) {
+
+        next(err);
+
+    }
+
+};
+
+
+// Lấy top merchant nợ nhiều nhất
+exports.getTopDebtors = async (req, res, next) => {
+
+    try {
+
+        const data = await debtService.getTopDebtors(req.user);
+
+        res.json(data);
+
+    } catch (err) {
+
+        next(err);
+
+    }
+
+};

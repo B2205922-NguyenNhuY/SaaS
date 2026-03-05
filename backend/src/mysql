@@ -452,21 +452,53 @@ CREATE TABLE audit_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
--- Bảng Thông báo (Notification) - có thể dùng cho cả hệ thống và tenant
+-- Bảng Thông báo (Notification) 
 CREATE TABLE notification (
   notification_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  tenant_id INT UNSIGNED NULL, -- NULL nếu là thông báo hệ thống do super admin tạo
+
+  tenant_id INT UNSIGNED NULL,
+
   title VARCHAR(255) NOT NULL,
   content TEXT NOT NULL,
+
   type ENUM('system','tenant') NOT NULL,
-  is_read BOOLEAN DEFAULT FALSE,
-  expires_at DATETIME,
+
+  created_by_tenantadmin INT UNSIGNED NULL,
+  created_by_superadmin INT UNSIGNED NULL,
+
+  expires_at DATETIME NULL,
 
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
   KEY idx_notification_tenant (tenant_id),
-  KEY idx_notification_expire (expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+  CONSTRAINT fk_notification_tenant
+  FOREIGN KEY (tenant_id)
+  REFERENCES tenant(tenant_id)
+  ON DELETE CASCADE
+);
+
+-- Bảng Đọc Thông báo (Notification_Read)
+CREATE TABLE notification_read (
+
+  notification_id BIGINT UNSIGNED NOT NULL,
+  user_id INT UNSIGNED NOT NULL,
+  tenant_id INT UNSIGNED NOT NULL,
+
+  read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY(notification_id, user_id),
+
+  CONSTRAINT fk_nr_notification
+  FOREIGN KEY(notification_id)
+  REFERENCES notification(notification_id)
+  ON DELETE CASCADE,
+
+  CONSTRAINT fk_nr_user
+  FOREIGN KEY(user_id, tenant_id)
+  REFERENCES users(user_id, tenant_id)
+  ON DELETE CASCADE
+);
 
 /* bảng local_payment tạo ở frontend (khỏi vẽ vào ERD)
 CREATE TABLE local_payment (

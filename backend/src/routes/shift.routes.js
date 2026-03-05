@@ -1,15 +1,38 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const shiftController = require('../controllers/shift.controller');
-const { protect, restrictTo } = require('../middleware/auth.middleware');
 
-router.use(protect);
+const controller = require("../controllers/shift.controller");
 
-router.post('/start', shiftController.startShift);
-router.post('/:id/end', shiftController.endShift);
-router.post('/:id/reconcile', restrictTo(1, 2), shiftController.reconcileShift);
-router.get('/', shiftController.getShifts);
-router.get('/:id', shiftController.getShiftById);
+const { verifyToken } = require("../middlewares/auth.middleware");
+const { authorizeRoles } = require("../middlewares/role.middleware");
+
+const ROLES = require("../constants/role");
+
+
+
+router.post(
+    "/start",
+    verifyToken,
+    authorizeRoles(ROLES.COLLECTOR),
+    controller.startShift
+);
+
+
+
+router.put(
+    "/end/:id",
+    verifyToken,
+    authorizeRoles(ROLES.COLLECTOR),
+    controller.endShift
+);
+
+
+
+router.get(
+    "/",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.getShifts
+);
 
 module.exports = router;
-

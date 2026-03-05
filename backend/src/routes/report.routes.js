@@ -1,14 +1,47 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const reportController = require('../controllers/report.controller');
-const { protect, restrictTo} = require('../middleware/auth.middleware');
-const { PERMISSIONS } = require('../config/auth');
 
-router.use(protect);
+const controller = require("../controllers/report.controller");
 
-router.get('/revenue', restrictTo(PERMISSIONS.VIEW_REPORT), reportController.getRevenueReport);
-router.get('/revenue/location', restrictTo(PERMISSIONS.VIEW_REPORT), reportController.getRevenueByLocation);
-router.get('/revenue/collector', restrictTo(PERMISSIONS.VIEW_REPORT), reportController.getRevenueByCollector);
-router.get('/export', restrictTo(PERMISSIONS.EXPORT_REPORT), reportController.exportReport);
+const { verifyToken } = require("../middlewares/auth.middleware");
+const { authorizeRoles } = require("../middlewares/role.middleware");
+
+const ROLES = require("../constants/role");
+
+
+
+router.get(
+    "/total-revenue",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.getTotalRevenue
+);
+
+
+
+router.get(
+    "/zone",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.getRevenueByZone
+);
+
+
+
+router.get(
+    "/collector",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.getRevenueByCollector
+);
+
+
+
+router.get(
+    "/export-excel",
+    verifyToken,
+    authorizeRoles(ROLES.TENANT_ADMIN),
+    controller.exportRevenueExcel
+);
 
 module.exports = router;
