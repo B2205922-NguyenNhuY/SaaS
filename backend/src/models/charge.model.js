@@ -2,7 +2,7 @@ const db = require("../config/database");
 
 
 // Tạo charge
-exports.createCharge = async (data) => {
+exports.createCharge = async (connection, data) => {
 
     const {
         tenant_id,
@@ -10,28 +10,44 @@ exports.createCharge = async (data) => {
         kiosk_id,
         merchant_id,
         fee_id,
+        donGiaApDung,
+        hinhThucApDung,
         soTienPhaiThu,
         soTienDaThu,
         trangThai,
-        version,
-        donGiaApDung,
-        hinhThucApDung
+        version
     } = data;
 
-    const [result] = await db.execute(
-        `INSERT INTO charge (tenant_id, period_id, kiosk_id, merchant_id, fee_id, soTienPhaiThu, soTienDaThu, trangThai, version, donGiaApDung, hinhThucApDung) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    const [result] = await connection.execute(
+        `
+        INSERT INTO charge
+        (
+            tenant_id,
+            period_id,
+            kiosk_id,
+            merchant_id,
+            fee_id,
+            donGiaApDung,
+            hinhThucApDung,
+            soTienPhaiThu,
+            soTienDaThu,
+            trangThai,
+            version
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
         [
             tenant_id,
             period_id,
             kiosk_id,
             merchant_id,
             fee_id,
+            donGiaApDung,
+            hinhThucApDung,
             soTienPhaiThu,
             soTienDaThu,
             trangThai,
-            version,
-            donGiaApDung,
-            hinhThucApDung
+            version
         ]
     );
 
@@ -45,8 +61,13 @@ exports.getChargesByPeriod = async (tenant_id, period_id) => {
     const [rows] = await db.execute(
         `SELECT c.*, k.maKiosk, m.hoTen
         FROM charge c
-        JOIN kiosk k ON c.kiosk_id = k.kiosk_id
-        JOIN merchant m ON c.merchant_id = m.merchant_id
+        JOIN kiosk k 
+            ON c.kiosk_id = k.kiosk_id
+            AND k.tenant_id = c.tenant_id
+
+        JOIN merchant m 
+            ON c.merchant_id = m.merchant_id
+            AND m.tenant_id = c.tenant_id
         WHERE c.tenant_id = ?
         AND c.period_id = ?`,
         [tenant_id, period_id]
@@ -151,4 +172,59 @@ exports.getChargeHistory = async (tenant_id, charge_id) => {
     );
 
     return rows;
+};
+
+
+// Recalculate charges khi có thay đổi giá hoặc discount
+exports.recalculateChargesByTarget = async (
+    connection,
+    tenant_id,
+    target_type,
+    target_id,
+    newPrice,
+    discount
+) => {
+
+    const finalAmount =
+        newPrice - (newPrice * discount / 100);
+
+    let condition = "";
+
+    if (target_type === "zone") {
+        condition = "k.zone_id = ?";
+    }
+
+    if (target_type === "kiosk") {
+        condition = "c.kiosk_id = ?";
+    }
+
+    if (target_type === "kiosk_type") {
+        condition = "k.type_id = ?";
+    }
+
+    const sql = `
+        UPDATE charge c
+        JOIN kiosk k 
+        ON c.kiosk_id = k.kiosk_id 
+        AND k.tenant_id = c.tenant_id
+        SET
+            c.donGiaApDung = ?,
+            c.soTienPhaiThu = ?,
+            c.version = c.version + 1
+        WHERE c.tenant_id = ?
+        AND c.trangThai != 'da_thu'
+        AND ${condition}
+    `;
+
+    const [result] = await connection.execute(
+        sql,
+        [
+            newPrice,
+            finalAmount,
+            tenant_id,
+            target_id
+        ]
+    );
+
+    return result;
 };

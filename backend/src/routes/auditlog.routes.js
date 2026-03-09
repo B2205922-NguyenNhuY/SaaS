@@ -8,6 +8,14 @@ const { verifyToken } = require("../middlewares/auth.middleware");
 const { authorizeRoles } = require("../middlewares/role.middleware");
 
 
+// Super admin xem log toàn hệ thống
+router.get(
+    "/superadmin",
+    verifyToken,
+    authorizeRoles(ROLES.SUPER_ADMIN),
+    auditLogController.getSuperAdminLogs
+);
+
 // Tenant admin xem log tenant
 router.get(
     "/tenant",

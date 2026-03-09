@@ -9,6 +9,13 @@ exports.createAuditLog = async (data) => {
 };
 
 
+// Lấy audit log của super admin
+exports.getSuperAdminLogs = async (super_admin_id) => {
+
+    return await auditLogModel.getAuditLogsBySuperAdmin(super_admin_id);
+
+};
+
 // Lấy audit log của tenant
 exports.getTenantLogs = async (tenant_id) => {
 
@@ -18,11 +25,16 @@ exports.getTenantLogs = async (tenant_id) => {
 
 
 // Lấy audit log theo entity
-exports.getEntityLogs = async (entity_type, entity_id) => {
+exports.getEntityLogs = async (
+    entity_type,
+    entity_id,
+    tenant_id
+) => {
 
     return await auditLogModel.getAuditLogsByEntity(
         entity_type,
-        entity_id
+        entity_id,
+        tenant_id
     );
 
 };

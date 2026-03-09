@@ -8,11 +8,11 @@ const { verifyToken } = require("../middlewares/auth.middleware");
 const { authorizeRoles } = require("../middlewares/role.middleware");
 
 
-// Tạo thông báo (tenant admin)
+// Tạo thông báo (tenant admin hoặc super admin) 
 router.post(
     "/",
     verifyToken,
-    authorizeRoles(ROLES.TENANT_ADMIN),
+    authorizeRoles([ROLES.TENANT_ADMIN, ROLES.SUPER_ADMIN]),
     notificationController.createNotification
 );
 

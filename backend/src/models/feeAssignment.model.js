@@ -32,22 +32,33 @@ exports.createFeeAssignment = async (data) => {
 
 
 // Lấy fee assignment theo target
-exports.getFeeAssignments = async (tenant_id, target_type, target_id) => {
+exports.getActiveFeeAssignment = async (
+    tenant_id,
+    target_type,
+    target_id
+) => {
 
     const [rows] = await db.execute(
-        `SELECT fa.*, fs.tenBieuPhi, fs.donGia
+        `
+        SELECT 
+            fa.*,
+            fs.tenBieuPhi,
+            fs.donGia,
+            fs.hinhThuc
         FROM fee_assignment fa
-        JOIN fee_schedule fs ON fa.fee_id = fs.fee_id
+        JOIN fee_schedule fs 
+            ON fa.fee_id = fs.fee_id
         WHERE fa.tenant_id = ?
         AND fa.target_type = ?
         AND fa.target_id = ?
         AND fa.trangThai = 'active'
-            ORDER BY fa.ngayApDung DESC
-            LIMIT 1`,
+        ORDER BY fa.ngayApDung DESC
+        LIMIT 1
+        `,
         [tenant_id, target_type, target_id]
     );
 
-    return rows;
+    return rows[0];
 };
 
 
@@ -66,6 +77,24 @@ exports.getAssignmentsByFee = async (tenant_id, fee_id) => {
 };
 
 
+// Lấy assignment theo ID
+exports.getById = async (assignment_id, tenant_id) => {
+
+    const [rows] = await db.execute(
+        `SELECT fa.*, fs.donGia
+        FROM fee_assignment fa
+        JOIN fee_schedule fs 
+            ON fa.fee_id = fs.fee_id
+        WHERE fa.assignment_id = ?
+        AND fa.tenant_id = ?
+        LIMIT 1`,
+        [assignment_id, tenant_id]
+    );
+
+    return rows[0];
+};
+
+
 // Deactivate assignment
 exports.deactivateAssignment = async (assignment_id, tenant_id) => {
 
@@ -75,6 +104,30 @@ exports.deactivateAssignment = async (assignment_id, tenant_id) => {
         WHERE assignment_id = ?
         AND tenant_id = ?`,
         [assignment_id, tenant_id]
+    );
+
+    return result;
+};
+
+
+// Update mức miễn giảm
+exports.updateDiscount = async (
+    connection,
+    assignment_id,
+    tenant_id,
+    discount
+) => {
+
+    const [result] = await connection.execute(
+        `UPDATE fee_assignment
+        SET mucMienGiam = ?
+        WHERE assignment_id = ?
+        AND tenant_id = ?`,
+        [
+            discount,
+            assignment_id,
+            tenant_id
+        ]
     );
 
     return result;

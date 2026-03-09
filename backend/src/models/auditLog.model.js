@@ -34,31 +34,58 @@ exports.createAuditLog = async (data) => {
 };
 
 
-// Lấy audit log theo tenant
-exports.getAuditLogsByTenant = async (tenant_id) => {
+// Lấy audit log theo super admin
+exports.getAuditLogsBySuperAdmin = async (super_admin_id) => {
 
     const [rows] = await db.execute(
         `SELECT *
          FROM audit_log
-         WHERE tenant_id = ?
+         WHERE super_admin_id = ?
          ORDER BY thoiGianThucHien DESC`,
+        [super_admin_id]
+    );
+
+    return rows;
+};
+
+// Lấy audit log theo tenant
+exports.getAuditLogsByTenant = async (tenant_id) => {
+
+    const [rows] = await db.execute(
+        `
+        SELECT 
+            al.*,
+            u.hoTen
+        FROM audit_log al
+        LEFT JOIN users u
+            ON al.user_id = u.user_id
+            AND u.tenant_id = al.tenant_id
+        WHERE al.tenant_id = ?
+        ORDER BY al.thoiGianThucHien DESC
+        `,
         [tenant_id]
     );
 
     return rows;
 };
 
-
 // Lấy audit log theo entity
-exports.getAuditLogsByEntity = async (entity_type, entity_id) => {
+exports.getAuditLogsByEntity = async (
+    entity_type,
+    entity_id,
+    tenant_id
+) => {
 
     const [rows] = await db.execute(
-        `SELECT *
-         FROM audit_log
-         WHERE entity_type = ?
-         AND entity_id = ?
-         ORDER BY thoiGianThucHien DESC`,
-        [entity_type, entity_id]
+        `
+        SELECT *
+        FROM audit_log
+        WHERE entity_type = ?
+        AND entity_id = ?
+        AND tenant_id = ?
+        ORDER BY thoiGianThucHien DESC
+        `,
+        [entity_type, entity_id, tenant_id]
     );
 
     return rows;
