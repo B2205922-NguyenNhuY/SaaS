@@ -7,10 +7,10 @@ const app = express();
 
 app.use(cors());
 
-app.use("/api/webhook", require("./routes/webhook.routes"));
+app.use("/api/", require("./routes/webhook.routes"));
 
 app.use(express.json());
-app.use("/", require("./routes/payment.routes"));
+app.use("/api/payment", require("./routes/payment.routes"));
 app.use("/api/tenant", require("./routes/tenant.routes"));
 app.use("/api/plan", require("./routes/plan.routes"));
 app.use("/api/plan_subscription", require("./routes/plan_subscription.routes"));

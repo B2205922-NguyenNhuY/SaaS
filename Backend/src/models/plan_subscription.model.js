@@ -14,7 +14,6 @@ exports.createSubscription = async (connection,data) => {
 
 //Tạo Pending
 exports.createPending = async ({tenant_id, plan_id, ngayBatDau, ngayKetThuc}) => {
-    const {plan_id, tenant_id} = data;
 
     const [result] = await connection.execute(
         "INSERT INTO plan_subscription (plan_id, tenant_id, trangThai, ngayBatDau, ngayKetThuc) VALUES (?, ?, 'pending', ?, ?)",
@@ -44,11 +43,12 @@ exports.getSubscriptiontById = async (id) => {
 };
 
 //Lấy subscription theo stripe_subscription_id
-exports.getSubscriptiontByStripeId = async (connection, stripe_subscription_id) => {
+exports.getSubscriptionByStripeId = async (connection, stripe_subscription_id) => {
     const [rows] = await connection.execute(
         "SELECT * FROM plan_subscription WHERE stripe_subscription_id = ?",
         [stripe_subscription_id]
     );
+    console.log("sub:",rows);
 
     return rows[0];
 };
@@ -63,10 +63,18 @@ exports.getSubscriptiontByStatus = async (status) => {
     return rows;
 };
 
+exports.updateEndDate = async (connection,subscription_id,endDate) => {
+    await connection.execute(
+    "UPDATE plan_subscription SET ngayKetThuc = ?, trangThai = 'active' WHERE subscription_id = ?",
+    [endDate, subscription_id]
+  );
+};
+
+
 //Cập nhật stripe_subscription
 exports.updateStripeSubscriptionId = async (connection,subscription_id,stripe_subscription_id) => {
     await connection.execute(
-    "UPDATE plan_subscription SET stripe_subscription_id = ? WHERE subscription_id = ?",
+    "UPDATE plan_subscription SET stripe_subscription_id = ?, trangThai = 'active' WHERE subscription_id = ?",
     [stripe_subscription_id, subscription_id]
   );
 };
@@ -132,11 +140,11 @@ exports.getPlanByTenantSubscribed = async (tenant_id) => {
     return rows
 };
 
-//Update Subscription hết hạn
-exports.expireSubscription = async (connection, stripe_subscription_id) => {
+//Update Subscription active thành hết hạn
+exports.expireActiveByTenant = async (connection, tenant_id) => {
     await connection.execute(
-        "UPDATE plan_subscription SET trangThai='expired' WHERE stripe_subscription_id=?",
-        [stripe_subscription_id]
+        "UPDATE plan_subscription SET trangThai='expired' WHERE tenant_id=? AND trangThai = 'active'",
+        [tenant_id]
     );
 };
 
