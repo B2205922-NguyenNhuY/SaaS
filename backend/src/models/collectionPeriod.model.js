@@ -1,7 +1,7 @@
 const db = require("../config/database");
 
 // Tạo kỳ thu
-exports.createCollectionPeriod = async (data) => {
+exports.createCollectionPeriod = async (connection, data) => {
 
     const {
         tenant_id,
@@ -11,7 +11,7 @@ exports.createCollectionPeriod = async (data) => {
         loaiKy
     } = data;
 
-    const [result] = await db.execute(
+    const [result] = await connection.execute(
         `INSERT INTO collection_period
         (tenant_id, tenKyThu, ngayBatDau, ngayKetThuc, loaiKy)
         VALUES (?, ?, ?, ?, ?)`,

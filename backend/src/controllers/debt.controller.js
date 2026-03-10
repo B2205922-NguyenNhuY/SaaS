@@ -6,7 +6,14 @@ exports.getDebts = async (req, res, next) => {
 
     try {
 
-        const data = await debtService.getDebts(req.user);
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 20;
+
+        const data = await debtService.getDebts(
+            page,
+            limit,
+            req.user
+        );
 
         res.json(data);
 

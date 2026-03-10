@@ -330,6 +330,7 @@ CREATE TABLE charge (
   -- snapshot để lịch sử không bị lệch khi đổi biểu phí
   donGiaApDung DECIMAL(12,2) NOT NULL,
   hinhThucApDung ENUM('ngay','thang') NOT NULL,
+  discountApDung DECIMAL(5,2) DEFAULT 0,
 
   soTienPhaiThu DECIMAL(12,2) NOT NULL,
   soTienDaThu DECIMAL(12,2) DEFAULT 0,
@@ -499,6 +500,9 @@ CREATE TABLE notification_read (
   REFERENCES users(user_id, tenant_id)
   ON DELETE CASCADE
 );
+
+CREATE INDEX idx_charge_debt
+ON charge (tenant_id, trangThai, merchant_id);
 
 /* bảng local_payment tạo ở frontend (khỏi vẽ vào ERD)
 CREATE TABLE local_payment (

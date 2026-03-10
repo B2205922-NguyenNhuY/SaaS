@@ -5,21 +5,54 @@ const auditLogModel = require("../models/auditLog.model");
 // Tạo charge
 exports.createCharge = async (data, user) => {
 
-    const result = await chargeModel.createCharge({
-        ...data,
-        tenant_id: user.tenant_id
-    });
+    const connection = await db.getConnection();
 
-    await auditLogModel.createAuditLog({
-        tenant_id: user.tenant_id,
-        user_id: user.id,
-        hanhDong: "CREATE_CHARGE",
-        entity_type: "charge",
-        entity_id: result.insertId,
-        giaTriMoi: data
-    });
+    try {
 
-    return result;
+        await connection.beginTransaction();
+
+        const existing = await chargeModel.getChargeByKioskAndPeriod(
+            user.tenant_id,
+            data.period_id,
+            data.kiosk_id
+        );
+
+        if (existing) {
+            throw new Error("Charge already exists");
+        }
+
+        const result = await chargeModel.createCharge(
+            connection,
+            {
+                ...data,
+                tenant_id: user.tenant_id
+            }
+        );
+
+        await auditLogModel.createAuditLog({
+            tenant_id: user.tenant_id,
+            user_id: user.id,
+            hanhDong: "CREATE_CHARGE",
+            entity_type: "charge",
+            entity_id: result.insertId,
+            giaTriMoi: data
+        });
+
+        await connection.commit();
+
+        return result;
+
+    } catch (err) {
+
+        await connection.rollback();
+        throw err;
+
+    } finally {
+
+        connection.release();
+
+    }
+
 };
 
 
@@ -79,10 +112,32 @@ exports.updateDebtStatus = async (charge_id, data, user) => {
         charge_id
     );
 
+    if (!oldCharge) {
+        throw new Error("Charge not found");
+    }
+
+    const newPaidAmount = data.soTienDaThu;
+
+    if (newPaidAmount > oldCharge.soTienPhaiThu) {
+        throw new Error("Payment exceeds required amount");
+    }
+
+    let status = "chua_thu";
+
+    if (newPaidAmount >= oldCharge.soTienPhaiThu) {
+        status = "da_thu";
+    }
+    else if (newPaidAmount > 0) {
+        status = "no";
+    }
+
     const result = await chargeModel.updateDebtStatus(
         charge_id,
         user.tenant_id,
-        data
+        {
+            soTienDaThu: newPaidAmount,
+            trangThai: status
+        }
     );
 
     await auditLogModel.createAuditLog({
@@ -92,7 +147,10 @@ exports.updateDebtStatus = async (charge_id, data, user) => {
         entity_type: "charge",
         entity_id: charge_id,
         giaTriCu: oldCharge,
-        giaTriMoi: data
+        giaTriMoi: {
+            soTienDaThu: newPaidAmount,
+            trangThai: status
+        }
     });
 
     return result;

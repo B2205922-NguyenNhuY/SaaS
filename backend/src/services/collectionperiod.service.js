@@ -13,6 +13,26 @@ exports.createPeriod = async (data, user) => {
 
         await connection.beginTransaction();
 
+        const { ngayBatDau, ngayKetThuc } = data;
+
+        const [exist] = await connection.execute(
+        `
+        SELECT period_id
+        FROM collection_period
+        WHERE tenant_id = ?
+        AND (
+            (? BETWEEN ngayBatDau AND ngayKetThuc)
+            OR
+            (? BETWEEN ngayBatDau AND ngayKetThuc)
+        )
+        `,
+        [tenant_id, ngayBatDau, ngayKetThuc]
+        );
+
+        if (exist.length > 0) {
+            throw new Error("Collection period overlaps");
+        }
+
         const period = await periodModel.createCollectionPeriod(
             connection,
             {
@@ -34,9 +54,10 @@ exports.createPeriod = async (data, user) => {
             JOIN kiosk k 
                 ON ka.kiosk_id = k.kiosk_id
             WHERE ka.trangThai = 'active'
+            AND (ka.ngayKetThuc IS NULL OR ka.ngayKetThuc >= ?)
             AND ka.tenant_id = ?
             `,
-            [tenant_id]
+            [ngayBatDau, tenant_id]
         );
 
         for (const kiosk of kiosks) {
@@ -86,13 +107,17 @@ exports.createPeriod = async (data, user) => {
 
                 const [feeZone] = await connection.execute(
                     `
-                    SELECT fs.*
+                    SELECT 
+                        fs.*,
+                        fa.mucMienGiam
                     FROM fee_assignment fa
                     JOIN fee_schedule fs ON fs.fee_id = fa.fee_id
                     WHERE fa.tenant_id = ?
-                    AND fa.target_type = 'zone'
+                    AND fa.target_type = 'kiosk'
                     AND fa.target_id = ?
                     AND fa.trangThai = 'active'
+                    AND fa.ngayApDung <= ?
+                    ORDER BY fa.ngayApDung DESC
                     LIMIT 1
                     `,
                     [tenant_id, kiosk.zone_id]
@@ -104,6 +129,11 @@ exports.createPeriod = async (data, user) => {
             }
 
             if (!fee) continue;
+
+            const discount = fee.mucMienGiam || 0;
+
+            const finalAmount =
+                fee.donGia - (fee.donGia * discount / 100);
 
             await chargeModel.createCharge(connection, {
 
@@ -121,7 +151,7 @@ exports.createPeriod = async (data, user) => {
 
                 hinhThucApDung: fee.hinhThuc,
 
-                soTienPhaiThu: fee.donGia,
+                soTienPhaiThu: finalAmount,
 
                 soTienDaThu: 0,
 
@@ -131,6 +161,15 @@ exports.createPeriod = async (data, user) => {
 
             });
         }
+
+        await auditLogModel.createAuditLog({
+            tenant_id,
+            user_id: user.id,
+            hanhDong: "CREATE_COLLECTION_PERIOD",
+            entity_type: "collection_period",
+            entity_id: period_id,
+            giaTriMoi: data
+        });
 
         await connection.commit();
 

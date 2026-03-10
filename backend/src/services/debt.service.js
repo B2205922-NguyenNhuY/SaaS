@@ -2,10 +2,14 @@ const debtModel = require("../models/debt.model");
 
 
 // Danh sách công nợ
-exports.getDebts = async (user) => {
+exports.getDebts = async (page, limit, user) => {
+
+    const offset = (page - 1) * limit;
 
     return await debtModel.getDebts(
-        user.tenant_id
+        user.tenant_id,
+        limit,
+        offset
     );
 
 };

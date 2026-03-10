@@ -185,6 +185,8 @@ exports.recalculateChargesByTarget = async (
     discount
 ) => {
 
+    discount = discount || 0;
+
     const finalAmount =
         newPrice - (newPrice * discount / 100);
 
