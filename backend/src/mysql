@@ -504,6 +504,9 @@ CREATE TABLE notification_read (
 CREATE INDEX idx_charge_debt
 ON charge (tenant_id, trangThai, merchant_id);
 
+CREATE INDEX idx_notification_tenant_time
+ON notification (tenant_id, created_at);
+
 /* bảng local_payment tạo ở frontend (khỏi vẽ vào ERD)
 CREATE TABLE local_payment (
           local_id INTEGER PRIMARY KEY AUTOINCREMENT,

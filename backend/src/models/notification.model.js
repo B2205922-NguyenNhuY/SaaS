@@ -42,8 +42,10 @@ exports.getNotifications = async (tenant_id, user_id) => {
         LEFT JOIN notification_read nr
         ON n.notification_id = nr.notification_id
         AND nr.user_id = ?
+        AND nr.tenant_id = ?
 
         WHERE (n.tenant_id = ? OR n.type = 'system')
+        AND (n.expires_at IS NULL OR n.expires_at > NOW())
 
         ORDER BY n.created_at DESC`,
         [user_id, tenant_id]
@@ -53,14 +55,31 @@ exports.getNotifications = async (tenant_id, user_id) => {
 };
 
 // Đánh dấu notification đã đọc
-exports.markAsRead = async (notification_id, user_id, tenant_id) => {
+exports.markAsRead = async (notification_id, user) => {
 
-    const [result] = await db.execute(
-        `INSERT IGNORE INTO notification_read
-        (notification_id, user_id, tenant_id)
-        VALUES (?, ?, ?)`,
-        [notification_id, user_id, tenant_id]
+    const notification = await notificationModel.getNotificationById(
+        notification_id,
+        user.tenant_id,
+        user.id
     );
+
+    if (!notification) {
+        throw new Error("Notification not found");
+    }
+
+    const result = await notificationModel.markAsRead(
+        notification_id,
+        user.id,
+        user.tenant_id
+    );
+
+    await auditLogModel.createAuditLog({
+        tenant_id: user.tenant_id,
+        user_id: user.id,
+        hanhDong: "READ_NOTIFICATION",
+        entity_type: "notification",
+        entity_id: notification_id
+    });
 
     return result;
 };
@@ -109,6 +128,29 @@ exports.getNotificationById = async (notification_id, tenant_id, user_id) => {
             notification_id,
             tenant_id
         ]
+    );
+
+    return rows[0];
+};
+
+
+// Lấy số lượng notification chưa đọc
+exports.getUnreadCount = async (tenant_id, user_id) => {
+
+    const [rows] = await db.execute(
+        `SELECT COUNT(*) as unread_count
+
+        FROM notification n
+
+        LEFT JOIN notification_read nr
+        ON n.notification_id = nr.notification_id
+        AND nr.user_id = ?
+
+        WHERE nr.user_id IS NULL
+        AND (n.tenant_id = ? OR n.type = 'system')
+        AND (n.expires_at IS NULL OR n.expires_at > NOW())
+        `,
+        [user_id, tenant_id]
     );
 
     return rows[0];

@@ -9,7 +9,8 @@ exports.createNotification = async (data, user) => {
         title: data.title,
         content: data.content,
         type: "tenant",
-        created_by_user: user.id,
+        created_by_tenantadmin: user.id,
+        created_by_superadmin: null,
         expires_at: data.expires_at
     });
 
