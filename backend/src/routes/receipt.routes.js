@@ -31,10 +31,4 @@ router.get(
 );
 
 
-router.get(
-    "/:id/detail",
-    verifyToken,
-    controller.getReceiptDetail
-);
-
 module.exports = router;

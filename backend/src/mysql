@@ -501,11 +501,17 @@ CREATE TABLE notification_read (
   ON DELETE CASCADE
 );
 
+-- Index charge để truy vấn nhanh khi thu tiền, lọc theo trạng thái, merchant
 CREATE INDEX idx_charge_debt
 ON charge (tenant_id, trangThai, merchant_id);
 
+-- Index notification để truy vấn nhanh thông báo của tenant, lọc theo thời gian
 CREATE INDEX idx_notification_tenant_time
 ON notification (tenant_id, created_at);
+
+-- Index receipt để truy vấn nhanh khi xem lịch sử thu tiền, lọc theo thời gian
+CREATE INDEX idx_receipt_tenant_time
+ON receipt (tenant_id, thoiGianThu);
 
 /* bảng local_payment tạo ở frontend (khỏi vẽ vào ERD)
 CREATE TABLE local_payment (

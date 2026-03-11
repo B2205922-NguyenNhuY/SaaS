@@ -2,7 +2,7 @@ const db = require("../config/database");
 
 
 // Tạo receipt
-exports.createReceipt = async (data) => {
+exports.createReceipt = async (connection, data) => {
 
     const {
         tenant_id,
@@ -15,7 +15,7 @@ exports.createReceipt = async (data) => {
         shift_id
     } = data;
 
-    const [result] = await db.execute(
+    const [result] = await connection.execute(
         `INSERT INTO receipt
         (tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
         anhChupThanhToan, thoiGianThu, user_id, shift_id)
@@ -148,18 +148,23 @@ exports.getReceiptDetail = async (receipt_id, tenant_id) => {
 
         JOIN charge c
         ON rc.charge_id = c.charge_id
+        AND c.tenant_id = r.tenant_id
 
         JOIN kiosk k
         ON c.kiosk_id = k.kiosk_id
+        AND k.tenant_id = r.tenant_id
 
         JOIN merchant m
         ON c.merchant_id = m.merchant_id
+        AND m.tenant_id = r.tenant_id
 
         JOIN collection_period p
         ON c.period_id = p.period_id
+        AND p.tenant_id = r.tenant_id
 
         JOIN fee_schedule f
         ON c.fee_id = f.fee_id
+        AND f.tenant_id = r.tenant_id
 
         WHERE r.receipt_id = ?
         AND r.tenant_id = ?`,
