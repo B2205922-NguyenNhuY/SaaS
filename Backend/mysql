@@ -1,3 +1,4 @@
+DROP DATABASE saas;
 
 CREATE DATABASE IF NOT EXISTS saas
   CHARACTER SET utf8mb4
@@ -7,6 +8,8 @@ USE saas;
 CREATE TABLE super_admin (
   admin_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(150) NOT NULL UNIQUE,
+  soDienThoai VARCHAR(15) UNIQUE NOT NULL,
+  hoTen VARCHAR(100) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   trangThai ENUM('active','suspended') DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -44,7 +47,8 @@ CREATE TABLE plan_subscription (
   subscription_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id INT UNSIGNED NOT NULL,
   plan_id INT UNSIGNED NOT NULL,
-  trangThai ENUM('active','expired','trial','cancelled') DEFAULT 'active',
+  stripe_subscription_id VARCHAR(255) NULL,
+  trangThai ENUM('active','expired','pending','trial','cancelled') not null,
   ngayBatDau DATETIME NOT NULL,
   ngayKetThuc DATETIME NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -68,14 +72,10 @@ CREATE TABLE plan_subscription (
 -- =========================================================
 CREATE TABLE role (
   role_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  tenant_id INT UNSIGNED NOT NULL,
-  tenVaiTro VARCHAR(100) NOT NULL,
+  tenVaiTro VARCHAR(100) UNIQUE NOT NULL,
   danhSachQuyen json,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_role_tenant_name (tenant_id, tenVaiTro),
-  UNIQUE KEY uq_role_id_tenant (role_id, tenant_id),
-  CONSTRAINT fk_role_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE users (
@@ -420,8 +420,9 @@ CREATE TABLE payment (
   
   UNIQUE KEY uq_payment_id_tenant (payment_id, tenant_id),
   
-  FOREIGN KEY (subscription_id, tenant_id) REFERENCES plan_subscription(subscription_id, tenant_id) ON DELETE RESTRICT,
-  FOREIGN KEY (receipt_id, tenant_id) REFERENCES receipt(receipt_id, tenant_id) ON DELETE RESTRICT
+  FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT,
+  FOREIGN KEY (subscription_id) REFERENCES plan_subscription(subscription_id) ON DELETE RESTRICT,
+  FOREIGN KEY (receipt_id) REFERENCES receipt(receipt_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
@@ -467,18 +468,6 @@ CREATE TABLE local_payment (
         )
 */
 
-INSERT INTO tenant (tenBanQuanLy, diaChi, soDienThoai, email, trangThai)
-VALUES ('Ban quan ly Cho Demo', 'Can Tho', '0987654321', 'tenant1@demo.com', 'active');
+INSERT INTO super_admin (email, hoTen, soDienThoai, password_hash, trangThai)
+VALUES ('superadmin1@demo.com', 'Super Admin Demo', '0987654321', '$2b$10$HsWOVUxRm.ZQknneUH9nSO1kjfAEe4NyBUEC1dDB9Oq6.zGgGhkqq', 'active');
 -- Chỗ mật khẩu chạy file hash.js để ra mật khẩu sau khi băm rồi thêm vào
-
-/* 
-- Khi bắt đầu và kết thúc ca sẽ bấm nút
-- Chỉnh lại payment cho plan và payment cho charge/reciept (dùng stripe api test)
-- nếu dùng trial thì sau khi hết hạn mà ko đăng kí gói thì sẽ khóa dữ liệu
-- Đăng nhập rồi có thể đổi mật khẩu
-- 
-- Mỗi charge = mỗi kiosk, frontend hiển thị hết charge của merchant đó, tổng charge = 1 receipt
-- 1 Merchant có nhiều kiosk, Thanh toán sẽ  thanh toán tổng, thanh toán chung sẽ trừ từ kỳ xa nhất
-- Khi đăng ký gói mới còn hạn gói cũ -> đổi suscription cũ thành 'expired' và tạo suscription mới 
-- target_id và entity_id dùng frontend xử lý lấy list
-*/
