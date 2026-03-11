@@ -7,7 +7,7 @@ exports.getTotalRevenue = async (tenant_id, from, to) => {
 
     const [rows] = await db.execute(
         `SELECT 
-            SUM(soTienThu) AS tongThu
+            COALESCE(SUM(soTienThu),0) AS tongThu
         FROM receipt
         WHERE tenant_id = ?
         AND thoiGianThu BETWEEN ? AND ?`,
@@ -28,11 +28,21 @@ exports.getRevenueByZone = async (tenant_id, from, to) => {
             SUM(rc.soTienDaTra) AS tongThu
         FROM receipt_charge rc
 
-        JOIN charge c ON rc.charge_id = c.charge_id
-        JOIN kiosk k ON c.kiosk_id = k.kiosk_id
-        JOIN zone z ON k.zone_id = z.zone_id
+        JOIN charge c 
+        ON rc.charge_id = c.charge_id
+        AND c.tenant_id = rc.tenant_id
 
-        JOIN receipt r ON rc.receipt_id = r.receipt_id
+        JOIN kiosk k 
+        ON c.kiosk_id = k.kiosk_id
+        AND k.tenant_id = rc.tenant_id
+
+        JOIN zone z 
+        ON k.zone_id = z.zone_id
+        AND z.tenant_id = rc.tenant_id
+
+        JOIN receipt r 
+        ON rc.receipt_id = r.receipt_id
+        AND r.tenant_id = rc.tenant_id
 
         WHERE rc.tenant_id = ?
         AND r.thoiGianThu BETWEEN ? AND ?
@@ -55,7 +65,10 @@ exports.getRevenueByCollector = async (tenant_id, from, to) => {
             SUM(r.soTienThu) AS tongThu
 
         FROM receipt r
-        JOIN users u ON r.user_id = u.user_id
+        
+        JOIN users u 
+        ON r.user_id = u.user_id
+        AND u.tenant_id = r.tenant_id
 
         WHERE r.tenant_id = ?
         AND r.thoiGianThu BETWEEN ? AND ?
