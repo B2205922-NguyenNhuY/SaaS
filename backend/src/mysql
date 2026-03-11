@@ -513,6 +513,14 @@ ON notification (tenant_id, created_at);
 CREATE INDEX idx_receipt_tenant_time
 ON receipt (tenant_id, thoiGianThu);
 
+-- Index receipt_charge để truy vấn nhanh charge trong receipt và ngược lại
+CREATE INDEX idx_rc_receipt
+ON receipt_charge (tenant_id, receipt_id);
+
+-- Index charge_id trong receipt_charge để truy vấn nhanh khi thu tiền, lọc theo trạng thái, merchant
+CREATE INDEX idx_rc_charge
+ON receipt_charge (tenant_id, charge_id);
+
 /* bảng local_payment tạo ở frontend (khỏi vẽ vào ERD)
 CREATE TABLE local_payment (
           local_id INTEGER PRIMARY KEY AUTOINCREMENT,
