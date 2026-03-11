@@ -35,4 +35,13 @@ router.get(
     controller.getShifts
 );
 
+
+
+router.get(
+    "/active",
+    verifyToken,
+    authorizeRoles(ROLES.COLLECTOR),
+    controller.getActiveShift
+);
+
 module.exports = router;

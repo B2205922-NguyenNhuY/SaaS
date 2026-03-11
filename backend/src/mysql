@@ -529,6 +529,14 @@ ON receipt (tenant_id, thoiGianThu);
 CREATE INDEX idx_charge_kiosk
 ON charge (tenant_id, kiosk_id);
 
+-- Index shift để truy vấn nhanh khi xem lịch sử ca làm, lọc theo thời gian và nhân viên
+CREATE INDEX idx_shift_user
+ON shift (tenant_id, user_id, thoiGianKetThucCa);
+
+-- Index shift receipt để truy vấn nhanh khi xem lịch sử ca làm, số tiền thu được sau khi kết thúc ca, lọc theo thời gian và nhân viên
+CREATE INDEX idx_receipt_shift
+ON receipt (tenant_id, shift_id);
+
 /* bảng local_payment tạo ở frontend (khỏi vẽ vào ERD)
 CREATE TABLE local_payment (
           local_id INTEGER PRIMARY KEY AUTOINCREMENT,

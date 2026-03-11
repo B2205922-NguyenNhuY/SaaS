@@ -73,7 +73,9 @@ exports.getShifts = async (tenant_id) => {
     const [rows] = await db.execute(
         `SELECT s.*, u.hoTen
         FROM shift s
-        JOIN users u ON s.user_id = u.user_id
+        JOIN users u
+        ON s.user_id = u.user_id
+        AND u.tenant_id = s.tenant_id
         WHERE s.tenant_id = ?
         ORDER BY s.created_at DESC`,
         [tenant_id]
@@ -123,4 +125,20 @@ exports.updateShiftTotal = async (shift_id, tenant_id, tienMat, chuyenKhoan) => 
     );
 
     return result;
+};
+
+
+// Lấy shift theo id
+exports.getShiftById = async (shift_id, tenant_id) => {
+
+    const [rows] = await db.execute(
+        `SELECT *
+        FROM shift
+        WHERE shift_id = ?
+        AND tenant_id = ?
+        LIMIT 1`,
+        [shift_id, tenant_id]
+    );
+
+    return rows[0];
 };

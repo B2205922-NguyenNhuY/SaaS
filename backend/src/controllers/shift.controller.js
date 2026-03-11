@@ -45,12 +45,30 @@ exports.endShift = async (req, res, next) => {
 };
 
 
-// Lấy shift đang mở
+// Lấy danh sách ca
 exports.getShifts = async (req, res, next) => {
 
     try {
 
         const data = await shiftService.getShifts(req.user);
+
+        res.json(data);
+
+    } catch (err) {
+
+        next(err);
+
+    }
+
+};
+
+
+// Lấy shift đang mở
+exports.getActiveShift = async (req, res, next) => {
+
+    try {
+
+        const data = await shiftService.getActiveShift(req.user);
 
         res.json(data);
 
