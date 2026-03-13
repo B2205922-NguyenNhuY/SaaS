@@ -1,5 +1,4 @@
 const db = require("../config/database");
-
 const feeScheduleModel = require("../models/feeSchedule.model");
 const feeAssignmentModel = require("../models/feeAssignment.model");
 const chargeModel = require("../models/charge.model");
@@ -49,46 +48,41 @@ exports.getFeeDetail = async (fee_id, user) => {
 // Cập nhật biểu phí
 exports.updateFee = async (fee_id, data, user) => {
 
+    if (!fee_id) {
+        throw new Error("Fee ID is required");
+    }
+    
+    if (!user || !user.tenant_id) {
+        throw new Error("User information is missing");
+    }
+
     const connection = await db.getConnection();
 
     try {
-
         await connection.beginTransaction();
 
         const tenant_id = user.tenant_id;
 
-        const oldFee =
-            await feeModel.getFeeById(
-                fee_id,
-                tenant_id
-            );
-
-        if (!oldFee)
+        const oldFee = await feeScheduleModel.getFeeById(fee_id, tenant_id);
+        if (!oldFee) {
             throw new Error("Fee not found");
+        }
 
-        await feeModel.updateFeeSchedule(
-            fee_id,
-            tenant_id,
-            data
-        );
+        await feeScheduleModel.updateFeeSchedule(fee_id, tenant_id, data);
 
-        const assignments =
-            await feeAssignmentModel.getAssignmentsByFee(
-                tenant_id,
-                fee_id
-            );
+        const assignments = await feeAssignmentModel.getAssignmentsByFee(tenant_id, fee_id);
 
-        for (const a of assignments) {
-
-            await chargeModel.recalculateChargesByTarget(
-                connection,
-                tenant_id,
-                a.target_type,
-                a.target_id,
-                data.donGia,
-                a.mucMienGiam || 0
-            );
-
+        if (assignments && assignments.length > 0 && data.donGia && data.donGia !== oldFee.donGia) {
+            for (const a of assignments) {
+                await chargeModel.recalculateChargesByTarget(
+                    connection,
+                    tenant_id,
+                    a.target_type,
+                    a.target_id,
+                    data.donGia,
+                    a.mucMienGiam || 0
+                );
+            }
         }
 
         await auditLogModel.createAuditLog({
@@ -96,24 +90,21 @@ exports.updateFee = async (fee_id, data, user) => {
             user_id: user.id,
             hanhDong: "UPDATE_FEE",
             entity_type: "fee_schedule",
-            entity_id: fee_id,
+            entity_id: parseInt(fee_id),
             giaTriCu: oldFee,
             giaTriMoi: data
         });
 
         await connection.commit();
+        return { success: true };
 
     } catch (err) {
-
         await connection.rollback();
+        console.error("Error in updateFee service:", err);
         throw err;
-
     } finally {
-
         connection.release();
-
     }
-
 };
 
 

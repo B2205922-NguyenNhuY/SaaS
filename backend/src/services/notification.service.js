@@ -1,5 +1,6 @@
 const notificationModel = require("../models/notification.model");
 const auditLogModel = require("../models/auditLog.model");
+const db = require("../config/database");
 
 
 exports.createNotification = async (data, user) => {

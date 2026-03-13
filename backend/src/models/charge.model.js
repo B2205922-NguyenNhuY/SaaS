@@ -94,31 +94,51 @@ exports.getChargesByMerchant = async (tenant_id, merchant_id) => {
 
 // Lấy charge theo id
 exports.getChargeById = async (tenant_id, charge_id) => {
-
     const [rows] = await db.execute(
-        `SELECT *
+        `SELECT 
+            charge_id,
+            tenant_id,
+            period_id,
+            kiosk_id,
+            merchant_id,
+            fee_id,
+            CAST(donGiaApDung AS DECIMAL(12,2)) as donGiaApDung,
+            hinhThucApDung,
+            CAST(discountApDung AS DECIMAL(5,2)) as discountApDung,
+            CAST(soTienPhaiThu AS DECIMAL(12,2)) as soTienPhaiThu,
+            CAST(soTienDaThu AS DECIMAL(12,2)) as soTienDaThu,
+            trangThai,
+            version
         FROM charge
-        WHERE charge_id = ?
-        AND tenant_id = ?
-        LIMIT 1`,
-        [charge_id, tenant_id]
+        WHERE tenant_id = ? AND charge_id = ?`,
+        [tenant_id, charge_id]
     );
-
+    
+    if (rows[0]) {
+        rows[0].soTienPhaiThu = parseFloat(rows[0].soTienPhaiThu);
+        rows[0].soTienDaThu = parseFloat(rows[0].soTienDaThu);
+    }
+    
     return rows[0];
 };
 
 
 // Cập nhật trạng thái charge
-exports.updateChargeStatus = async (charge_id, tenant_id, status) => {
-
-    const [result] = await db.execute(
-        `UPDATE charge
-        SET trangThai = ?
-        WHERE charge_id = ?
-        AND tenant_id = ?`,
-        [status, charge_id, tenant_id]
-    );
-
+exports.updateChargeStatus = async (charge_id, tenant_id, data) => {
+    const { trangThai, soTienDaThu } = data;
+    
+    let sql = `UPDATE charge SET trangThai = ?`;
+    let params = [trangThai];
+    
+    if (soTienDaThu !== undefined) {
+        sql += `, soTienDaThu = ?`;
+        params.push(soTienDaThu);
+    }
+    
+    sql += ` WHERE charge_id = ? AND tenant_id = ?`;
+    params.push(charge_id, tenant_id);
+    
+    const [result] = await db.execute(sql, params);
     return result;
 };
 
@@ -229,4 +249,18 @@ exports.recalculateChargesByTarget = async (
     );
 
     return result;
+};
+
+
+// Kiểm tra charge đã tồn tại theo kiosk và period
+exports.getChargeByKioskAndPeriod = async (tenant_id, kiosk_id, period_id) => {
+    const [rows] = await db.execute(
+        `SELECT * FROM charge 
+         WHERE tenant_id = ? 
+         AND kiosk_id = ? 
+         AND period_id = ?
+         LIMIT 1`,
+        [tenant_id, kiosk_id, period_id]
+    );
+    return rows[0];
 };

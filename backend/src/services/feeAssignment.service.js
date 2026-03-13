@@ -6,7 +6,6 @@ const auditLogModel = require("../models/auditLog.model");
 
 // Tạo fee assignment
 exports.createAssignment = async (data, user) => {
-
     const result = await feeAssignmentModel.createFeeAssignment({
         ...data,
         tenant_id: user.tenant_id
@@ -25,23 +24,34 @@ exports.createAssignment = async (data, user) => {
 };
 
 
-// Lấy assignment theo target
-exports.getAssignmentsByTarget = async (
-    target_type,
-    target_id,
-    user
-) => {
+// Lấy assignment theo target - 
+exports.getAssignmentsByTarget = async (target_type, target_id, user) => {
 
-    return await feeAssignmentModel.getActiveFeeAssignment(
-        user.tenant_id,
-        target_type,
-        target_id
-    );
+    if (!target_type || !target_id || !user?.tenant_id) {
+        console.error("Missing parameters:", { target_type, target_id, user });
+        throw new Error("Missing required parameters for fee assignment query");
+    }
+
+    try {
+        const result = await feeAssignmentModel.getActiveFeeAssignment(
+            user.tenant_id,
+            target_type,
+            target_id
+        );
+        
+        return result;
+    } catch (error) {
+        console.error("Service error in getAssignmentsByTarget:", error);
+        throw error;
+    }
 };
 
 
 // lấy assignment theo fee
 exports.getAssignmentsByFee = async (fee_id, user) => {
+    if (!fee_id || !user?.tenant_id) {
+        throw new Error("Missing required parameters");
+    }
 
     return await feeAssignmentModel.getAssignmentsByFee(
         user.tenant_id,
@@ -51,27 +61,22 @@ exports.getAssignmentsByFee = async (fee_id, user) => {
 
 
 // Deactivate assignment
-exports.deactivateAssignment = async (
-    assignment_id,
-    user
-) => {
-
+exports.deactivateAssignment = async (assignment_id, user) => {
     const connection = await db.getConnection();
 
     try {
-
         await connection.beginTransaction();
 
         const tenant_id = user.tenant_id;
 
-        const assignment =
-            await feeAssignmentModel.getById(
-                assignment_id,
-                tenant_id
-            );
+        const assignment = await feeAssignmentModel.getById(
+            assignment_id,
+            tenant_id
+        );
 
-        if (!assignment)
+        if (!assignment) {
             throw new Error("Assignment not found");
+        }
 
         await feeAssignmentModel.deactivateAssignment(
             assignment_id,
@@ -96,51 +101,36 @@ exports.deactivateAssignment = async (
         });
 
         await connection.commit();
-
     } catch (err) {
-
         await connection.rollback();
         throw err;
-
     } finally {
-
         connection.release();
-
     }
-
 };
 
 
 // Cập nhật mức miễn giảm
-exports.updateDiscount = async (
-    assignment_id,
-    data,
-    user
-) => {
-
-    if (
-        data.mucMienGiam < 0 ||
-        data.mucMienGiam > 100
-    ) {
+exports.updateDiscount = async (assignment_id, data, user) => {
+    if (data.mucMienGiam < 0 || data.mucMienGiam > 100) {
         throw new Error("Invalid discount value");
     }
 
     const connection = await db.getConnection();
 
     try {
-
         await connection.beginTransaction();
 
         const tenant_id = user.tenant_id;
 
-        const assignment =
-            await feeAssignmentModel.getById(
-                assignment_id,
-                tenant_id
-            );
+        const assignment = await feeAssignmentModel.getById(
+            assignment_id,
+            tenant_id
+        );
 
-        if (!assignment)
+        if (!assignment) {
             throw new Error("Assignment not found");
+        }
 
         const oldDiscount = assignment.mucMienGiam;
 
@@ -166,25 +156,15 @@ exports.updateDiscount = async (
             hanhDong: "UPDATE_FEE_DISCOUNT",
             entity_type: "fee_assignment",
             entity_id: assignment_id,
-            giaTriCu: {
-                mucMienGiam: oldDiscount
-            },
-            giaTriMoi: {
-                mucMienGiam: data.mucMienGiam
-            }
+            giaTriCu: { mucMienGiam: oldDiscount },
+            giaTriMoi: { mucMienGiam: data.mucMienGiam }
         });
 
         await connection.commit();
-
     } catch (err) {
-
         await connection.rollback();
         throw err;
-
     } finally {
-
         connection.release();
-
     }
-
 };

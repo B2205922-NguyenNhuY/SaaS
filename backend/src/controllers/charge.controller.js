@@ -68,25 +68,20 @@ exports.getChargesByMerchant = async (req, res, next) => {
 
 // Update trạng thái
 exports.updateChargeStatus = async (req, res, next) => {
-
     try {
 
         await chargeService.updateChargeStatus(
             req.params.id,
-            req.body.status,
+            req.body,
             req.user
         );
 
         res.json({
             message: "Charge status updated"
         });
-
     } catch (err) {
-
         next(err);
-
     }
-
 };
 
 

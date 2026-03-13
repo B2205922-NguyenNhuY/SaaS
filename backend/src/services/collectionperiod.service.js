@@ -1,5 +1,7 @@
 const periodModel = require("../models/collectionPeriod.model");
 const auditLogModel = require("../models/auditLog.model");
+const db = require("../config/database");
+const chargeModel = require("../models/charge.model");
 
 
 // Tạo kỳ thu

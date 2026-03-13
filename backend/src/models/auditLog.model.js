@@ -3,6 +3,11 @@ const db = require("../config/database");
 // Tạo audit log
 exports.createAuditLog = async (data) => {
 
+    if (!data) {
+        console.error("Audit log data is undefined");
+        return null; 
+    }
+
     const {
         tenant_id,
         user_id,
@@ -14,10 +19,15 @@ exports.createAuditLog = async (data) => {
         giaTriMoi
     } = data;
 
+    if (!hanhDong) {
+        console.error("hanhDong is required for audit log");
+        return null;
+    }
+
     const [result] = await db.execute(
         `INSERT INTO audit_log 
-        (tenant_id, user_id, super_admin_id, hanhDong, entity_type, entity_id, giaTriCu, giaTriMoi, thoiGianThucHien)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CONVERT_TZ(NOW(), '+00:00', '+07:00'))`,
+        (tenant_id, user_id, super_admin_id, hanhDong, entity_type, entity_id, giaTriCu, giaTriMoi)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             tenant_id || null,
             user_id || null,
@@ -32,6 +42,7 @@ exports.createAuditLog = async (data) => {
 
     return result;
 };
+
 
 
 // Lấy audit log theo super admin

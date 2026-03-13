@@ -11,7 +11,7 @@ const { ROLES } = require("../constants/role");
 
 
 router.get(
-    "/total-revenue",
+    "/total_revenue",
     verifyToken,
     authorizeRoles(ROLES.TENANT_ADMIN),
     controller.getTotalRevenue
@@ -38,7 +38,7 @@ router.get(
 
 
 router.get(
-    "/export-excel",
+    "/export_excel",
     verifyToken,
     authorizeRoles(ROLES.TENANT_ADMIN),
     controller.exportRevenueExcel

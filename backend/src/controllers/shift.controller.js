@@ -24,8 +24,16 @@ exports.startShift = async (req, res, next) => {
 
 // Kết thúc ca
 exports.endShift = async (req, res, next) => {
-
     try {
+
+        if (!req.user) {
+            return res.status(401).json({
+                message: "User not authenticated"
+            });
+        }
+
+        console.log("Ending shift with user:", req.user);
+        console.log("Shift ID:", req.params.id);
 
         await shiftService.endShift(
             req.params.id,
@@ -35,13 +43,10 @@ exports.endShift = async (req, res, next) => {
         res.json({
             message: "Shift ended"
         });
-
     } catch (err) {
-
+        console.error("Error in endShift controller:", err);
         next(err);
-
     }
-
 };
 
 

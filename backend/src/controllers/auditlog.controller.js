@@ -17,7 +17,7 @@ const formatToGMT7 = (date) => {
         minute: '2-digit',
         second: '2-digit',
         hour12: false
-    }).replace(',', ''); // Bỏ dấu phẩy giữa ngày và giờ
+    }).replace(',', '');
 };
 
 // Hàm format mảng logs
@@ -30,7 +30,7 @@ const formatLogs = (logs) => {
         thoiGianThucHien: formatToGMT7(log.thoiGianThucHien),
         created_at: log.created_at ? formatToGMT7(log.created_at) : null,
         updated_at: log.updated_at ? formatToGMT7(log.updated_at) : null,
-        // Đảm bảo JSON được parse nếu là string
+
         giaTriCu: log.giaTriCu ? 
             (typeof log.giaTriCu === 'string' ? JSON.parse(log.giaTriCu) : log.giaTriCu) 
             : null,

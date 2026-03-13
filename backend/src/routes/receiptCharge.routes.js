@@ -8,7 +8,7 @@ const { verifyToken } = require("../middlewares/auth.middleware");
 
 
 router.get(
-    "/:receipt_id",
+    "/receipt/:receipt_id",
     verifyToken,
     controller.getChargesByReceipt
 );
@@ -16,7 +16,7 @@ router.get(
 
 
 router.get(
-    "/:charge_id",
+    "/charge/:charge_id",
     verifyToken,
     controller.getReceiptsByCharge
 );

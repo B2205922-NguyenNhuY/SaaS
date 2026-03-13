@@ -54,10 +54,17 @@ exports.startShift = async (user) => {
 
 // Kết thúc ca
 exports.endShift = async (shift_id, user) => {
-
     const connection = await db.getConnection();
 
     try {
+
+        if (!user) {
+            throw new Error("User information is required");
+        }
+
+        if (!user.tenant_id || !user.id) {
+            throw new Error("Invalid user information");
+        }
 
         const shift = await shiftModel.getShiftById(
             shift_id,
@@ -96,7 +103,7 @@ exports.endShift = async (shift_id, user) => {
             new Date()
         );
 
-        await auditLogModel.createAuditLog({
+        console.log("Writing audit log with data:", {
             tenant_id: user.tenant_id,
             user_id: user.id,
             hanhDong: "END_SHIFT",
@@ -104,19 +111,23 @@ exports.endShift = async (shift_id, user) => {
             entity_id: shift_id
         });
 
-        await connection.commit();
+        await auditLogModel.createAuditLog({
+            tenant_id: user.tenant_id,
+            user_id: user.id,
+            hanhDong: "END_SHIFT",
+            entity_type: "shift",
+            entity_id: parseInt(shift_id) 
+        });
 
+        await connection.commit();
         return true;
 
     } catch (err) {
-
         await connection.rollback();
+        console.error("Error in endShift:", err);
         throw err;
-
     } finally {
-
         connection.release();
-
     }
 };
 

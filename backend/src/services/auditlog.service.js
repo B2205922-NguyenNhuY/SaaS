@@ -1,4 +1,5 @@
 const auditLogModel = require("../models/auditLog.model");
+const db = require("../config/database");
 
 
 // Tạo audit log

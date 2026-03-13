@@ -1,5 +1,8 @@
 const receiptChargeModel = require("../models/receiptCharge.model");
 const auditLogModel = require("../models/auditLog.model");
+const db = require("../config/database");
+const receiptModel = require("../models/receipt.model");
+const chargeModel = require("../models/charge.model");
 
 
 

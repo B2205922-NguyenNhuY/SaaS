@@ -1,9 +1,7 @@
 const express = require("express");
 const router = express.Router();
-
 const notificationController = require("../controllers/notification.controller");
 const { ROLES } = require("../constants/role");
-
 const { verifyToken } = require("../middlewares/auth.middleware");
 const { authorizeRoles } = require("../middlewares/role.middleware");
 
@@ -12,7 +10,7 @@ const { authorizeRoles } = require("../middlewares/role.middleware");
 router.post(
     "/",
     verifyToken,
-    authorizeRoles([ROLES.TENANT_ADMIN, ROLES.SUPER_ADMIN]),
+    authorizeRoles(ROLES.TENANT_ADMIN, ROLES.SUPER_ADMIN),
     notificationController.createNotification
 );
 
@@ -27,7 +25,7 @@ router.get(
 
 // Unread count
 router.get(
-    "/unread-count",
+    "/unread_count",
     verifyToken,
     notificationController.getUnreadCount
 );

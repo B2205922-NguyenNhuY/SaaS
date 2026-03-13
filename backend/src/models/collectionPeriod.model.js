@@ -55,16 +55,14 @@ exports.getCollectionPeriodById = async (period_id, tenant_id) => {
 
 // Update kỳ thu
 exports.updateCollectionPeriod = async (period_id, tenant_id, data) => {
-
-    const { tenKyThu, ngayBatDau, ngayKetThuc } = data;
+    const { tenKyThu, ngayBatDau, ngayKetThuc, loaiKy } = data;  
 
     const [result] = await db.execute(
         `UPDATE collection_period
-        SET tenKyThu=?, ngayBatDau=?, ngayKetThuc=?
+        SET tenKyThu=?, ngayBatDau=?, ngayKetThuc=?, loaiKy=?
         WHERE period_id=? AND tenant_id=?`,
-        [tenKyThu, ngayBatDau, ngayKetThuc, period_id, tenant_id]
+        [tenKyThu, ngayBatDau, ngayKetThuc, loaiKy, period_id, tenant_id]
     );
-
     return result;
 };
 
@@ -72,9 +70,25 @@ exports.updateCollectionPeriod = async (period_id, tenant_id, data) => {
 // Delete kỳ thu
 exports.deleteCollectionPeriod = async (period_id, tenant_id) => {
 
+    const [checkRows] = await db.execute(
+        `SELECT COUNT(*) as charge_count 
+         FROM charge 
+         WHERE period_id = ? AND tenant_id = ?`,
+        [period_id, tenant_id]
+    );
+
+    const chargeCount = checkRows[0].charge_count;
+
+    if (chargeCount > 0) {
+        const error = new Error(`Cannot delete period because it has ${chargeCount} existing charges`);
+        error.status = 400;
+        error.code = 'PERIOD_HAS_CHARGES';
+        throw error;
+    }
+
     const [result] = await db.execute(
         `DELETE FROM collection_period
-        WHERE period_id=? AND tenant_id=?`,
+         WHERE period_id = ? AND tenant_id = ?`,
         [period_id, tenant_id]
     );
 

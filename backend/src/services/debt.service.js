@@ -1,4 +1,5 @@
 const debtModel = require("../models/debt.model");
+const db = require("../config/database");
 
 // Danh sách công nợ
 exports.getDebts = async (page, limit, user) => {

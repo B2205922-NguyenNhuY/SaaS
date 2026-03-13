@@ -1,5 +1,6 @@
 const chargeModel = require("../models/charge.model");
 const auditLogModel = require("../models/auditLog.model");
+const db = require("../config/database");
 
 
 // Tạo charge
@@ -77,7 +78,7 @@ exports.getChargesByMerchant = async (merchant_id, user) => {
 
 
 // Cập nhật trạng thái charge
-exports.updateChargeStatus = async (charge_id, status, user) => {
+exports.updateChargeStatus = async (charge_id, data, user) => {
 
     const oldCharge = await chargeModel.getChargeById(
         user.tenant_id,
@@ -87,7 +88,7 @@ exports.updateChargeStatus = async (charge_id, status, user) => {
     const result = await chargeModel.updateChargeStatus(
         charge_id,
         user.tenant_id,
-        status
+        data 
     );
 
     await auditLogModel.createAuditLog({
@@ -97,7 +98,7 @@ exports.updateChargeStatus = async (charge_id, status, user) => {
         entity_type: "charge",
         entity_id: charge_id,
         giaTriCu: oldCharge,
-        giaTriMoi: { trangThai: status }
+        giaTriMoi: data
     });
 
     return result;

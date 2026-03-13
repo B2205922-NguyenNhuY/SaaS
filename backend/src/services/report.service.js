@@ -1,4 +1,5 @@
 const reportModel = require("../models/report.model");
+const db = require("../config/database");
 
 
 // Lấy tổng doanh thu
