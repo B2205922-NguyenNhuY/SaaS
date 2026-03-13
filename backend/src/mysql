@@ -4,6 +4,15 @@ CREATE DATABASE IF NOT EXISTS saas
   COLLATE utf8mb4_unicode_ci;
 USE saas;
 
+-- Kiểm tra timezone hiện tại
+SELECT @@global.time_zone, @@session.time_zone;
+
+-- Set timezone cho session hiện tại
+SET time_zone = '+07:00';
+
+-- Set timezone global (cần quyền root)
+SET GLOBAL time_zone = '+07:00';
+
 CREATE TABLE super_admin (
   admin_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(150) NOT NULL UNIQUE,
@@ -15,12 +24,13 @@ CREATE TABLE super_admin (
 -- =========================================================
 -- 1) TENANT + BILLING (SaaS)
 -- =========================================================
-CREATE TABLE tenant (
+CREATE TABLE tenant_admin (
   tenant_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenBanQuanLy VARCHAR(150) NOT NULL,
   diaChi VARCHAR(255),
   soDienThoai VARCHAR(15) NOT NULL,
   email VARCHAR(150) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
   trangThai ENUM('active','suspended') DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -59,7 +69,7 @@ CREATE TABLE plan_subscription (
   KEY idx_ps_plan (plan_id),
   UNIQUE KEY uq_subscription_id_tenant (subscription_id, tenant_id),
   
-  CONSTRAINT fk_ps_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_ps_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_ps_plan   FOREIGN KEY (plan_id)   REFERENCES plan(plan_id)     ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -75,7 +85,7 @@ CREATE TABLE role (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_role_tenant_name (tenant_id, tenVaiTro),
   UNIQUE KEY uq_role_id_tenant (role_id, tenant_id),
-  CONSTRAINT fk_role_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_role_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE users (
@@ -98,7 +108,7 @@ CREATE TABLE users (
   KEY idx_user_tenant (tenant_id),
   KEY idx_user_role (role_id),
 
-  CONSTRAINT fk_user_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_user_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_user_role   FOREIGN KEY (role_id, tenant_id) REFERENCES role(role_id, tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -118,7 +128,7 @@ CREATE TABLE market (
   UNIQUE KEY uq_market_tenant_name (tenant_id, tenCho),
   UNIQUE KEY uq_market_id_tenant (market_id, tenant_id),
 
-  CONSTRAINT fk_market_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_market_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE zone (
@@ -137,7 +147,7 @@ CREATE TABLE zone (
   KEY idx_zone_tenant (tenant_id),
 
   CONSTRAINT fk_zone_market FOREIGN KEY (market_id, tenant_id) REFERENCES market(market_id, tenant_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_zone_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_zone_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE kiosk_type (
@@ -172,7 +182,7 @@ CREATE TABLE kiosk (
 
   CONSTRAINT fk_kiosk_zone  FOREIGN KEY (zone_id, tenant_id) REFERENCES zone(zone_id, tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_kiosk_type  FOREIGN KEY (type_id) REFERENCES kiosk_type(type_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_kiosk_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_kiosk_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 -- =========================================================
 -- 4) MERCHANT + ASSIGNMENT
@@ -197,7 +207,7 @@ CREATE TABLE merchant (
   UNIQUE KEY uq_merchant_id_tenant (merchant_id, tenant_id),
   KEY idx_merchant_tenant (tenant_id),
 
-  CONSTRAINT fk_merchant_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_merchant_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE kiosk_assignment (
@@ -226,7 +236,7 @@ CREATE TABLE kiosk_assignment (
 
   CONSTRAINT fk_ka_kiosk    FOREIGN KEY (kiosk_id, tenant_id)    REFERENCES kiosk(kiosk_id, tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_ka_merchant FOREIGN KEY (merchant_id, tenant_id) REFERENCES merchant(merchant_id, tenant_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_ka_tenant   FOREIGN KEY (tenant_id)             REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_ka_tenant   FOREIGN KEY (tenant_id)             REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
@@ -247,7 +257,7 @@ CREATE TABLE fee_schedule (
   UNIQUE KEY uq_fee_tenant_name (tenant_id, tenBieuPhi),
   UNIQUE KEY uq_fee_id_tenant (fee_id, tenant_id),
 
-  CONSTRAINT fk_fee_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_fee_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Lưu ý: target_type/target_id là polymorphic => không thể FK tới 3 bảng cùng lúc.
@@ -272,7 +282,7 @@ CREATE TABLE fee_assignment (
   KEY idx_fa_fee (fee_id),
 
   CONSTRAINT fk_fa_fee   FOREIGN KEY (fee_id, tenant_id) REFERENCES fee_schedule(fee_id, tenant_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_fa_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_fa_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
@@ -293,7 +303,7 @@ CREATE TABLE collection_period (
   UNIQUE KEY uq_period_range (tenant_id, ngayBatDau, ngayKetThuc),
   UNIQUE KEY uq_period_id_tenant (period_id, tenant_id),
 
-  CONSTRAINT fk_period_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_period_tenant FOREIGN KEY (tenant_id) REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE shift (
@@ -315,7 +325,7 @@ CREATE TABLE shift (
   KEY idx_shift_user (user_id),
 
   CONSTRAINT fk_shift_user   FOREIGN KEY (user_id, tenant_id) REFERENCES users(user_id, tenant_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_shift_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_shift_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE charge (
@@ -353,7 +363,7 @@ CREATE TABLE charge (
   CONSTRAINT fk_charge_kiosk    FOREIGN KEY (kiosk_id, tenant_id)   REFERENCES kiosk(kiosk_id, tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_charge_merchant FOREIGN KEY (merchant_id, tenant_id) REFERENCES merchant(merchant_id, tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_charge_fee      FOREIGN KEY (fee_id, tenant_id)     REFERENCES fee_schedule(fee_id, tenant_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_charge_tenant   FOREIGN KEY (tenant_id)             REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_charge_tenant   FOREIGN KEY (tenant_id)             REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
@@ -383,7 +393,7 @@ CREATE TABLE receipt (
   -- SỬA Ở ĐÂY: Đổi SET NULL thành RESTRICT
   CONSTRAINT fk_receipt_shift  FOREIGN KEY (shift_id, tenant_id)  REFERENCES shift(shift_id, tenant_id) ON DELETE RESTRICT,
   
-  CONSTRAINT fk_receipt_tenant FOREIGN KEY (tenant_id)            REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_receipt_tenant FOREIGN KEY (tenant_id)            REFERENCES tenant_admin(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE receipt_charge (
@@ -448,7 +458,7 @@ CREATE TABLE audit_log (
   KEY idx_audit_superadmin (super_admin_id),
 
   CONSTRAINT fk_audit_user   FOREIGN KEY (user_id, tenant_id) REFERENCES users(user_id, tenant_id) ON DELETE set null,
-  CONSTRAINT fk_audit_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant(tenant_id) ON DELETE set null,
+  CONSTRAINT fk_audit_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant_admin(tenant_id) ON DELETE set null,
   CONSTRAINT fk_audit_superadmin FOREIGN KEY (super_admin_id) REFERENCES super_admin(admin_id) ON DELETE set null
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -475,7 +485,7 @@ CREATE TABLE notification (
 
   CONSTRAINT fk_notification_tenant
   FOREIGN KEY (tenant_id)
-  REFERENCES tenant(tenant_id)
+  REFERENCES tenant_admin(tenant_id)
   ON DELETE CASCADE
 );
 
@@ -501,70 +511,128 @@ CREATE TABLE notification_read (
   ON DELETE CASCADE
 );
 
--- Index charge để truy vấn nhanh khi thu tiền, lọc theo trạng thái, merchant
-CREATE INDEX idx_charge_debt
-ON charge (tenant_id, trangThai, merchant_id);
+-- TEST API
+INSERT INTO tenant_admin
+(tenBanQuanLy, diaChi, soDienThoai, email, password_hash)
+VALUES
+(
+'Ban quan ly cho Can Tho',
+'Can Tho',
+'0900000000',
+'tenant@market.com',
+'$2b$10$L/bz5GsrawAGopfCUDeHY.SBECw0K0b7l/qWt10EQFtorqetEitRq'
+);
 
--- Index notification để truy vấn nhanh thông báo của tenant, lọc theo thời gian
-CREATE INDEX idx_notification_tenant_time
-ON notification (tenant_id, created_at);
+INSERT INTO role (tenant_id, tenVaiTro)
+VALUES
+(1,'TENANT_ADMIN'),
+(1,'COLLECTOR');
 
--- Index receipt để truy vấn nhanh khi xem lịch sử thu tiền, lọc theo thời gian
-CREATE INDEX idx_receipt_tenant_time
-ON receipt (tenant_id, thoiGianThu);
+INSERT INTO users (tenant_id, role_id, email, password_hash, hoTen)
+VALUES
+(1,1,'admin@market.com','$2b$10$L/bz5GsrawAGopfCUDeHY.SBECw0K0b7l/qWt10EQFtorqetEitRq','Admin Market'),
+(1,2,'collector1@market.com','$2b$10$L/bz5GsrawAGopfCUDeHY.SBECw0K0b7l/qWt10EQFtorqetEitRq','Collector One'),
+(1,2,'collector2@market.com','$2b$10$L/bz5GsrawAGopfCUDeHY.SBECw0K0b7l/qWt10EQFtorqetEitRq','Collector Two');
 
--- Index receipt_charge để truy vấn nhanh charge trong receipt và ngược lại
-CREATE INDEX idx_rc_receipt
-ON receipt_charge (tenant_id, receipt_id);
+INSERT INTO market (tenant_id, tenCho, diaChi)
+VALUES
+(1,'Cho Trung Tam','Can Tho'),
+(1,'Cho Dem','Can Tho');
 
--- Index charge_id trong receipt_charge để truy vấn nhanh khi thu tiền, lọc theo trạng thái, merchant
-CREATE INDEX idx_rc_charge
-ON receipt_charge (tenant_id, charge_id);
+INSERT INTO zone (tenant_id, market_id, tenKhu)
+VALUES
+(1,1,'Thuc Pham Tuoi'),
+(1,1,'Thuc Pham Kho'),
+(1,2,'Quan An');
 
--- Index thoiGianThu trong receipt để truy vấn nhanh khi xem lịch sử thu tiền
-CREATE INDEX idx_receipt_time
-ON receipt (tenant_id, thoiGianThu);
+INSERT INTO kiosk_type (tenLoai)
+VALUES
+('Small'),
+('Medium'),
+('Large');
 
--- Index charge kiosk_id để truy vấn nhanh khi thu tiền, lọc theo trạng thái, merchant
-CREATE INDEX idx_charge_kiosk
-ON charge (tenant_id, kiosk_id);
+INSERT INTO kiosk (tenant_id, zone_id, type_id, maKiosk)
+VALUES
+(1,1,1,'K01'),
+(1,1,2,'K02'),
+(1,2,1,'K03'),
+(1,3,3,'K04');
 
--- Index shift để truy vấn nhanh khi xem lịch sử ca làm, lọc theo thời gian và nhân viên
-CREATE INDEX idx_shift_user
-ON shift (tenant_id, user_id, thoiGianKetThucCa);
+INSERT INTO merchant
+(tenant_id, hoTen, soDienThoai, CCCD, diaChiThuongTru)
+VALUES
+(1,'Nguyen Van A','0900000001','111111111111','Can Tho'),
+(1,'Tran Thi B','0900000002','222222222222','Can Tho'),
+(1,'Le Van C','0900000003','333333333333','Can Tho');
 
--- Index shift receipt để truy vấn nhanh khi xem lịch sử ca làm, số tiền thu được sau khi kết thúc ca, lọc theo thời gian và nhân viên
-CREATE INDEX idx_receipt_shift
-ON receipt (tenant_id, shift_id);
+INSERT INTO kiosk_assignment
+(tenant_id, kiosk_id, merchant_id, ngayBatDau)
+VALUES
+(1,1,1,'2026-01-01'),
+(1,2,2,'2026-01-01'),
+(1,3,3,'2026-01-01');
 
-/* bảng local_payment tạo ở frontend (khỏi vẽ vào ERD)
-CREATE TABLE local_payment (
-          local_id INTEGER PRIMARY KEY AUTOINCREMENT,
-          tenant_id INTEGER NOT NULL,
-          charge_id INTEGER NOT NULL,
-          merchant_id INTEGER NOT NULL,
-          amount REAL NOT NULL,
-          payment_method TEXT NOT NULL,
-          paid_at TEXT NOT NULL,
-          note TEXT,
-          local_image_path TEXT,
-          server_receipt_id INTEGER,
-          sync_status TEXT DEFAULT 'pending'
-        )
-*/
+INSERT INTO fee_schedule
+(tenant_id, tenBieuPhi, hinhThuc, donGia)
+VALUES
+(1,'Phi kiosk small','thang',500000),
+(1,'Phi kiosk medium','thang',800000),
+(1,'Phi kiosk large','thang',1200000);
 
-INSERT INTO tenant (tenBanQuanLy, diaChi, soDienThoai, email, trangThai)
-VALUES ('Ban quan ly Cho Demo', 'Can Tho', '0987654321', 'tenant1@demo.com', 'active');
--- Chỗ mật khẩu chạy file hash.js để ra mật khẩu sau khi băm rồi thêm vào
+INSERT INTO fee_assignment
+(tenant_id, fee_id, target_type, target_id, ngayApDung, mucMienGiam)
+VALUES
+(1,1,'kiosk_type',1,'2026-01-01',0),
+(1,2,'kiosk_type',2,'2026-01-01',10),
+(1,3,'kiosk_type',3,'2026-01-01',0);
 
-/* 
-- Khi bắt đầu và kết thúc ca sẽ bấm nút
-- Chỉnh lại payment cho plan và payment cho charge/reciept (dùng stripe api test)
-- nếu dùng trial thì sau khi hết hạn mà ko đăng kí gói thì sẽ khóa dữ liệu
-- Đăng nhập rồi có thể đổi mật khẩu
-- 
-- Mỗi charge = mỗi kiosk, frontend hiển thị hết charge của merchant đó, tổng charge = 1 receipt
-- 1 Merchant có nhiều kiosk, Thanh toán sẽ  thanh toán tổng, thanh toán chung sẽ trừ từ kỳ xa nhất
-- Khi đăng ký gói mới còn hạn gói cũ -> đổi suscription cũ thành 'expired' và tạo suscription mới 
-- target_id và entity_id dùng frontend xử lý lấy list
-*/
+INSERT INTO collection_period
+(tenant_id, tenKyThu, ngayBatDau, ngayKetThuc, loaiKy)
+VALUES
+(1,'Thang 1/2026','2026-01-01','2026-01-31','thang'),
+(1,'Thang 2/2025','2026-02-01','2026-02-28','thang');
+
+INSERT INTO charge
+(tenant_id, period_id, kiosk_id, merchant_id, fee_id,
+donGiaApDung, hinhThucApDung, soTienPhaiThu)
+VALUES
+(1,1,1,1,1,500000,'thang',500000),
+(1,1,2,2,2,800000,'thang',720000),
+(1,1,3,3,1,500000,'thang',500000),
+(1,2,1,1,1,500000,'thang',500000);
+
+INSERT INTO shift
+(tenant_id, user_id, thoiGianBatDauCa)
+VALUES
+(1,2,'2026-03-01 08:00:00');
+
+INSERT INTO receipt
+(tenant_id, soTienThu, hinhThucThanhToan, thoiGianThu, user_id, shift_id)
+VALUES
+(1,500000,'tien_mat','2026-03-01 09:00:00',2,1),
+(1,720000,'chuyen_khoan','2026-03-01 09:30:00',2,1);
+
+INSERT INTO receipt_charge
+(receipt_id, charge_id, tenant_id, soTienDaTra)
+VALUES
+(1,1,1,500000),
+(2,2,1,720000);
+
+UPDATE charge
+SET soTienDaThu = soTienPhaiThu,
+trangThai = 'da_thu'
+WHERE charge_id IN (1,2);
+
+INSERT INTO notification
+(title, content, type, tenant_id, created_by_tenantadmin)
+VALUES
+('Thong bao he thong','He thong se bao tri','system',NULL,NULL),
+('Thong bao thu phi','Ky thu thang moi da bat dau','tenant',1,1);
+
+INSERT INTO audit_log
+(tenant_id,user_id,hanhDong,entity_type,entity_id)
+VALUES
+(1,1,'CREATE_FEE','fee_schedule',1),
+(1,1,'CREATE_COLLECTION_PERIOD','collection_period',1),
+(1,2,'CREATE_RECEIPT','receipt',1),
+(1,2,'END_SHIFT','shift',1);

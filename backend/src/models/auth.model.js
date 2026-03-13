@@ -1,6 +1,6 @@
 const db = require("../config/database");
 
-//login user
+// Tìm user theo email
 exports.findUserByEmail = async (email) => {
     const [rows] = await db.execute(
         "SELECT u.*, r.tenVaiTro FROM users u JOIN role r ON u.role_id = r.role_id WHERE u.email = ? AND u.trangThai != 'deleted' LIMIT 1",
@@ -10,13 +10,25 @@ exports.findUserByEmail = async (email) => {
     return rows[0];
 };
 
-//
+// Tìm super admin theo email
 exports.findSuperAdminByEmail = async (email) => {
     const [rows] = await db.execute(
         "SELECT * FROM super_admin WHERE email = ? AND trangThai != 'inactive' LIMIT 1",
         [email]
     );
 
+    return rows[0];
+};
+
+
+// Tìm tenant theo email
+exports.findTenantByEmail = async (email) => {
+    const [rows] = await db.execute(
+        `SELECT tenant_id, tenBanQuanLy, email, password_hash, trangThai 
+         FROM tenant_admin 
+         WHERE email = ?`,
+        [email]
+    );
     return rows[0];
 };
 

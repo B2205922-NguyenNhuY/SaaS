@@ -16,7 +16,7 @@ app.use(express.json());
 // app.use("/api/plan_subscription", require("./routes/plan_subscription.routes"));
 // app.use("/api/role", require("./routes/role.routes"));
 // app.use("/api/users", require("./routes/users.routes"));
-// app.use("/api/auth", require("./routes/auth.routes"));
+app.use("/api/auth", require("./routes/auth.routes"));
 // app.use("/api/super_admin", require("./routes/super_admin.routes"));
 
 app.use("/api/fee_assignments", require("./routes/feeAssignment.routes"));

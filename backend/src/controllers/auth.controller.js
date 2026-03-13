@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const authModel = require("../models/auth.model");
 const userModel = require("../models/users.model");
 const role = require("../constants/role");
-const admin = require("../config/firebase");
+// const admin = require("../config/firebase");
 
 const SALT_ROUNDS = 10;
 
@@ -63,16 +63,14 @@ exports.login = async (req, res) => {
         }
 
         const superAdmin = await authModel.findSuperAdminByEmail(email);
-
         if(superAdmin) {
             if(superAdmin.trangThai !== 'active') {
-                return res.status(403).json({message: "Account is not active",});
+                return res.status(403).json({message: "Account is not active"});
             }
             
-            const isMatch = await bcrypt.compare(password,superAdmin.password_hash);
-
+            const isMatch = await bcrypt.compare(password, superAdmin.password_hash);
             if(!isMatch) {
-                return res.status(401).json({message: "Password is wrong",});
+                return res.status(401).json({message: "Password is wrong"});
             }
 
             const token = jwt.sign(
@@ -98,63 +96,96 @@ exports.login = async (req, res) => {
         }
         
         const user = await authModel.findUserByEmail(email);
+        if(user) {
+            if(user.trangThai !== 'active') {
+                return res.status(403).json({message: "Account is not active"});
+            }
+
+            const isMatch = await bcrypt.compare(password, user.password_hash);
+            if(!isMatch) {
+                return res.status(401).json({message: "Password is wrong"});
+            }
+
+            const token = jwt.sign(
+                {
+                    id: user.user_id,
+                    role: user.tenVaiTro,
+                    tenant_id: user.tenant_id
+                },
+                process.env.JWT_SECRET, 
+                { expiresIn: "1h" }
+            );
+
+            return res.json({
+                message: "User login successful",
+                token,
+                user: {
+                    id: user.user_id,
+                    email: user.email,
+                    tenant_id: user.tenant_id,
+                    role: user.tenVaiTro
+                },
+            });
+        }
+        
+        const tenant = await authModel.findTenantByEmail(email);
+        if(tenant) {
+            if(tenant.trangThai !== 'active') {
+                return res.status(403).json({message: "Tenant account is not active"});
+            }
             
-        if(!user) {
-            return res.status(401).json({message: "Email not found",});
+            const isMatch = await bcrypt.compare(password, tenant.password_hash);
+            if(!isMatch) {
+                return res.status(401).json({message: "Password is wrong"});
+            }
+
+            const token = jwt.sign(
+                {
+                    id: tenant.tenant_id,
+                    role: "TENANT_ADMIN",
+                    tenant_id: tenant.tenant_id
+                },
+                process.env.JWT_SECRET, 
+                { expiresIn: "1h" }
+            );
+
+            return res.json({
+                message: "Tenant login successful",
+                token,
+                user: {
+                    id: tenant.tenant_id,
+                    email: tenant.email,
+                    tenBanQuanLy: tenant.tenBanQuanLy,
+                    tenant_id: tenant.tenant_id,
+                    role: "TENANT_ADMIN"
+                },
+            });
         }
 
-        if(user.trangThai !== 'active') {
-            return res.status(403).json({message: "Account is not active",});
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password_hash);
-
-        if(!isMatch) {
-            return res.status(401).json({message: "Password is wrong",});
-        }
-
-        const token = jwt.sign(
-            {
-                id: user.user_id,
-                role: user.tenVaiTro,
-                tenant_id: user.tenant_id
-            },
-            process.env.JWT_SECRET, 
-            { expiresIn: "1h" }
-        );
-
-        return res.json({
-            message: "User login successful",
-            token,
-            user: {
-                id: user.user_id,
-                email: user.email,
-                tenant_id: user.tenant_id,
-                role: user.tenVaiTro
-            },
-        });
+        return res.status(401).json({message: "Email not found"});
+        
     } catch (error) {
         console.error(error);
-        return res.status(500).json({error: "Server error",});
+        return res.status(500).json({error: "Server error"});
     }
 };
 
 
-exports.googleLogin = async (req, res) => {
-  try {
-    const { idToken } = req.body;
+// exports.googleLogin = async (req, res) => {
+//   try {
+//     const { idToken } = req.body;
 
-    const decoded = await admin.auth().verifyIdToken(idToken);
+//     const decoded = await admin.auth().verifyIdToken(idToken);
 
-    console.log(decoded);
+//     console.log(decoded);
 
-  } catch (err) {
-    return res.status(401).json({ message: "Invalid token" });
-  }
-};
+//   } catch (err) {
+//     return res.status(401).json({ message: "Invalid token" });
+//   }
+// };
 
-exports.logout = async (req, res) => {
-  return res.status(200).json({
-    message: "Logout successful - please remove token on client",
-  });
-};
+// exports.logout = async (req, res) => {
+//   return res.status(200).json({
+//     message: "Logout successful - please remove token on client",
+//   });
+// };

@@ -6,7 +6,7 @@ const { authorizeRoles } = require("../middlewares/role.middleware");
 const { checkSubscriptionStatus } = require("../middlewares/checkSubscription.middlewares");
 const { checkTenantAccess } = require("../middlewares/checkTenantAccess.middleware");
 const { checkTenantActive } = require("../middlewares/checkTenantActive.middlewares");
-const ROLES = require("../constants/role");
+const { ROLES } = require("../constants/role");
 
 router.post("/", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkTenantAccess, checkTenantActive, checkSubscriptionStatus, planSubscription.createSubscription);
 router.get("/", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkTenantAccess, checkTenantActive, checkSubscriptionStatus, planSubscription.getSubscriptionById);

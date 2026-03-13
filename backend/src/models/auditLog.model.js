@@ -16,8 +16,8 @@ exports.createAuditLog = async (data) => {
 
     const [result] = await db.execute(
         `INSERT INTO audit_log 
-        (tenant_id, user_id, super_admin_id, hanhDong, entity_type, entity_id, giaTriCu, giaTriMoi)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (tenant_id, user_id, super_admin_id, hanhDong, entity_type, entity_id, giaTriCu, giaTriMoi, thoiGianThucHien)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CONVERT_TZ(NOW(), '+00:00', '+07:00'))`,
         [
             tenant_id || null,
             user_id || null,
