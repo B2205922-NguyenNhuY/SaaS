@@ -636,3 +636,360 @@ VALUES
 (1,1,'CREATE_COLLECTION_PERIOD','collection_period',1),
 (1,2,'CREATE_RECEIPT','receipt',1),
 (1,2,'END_SHIFT','shift',1);
+
+INSERT INTO collection_period (tenant_id, tenKyThu, ngayBatDau, ngayKetThuc, loaiKy)
+VALUES 
+(1, 'Thang 3/2026', '2026-03-01', '2026-03-31', 'thang'),
+(1, 'Thang 4/2026', '2026-04-01', '2026-04-30', 'thang');
+
+INSERT INTO kiosk (tenant_id, zone_id, type_id, maKiosk, viTri, dienTich)
+VALUES 
+(1, 1, 1, 'K05', 'Day A - Tang 2', 8),
+(1, 2, 2, 'K06', 'Day B - Tang 2', 12),
+(1, 3, 3, 'K07', 'Day C - Goc cho', 15);
+
+INSERT INTO merchant (tenant_id, hoTen, soDienThoai, CCCD, maSoThue, diaChiThuongTru, ngayThamGiaKinhDoanh)
+VALUES 
+(1, 'Pham Thi D', '0900000004', '444444444444', 'MST004', 'Can Tho', '2026-01-15'),
+(1, 'Hoang Van E', '0900000005', '555555555555', 'MST005', 'Can Tho', '2026-02-10'),
+(1, 'Vo Thi F', '0900000006', '666666666666', 'MST006', 'Can Tho', '2026-03-01');
+
+INSERT INTO kiosk_assignment (tenant_id, kiosk_id, merchant_id, ngayBatDau)
+VALUES 
+(1, 5, 4, '2026-03-01'),  
+(1, 6, 5, '2026-03-01'),  
+(1, 7, 6, '2026-03-01');  
+
+INSERT INTO charge (
+    tenant_id, 
+    period_id, 
+    kiosk_id, 
+    merchant_id, 
+    fee_id,
+    donGiaApDung, 
+    hinhThucApDung, 
+    discountApDung,
+    soTienPhaiThu, 
+    soTienDaThu, 
+    trangThai,
+    version
+) VALUES 
+(1, 3, 5, 4, 1, 500000, 'thang', 0, 500000, 0, 'chua_thu', 1),
+(1, 3, 6, 5, 2, 800000, 'thang', 10, 720000, 0, 'chua_thu', 1),
+(1, 3, 7, 6, 3, 1200000, 'thang', 0, 1200000, 200000, 'no', 1),
+(1, 3, 1, 1, 1, 500000, 'thang', 0, 500000, 0, 'chua_thu', 1),
+(1, 3, 2, 2, 2, 800000, 'thang', 10, 720000, 500000, 'no', 1),
+(1, 3, 3, 3, 1, 500000, 'thang', 0, 500000, 0, 'chua_thu', 1),
+(1, 3, 4, 1, 3, 1200000, 'thang', 0, 1200000, 1200000, 'da_thu', 1);
+
+INSERT INTO collection_period (tenant_id, tenKyThu, ngayBatDau, ngayKetThuc, loaiKy)
+VALUES 
+(1, 'Thang 5/2026', '2026-05-01', '2026-05-31', 'thang'),
+(1, 'Thang 6/2026', '2026-06-01', '2026-06-30', 'thang'),
+(1, 'Thang 7/2026', '2026-07-01', '2026-07-31', 'thang'),
+
+(1, 'Thang 8/2026', '2026-08-01', '2026-08-31', 'thang'),
+(1, 'Thang 9/2026', '2026-09-01', '2026-09-30', 'thang'),
+(1, 'Thang 10/2026', '2026-10-01', '2026-10-31', 'thang'),
+
+(1, 'Thang 11/2026', '2026-11-01', '2026-11-30', 'thang'),
+(1, 'Thang 12/2026', '2026-12-01', '2026-12-31', 'thang'),
+
+(1, 'Tuan 1 - 05/2026', '2026-05-01', '2026-05-07', 'ngay'),
+(1, 'Tuan 2 - 05/2026', '2026-05-08', '2026-05-14', 'ngay'),
+(1, 'Tuan 3 - 05/2026', '2026-05-15', '2026-05-21', 'ngay'),
+(1, 'Tuan 4 - 05/2026', '2026-05-22', '2026-05-31', 'ngay'),
+
+(1, 'Nam 2027', '2027-01-01', '2027-12-31', 'thang'),
+(1, 'Quy 1/2027', '2027-01-01', '2027-03-31', 'thang'),
+(1, 'Quy 2/2027', '2027-04-01', '2027-06-30', 'thang');
+
+INSERT INTO fee_assignment (
+    tenant_id, 
+    fee_id, 
+    target_type, 
+    target_id, 
+    ngayApDung, 
+    mucMienGiam,
+    trangThai
+) VALUES 
+(1, 1, 'kiosk', 1, '2026-04-01', 5, 'active'),  
+(1, 2, 'kiosk', 2, '2026-04-01', 0, 'active'),  
+(1, 3, 'kiosk', 3, '2026-04-01', 10, 'active'), 
+(1, 1, 'kiosk', 5, '2026-04-01', 0, 'active'),  
+(1, 2, 'kiosk', 6, '2026-04-01', 15, 'active'), 
+(1, 3, 'kiosk', 7, '2026-04-01', 20, 'active'),  
+
+(1, 1, 'zone', 1, '2026-04-01', 0, 'active'),  
+(1, 2, 'zone', 2, '2026-04-01', 5, 'active'),   
+(1, 3, 'zone', 3, '2026-04-01', 10, 'active'),   
+
+(1, 1, 'kiosk_type', 1, '2026-04-01', 0, 'active'),  
+(1, 2, 'kiosk_type', 2, '2026-04-01', 5, 'active'),   
+(1, 3, 'kiosk_type', 3, '2026-04-01', 10, 'active'),  
+
+(1, 1, 'kiosk', 1, '2026-01-01', 0, 'inactive'),  
+(1, 2, 'zone', 2, '2026-02-01', 3, 'inactive'),   
+(1, 3, 'kiosk_type', 3, '2026-03-01', 5, 'inactive'), 
+
+
+(1, 1, 'kiosk', 4, '2026-05-01', 8, 'active'),    
+(1, 2, 'zone', 1, '2026-06-01', 10, 'active'),    
+(1, 3, 'kiosk_type', 2, '2026-07-01', 12, 'active'); 
+
+INSERT INTO fee_schedule (
+    tenant_id, 
+    tenBieuPhi, 
+    hinhThuc, 
+    donGia, 
+    moTa
+) VALUES 
+(1, 'Phí vệ sinh - Kios nhỏ', 'thang', 200000, 'Phí vệ sinh hàng tháng cho kios nhỏ'),
+(1, 'Phí vệ sinh - Kios lớn', 'thang', 350000, 'Phí vệ sinh hàng tháng cho kios lớn'),
+(1, 'Phí điện nước - Kios nhỏ', 'thang', 300000, 'Phí điện nước cố định hàng tháng'),
+(1, 'Phí điện nước - Kios lớn', 'thang', 500000, 'Phí điện nước cố định hàng tháng'),
+(1, 'Phí an ninh', 'thang', 150000, 'Phí bảo vệ an ninh trật tự'),
+(1, 'Phí quảng cáo', 'thang', 400000, 'Phí hỗ trợ quảng cáo cho tiểu thương'),
+
+-- Phí theo ngày
+(1, 'Phí gửi xe - Ngày thường', 'ngay', 20000, 'Phí gửi xe máy cho khách'),
+(1, 'Phí gửi xe - Cuối tuần', 'ngay', 30000, 'Phí gửi xe cuối tuần và ngày lễ'),
+(1, 'Phí thu gom rác', 'ngay', 15000, 'Phí thu gom rác hàng ngày'),
+
+(1, 'Phí thuê kios tạm thời', 'ngay', 50000, 'Phí thuê kios theo ngày cho các sự kiện'),
+(1, 'Phí giữ xe ô tô', 'ngay', 50000, 'Phí gửi xe ô tô'),
+(1, 'Phí sử dụng nhà vệ sinh công cộng', 'ngay', 5000, 'Phí vệ sinh công cộng'),
+
+(1, 'Phí bảo trì cơ sở hạ tầng', 'thang', 250000, 'Phí bảo trì, sửa chữa cơ sở hạ tầng'),
+(1, 'Phí tập huấn PCCC', 'ngay', 100000, 'Phí tham gia tập huấn phòng cháy chữa cháy'),
+(1, 'Phí thuê kho bãi', 'thang', 800000, 'Phí thuê kho chứa hàng'),
+
+(1, 'Phí Tết Nguyên Đán', 'ngay', 100000, 'Phí thuê kios dịp Tết'),
+(1, 'Phí Trung Thu', 'ngay', 80000, 'Phí thuê kios dịp Trung Thu'),
+(1, 'Phí mùa du lịch', 'thang', 600000, 'Phí tăng cường mùa du lịch');
+
+INSERT INTO notification (
+    tenant_id,
+    title,
+    content,
+    type,
+    created_by_tenantadmin,
+    created_by_superadmin,
+    expires_at
+) VALUES 
+(NULL, 'Bảo trì hệ thống định kỳ', 'Hệ thống sẽ bảo trì từ 23h-1h ngày 15/03/2026. Vui lòng lưu ý.', 'system', NULL, 1, '2026-03-16 23:59:59'),
+(NULL, 'Nâng cấp tính năng mới', 'Hệ thống vừa ra mắt tính năng quản lý công nợ chi tiết hơn.', 'system', NULL, 1, '2026-04-01 23:59:59'),
+(NULL, 'Thay đổi chính sách phí', 'Từ ngày 01/04/2026, phí dịch vụ sẽ được điều chỉnh tăng 5%.', 'system', NULL, 1, '2026-04-30 23:59:59'),
+
+(1, 'Nhắc nhở đóng phí tháng 3/2026', 'Quý khách còn 5 ngày để hoàn thành nghĩa vụ đóng phí tháng 3/2026.', 'tenant', 1, NULL, '2026-03-31 23:59:59'),
+(1, 'Lịch thu phí tháng 4/2026', 'Bộ phận thu phí sẽ bắt đầu thu từ ngày 01/04/2026 đến 10/04/2026.', 'tenant', 1, NULL, '2026-04-10 23:59:59'),
+(1, 'Thông báo họp tiểu thương', 'Cuộc họp tiểu thương sẽ diễn ra lúc 8h ngày 20/03/2026 tại hội trường.', 'tenant', 1, NULL, '2026-03-20 23:59:59'),
+(1, 'Cảnh báo công nợ', 'Phát hiện 3 tiểu thương đang nợ phí trên 2 tháng. Vui lòng xử lý.', 'tenant', 1, NULL, '2026-03-25 23:59:59'),
+(1, 'Kết quả kiểm tra PCCC', 'Đợt kiểm tra PCCC ngày 10/03 đạt kết quả tốt. Cảm ơn sự hợp tác.', 'tenant', 1, NULL, '2026-03-30 23:59:59'),
+(1, 'Thông báo nghỉ lễ 30/4 - 1/5', 'Chợ sẽ đóng cửa từ 30/4 đến 2/5. Các tiểu thương lưu ý sắp xếp.', 'tenant', 1, NULL, '2026-05-03 23:59:59'),
+(1, 'Chương trình khuyến mãi', 'Giảm 10% phí thuê kios cho các tiểu thương đóng phí đúng hạn.', 'tenant', 1, NULL, '2026-04-30 23:59:59'),
+(1, 'Nhắc nhở thay đổi thông tin', 'Vui lòng cập nhật thông tin CCCD mới cho các tiểu thương.', 'tenant', 1, NULL, '2026-03-31 23:59:59'),
+(1, 'Thông báo vệ sinh định kỳ', 'Tổng vệ sinh chợ vào Chủ nhật hàng tuần từ 6h-8h sáng.', 'tenant', 1, NULL, NULL), -- Không hết hạn
+(1, 'Tuyển dụng bảo vệ', 'Chợ cần tuyển 2 bảo vệ ca đêm. Liên hệ VP quản lý.', 'tenant', 1, NULL, '2026-04-15 23:59:59'),
+
+(1, 'Thông báo quan trọng', 'Đây là thông báo quan trọng cho tenant 1', 'tenant', 1, NULL, '2026-12-31 23:59:59');
+
+INSERT INTO notification (
+    tenant_id,
+    title,
+    content,
+    type,
+    created_by_tenantadmin,
+    expires_at
+) VALUES 
+(1, 'Thông báo cũ - Đã hết hạn', 'Nội dung thông báo cũ không còn hiệu lực.', 'tenant', 1, '2025-12-31 23:59:59'),
+(1, 'Khuyến mãi Tết 2025', 'Chương trình khuyến mãi Tết đã kết thúc.', 'tenant', 1, '2025-02-15 23:59:59');
+
+INSERT INTO notification_read (notification_id, user_id, tenant_id, read_at)
+VALUES 
+(1, 1, 1, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(3, 1, 1, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(5, 1, 1, DATE_SUB(NOW(), INTERVAL 3 HOUR)),
+(7, 1, 1, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
+
+(2, 2, 1, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(4, 2, 1, DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(6, 2, 1, DATE_SUB(NOW(), INTERVAL 45 MINUTE)),
+(8, 2, 1, NOW()),
+
+(1, 3, 1, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+(2, 3, 1, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(9, 3, 1, DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO shift (tenant_id, user_id, thoiGianBatDauCa, thoiGianKetThucCa, trangThaiDoiSoat)
+VALUES 
+(1, 3, '2026-03-14 08:00:00', '2026-03-14 17:00:00', 'completed'),
+(1, 3, '2026-03-15 08:00:00', NULL, 'pending');
+
+INSERT INTO receipt (
+    tenant_id,
+    soTienThu,
+    hinhThucThanhToan,
+    ghiChu,
+    anhChupThanhToan,
+    thoiGianThu,
+    user_id,
+    shift_id
+) VALUES 
+(1, 1500000, 'tien_mat', 'Thu phí tháng 3/2026 - Kios K01, K02', null, '2026-03-14 08:30:00', 2, 1),
+(1, 2200000, 'chuyen_khoan', 'Thu phí tháng 3/2026 - Kios K03, K04', 'https://storage.example.com/receipts/ck_001.jpg', '2026-03-14 09:15:00', 2, 1),
+(1, 500000, 'tien_mat', 'Thu phí K05 - Phí vệ sinh', null, '2026-03-14 10:00:00', 2, 1),
+(1, 3200000, 'chuyen_khoan', 'Thu phí tháng 3/2026 - Các kios lớn', 'https://storage.example.com/receipts/ck_002.jpg', '2026-03-14 10:30:00', 3, 2),
+(1, 2500000, 'tien_mat', 'Thu phí tháng 3/2026 - Kios K06, K07, K08', null, '2026-03-14 11:00:00', 2, 1),
+(1, 1800000, 'tien_mat', 'Thu phí K09, K10', null, '2026-03-13 15:30:00', 2, 1),
+(1, 4200000, 'chuyen_khoan', 'Thu phí tháng 2/2026 còn nợ', 'https://storage.example.com/receipts/ck_003.jpg', '2026-03-07 14:20:00', 2, 1),
+(1, 950000, 'tien_mat', 'Thu phí K11', null, '2026-03-14 13:45:00', 2, 1),
+(1, 1200000, 'tien_mat', 'Thu phí K12, K13', null, '2026-03-14 14:30:00', 2, 1),
+(1, 2800000, 'chuyen_khoan', 'Thu phí K14, K15', 'https://storage.example.com/receipts/ck_004.jpg', '2026-03-14 15:15:00', 3, 2);
+
+INSERT INTO receipt (receipt_id, tenant_id, soTienThu, hinhThucThanhToan, ghiChu, thoiGianThu, user_id, shift_id) VALUES
+(11, 1, 2500000, 'tien_mat', 'Thu tiền mặt từ nhiều kios', '2026-03-14 16:00:00', 2, 1),
+(12, 1, 1800000, 'chuyen_khoan', 'Thu chuyển khoản chiều', '2026-03-14 16:30:00', 3, 2);
+
+INSERT INTO charge (
+    tenant_id, period_id, kiosk_id, merchant_id, fee_id,
+    donGiaApDung, hinhThucApDung, soTienPhaiThu, soTienDaThu, trangThai
+) VALUES 
+(1, 5, 1, 1, 1, 500000, 'thang', 500000, 0, 'chua_thu'),
+(1, 5, 2, 2, 2, 800000, 'thang', 800000, 0, 'chua_thu'),
+(1, 5, 3, 3, 1, 500000, 'thang', 500000, 0, 'chua_thu'),
+(1, 5, 4, 1, 3, 1200000, 'thang', 1200000, 0, 'chua_thu'),
+(1, 5, 5, 4, 1, 500000, 'thang', 500000, 0, 'chua_thu'),
+(1, 5, 6, 5, 2, 800000, 'thang', 800000, 0, 'chua_thu');
+
+INSERT INTO receipt_charge (receipt_id, charge_id, tenant_id, soTienDaTra) VALUES
+(11, 1, 1, 500000),
+(11, 2, 1, 800000),
+(11, 3, 1, 1200000),
+(12, 4, 1, 300000),
+(12, 5, 1, 450000),
+(12, 6, 1, 600000),
+(13, 1, 1, 200000), 
+(13, 2, 1, 300000), 
+(14, 3, 1, 150000),
+(14, 4, 1, 250000),
+(14, 5, 1, 350000),
+(14, 6, 1, 450000),
+(14, 7, 1, 550000),
+(15, 8, 1, 100000),
+(15, 9, 1, 200000),
+(15, 10, 1, 300000);
+
+-- Bổ sung dữ liệu test report
+INSERT INTO receipt (tenant_id, soTienThu, hinhThucThanhToan, ghiChu, thoiGianThu, user_id, shift_id)
+VALUES
+(1, 3500000, 'tien_mat', 'Thu tháng 1/2026', '2026-01-15 09:00:00', 2, 1),
+(1, 4200000, 'chuyen_khoan', 'Thu tháng 1/2026', '2026-01-20 14:30:00', 3, 2),
+(1, 2800000, 'tien_mat', 'Thu tháng 1/2026', '2026-01-25 10:15:00', 2, 1),
+
+(1, 3800000, 'tien_mat', 'Thu tháng 2/2026', '2026-02-10 08:45:00', 2, 1),
+(1, 4500000, 'chuyen_khoan', 'Thu tháng 2/2026', '2026-02-18 16:20:00', 3, 2),
+(1, 3100000, 'tien_mat', 'Thu tháng 2/2026', '2026-02-22 11:30:00', 2, 1),
+
+(1, 5000000, 'tien_mat', 'Thu tháng 3/2026', '2026-03-05 09:30:00', 2, 1),
+(1, 6200000, 'chuyen_khoan', 'Thu tháng 3/2026', '2026-03-12 13:45:00', 3, 2),
+(1, 4800000, 'tien_mat', 'Thu tháng 3/2026', '2026-03-18 15:00:00', 2, 1),
+(1, 3900000, 'chuyen_khoan', 'Thu tháng 3/2026', '2026-03-25 10:30:00', 3, 2),
+
+(1, 4200000, 'tien_mat', 'Thu tháng 4/2026', '2026-04-02 08:15:00', 2, 1),
+(1, 5300000, 'chuyen_khoan', 'Thu tháng 4/2026', '2026-04-08 14:00:00', 3, 2),
+(1, 3600000, 'tien_mat', 'Thu tháng 4/2026', '2026-04-15 11:45:00', 2, 1),
+(1, 4700000, 'chuyen_khoan', 'Thu tháng 4/2026', '2026-04-22 09:30:00', 3, 2);
+
+INSERT INTO receipt_charge (receipt_id, charge_id, tenant_id, soTienDaTra)
+VALUES
+(16, 3, 1, 500000),
+(16, 5, 1, 1000000),
+(16, 7, 1, 2000000),
+(17, 2, 1, 720000),
+(17, 4, 1, 500000),
+(17, 6, 1, 1200000),
+(17, 8, 1, 1780000);
+
+INSERT INTO shift (
+    tenant_id,
+    user_id,
+    thoiGianBatDauCa,
+    thoiGianKetThucCa,
+    tongTienMatThuDuoc,
+    tongChuyenKhoanThuDuoc,
+    trangThaiDoiSoat
+) VALUES 
+(1, 2, '2026-03-14 07:00:00', '2026-03-14 11:30:00', 2500000, 1800000, 'completed'),
+(1, 3, '2026-03-14 11:30:00', '2026-03-14 16:00:00', 3200000, 2100000, 'completed'),
+(1, 2, '2026-03-14 16:00:00', '2026-03-14 19:30:00', 1800000, 1500000, 'completed'),
+(1, 3, '2026-03-13 07:00:00', '2026-03-13 11:30:00', 2800000, 1900000, 'pending'),
+(1, 2, '2026-03-13 11:30:00', '2026-03-13 16:00:00', 2100000, 2200000, 'completed'),
+(1, 3, '2026-03-13 16:00:00', '2026-03-13 19:30:00', 1500000, 1200000, 'discrepancy'),
+(1, 2, '2026-03-12 07:00:00', '2026-03-12 11:30:00', 1900000, 1600000, 'completed'),
+(1, 3, '2026-03-12 11:30:00', '2026-03-12 16:00:00', 2300000, 2000000, 'completed'),
+(1, 2, '2026-03-12 16:00:00', '2026-03-12 19:30:00', 1700000, 1400000, 'completed'),
+(1, 2, '2026-03-14 20:00:00', NULL, 0, 0, 'pending'),
+(1, 3, '2026-03-14 20:30:00', NULL, 0, 0, 'pending'),
+(1, 2, '2026-03-11 07:00:00', '2026-03-11 11:30:00', 2000000, 1700000, 'completed'),
+(1, 3, '2026-03-11 11:30:00', '2026-03-11 16:00:00', 2400000, 2100000, 'completed'),
+(1, 2, '2026-03-11 16:00:00', '2026-03-11 19:30:00', 1600000, 1300000, 'completed');
+
+INSERT INTO receipt (
+    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
+    thoiGianThu, user_id, shift_id
+) VALUES
+(1, 500000, 'tien_mat', 'Thu phí K01', '2026-03-14 07:30:00', 2, 1),
+(1, 800000, 'tien_mat', 'Thu phí K02', '2026-03-14 08:15:00', 2, 1),
+(1, 1200000, 'chuyen_khoan', 'Thu phí K03', '2026-03-14 09:00:00', 2, 1),
+(1, 600000, 'tien_mat', 'Thu phí K04', '2026-03-14 09:45:00', 2, 1),
+(1, 900000, 'chuyen_khoan', 'Thu phí K05', '2026-03-14 10:30:00', 2, 1),
+(1, 700000, 'tien_mat', 'Thu phí K06', '2026-03-14 11:00:00', 2, 1);
+
+INSERT INTO receipt (
+    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
+    thoiGianThu, user_id, shift_id
+) VALUES
+(1, 550000, 'tien_mat', 'Thu phí K07', '2026-03-14 12:00:00', 3, 2),
+(1, 850000, 'chuyen_khoan', 'Thu phí K08', '2026-03-14 12:45:00', 3, 2),
+(1, 1300000, 'tien_mat', 'Thu phí K09', '2026-03-14 13:30:00', 3, 2),
+(1, 650000, 'chuyen_khoan', 'Thu phí K10', '2026-03-14 14:15:00', 3, 2),
+(1, 950000, 'tien_mat', 'Thu phí K11', '2026-03-14 15:00:00', 3, 2),
+(1, 750000, 'tien_mat', 'Thu phí K12', '2026-03-14 15:30:00', 3, 2);
+
+INSERT INTO receipt (
+    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
+    thoiGianThu, user_id, shift_id
+) VALUES
+(1, 400000, 'tien_mat', 'Thu phí K13', '2026-03-14 16:30:00', 2, 3),
+(1, 700000, 'chuyen_khoan', 'Thu phí K14', '2026-03-14 17:15:00', 2, 3),
+(1, 1100000, 'tien_mat', 'Thu phí K15', '2026-03-14 18:00:00', 2, 3),
+(1, 500000, 'tien_mat', 'Thu phí K16', '2026-03-14 18:45:00', 2, 3);
+
+INSERT INTO receipt (
+    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
+    thoiGianThu, user_id, shift_id
+) VALUES
+(1, 600000, 'tien_mat', 'Thu phí K17', '2026-03-13 07:30:00', 3, 4),
+(1, 900000, 'chuyen_khoan', 'Thu phí K18', '2026-03-13 08:15:00', 3, 4),
+(1, 1400000, 'tien_mat', 'Thu phí K19', '2026-03-13 09:00:00', 3, 4),
+(1, 700000, 'tien_mat', 'Thu phí K20', '2026-03-13 09:45:00', 3, 4),
+(1, 1000000, 'chuyen_khoan', 'Thu phí K21', '2026-03-13 10:30:00', 3, 4);
+
+
+
+SELECT * FROM users;
+SELECT * FROM tenant_admin;
+SELECT * FROM audit_log;
+SELECT * FROM charge;
+SELECT * FROM collection_period;
+SELECT * FROM fee_assignment;
+SELECT * FROM fee_schedule;
+SELECT * FROM notification;
+SELECT * FROM receipt;
+SELECT * FROM receipt_charge;
+SELECT * FROM shift;
+
+
+
+
