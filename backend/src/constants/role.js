@@ -1,8 +1,8 @@
 const ROLES = {
-  SUPER_ADMIN: "SUPER_ADMIN",
-  TENANT_ADMIN: "TENANT_ADMIN",
-  COLLECTOR: "COLLECTOR",
-  MERCHANT: "MERCHANT",
+  SUPER_ADMIN: "super_admin",
+  TENANT_ADMIN: "tenant_admin",
+  COLLECTOR: "collector",
+  MERCHANT: "merchant",
 };
 
 const ROLE_CREATE_PERMISSION = {

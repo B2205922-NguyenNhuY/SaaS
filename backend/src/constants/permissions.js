@@ -1,0 +1,74 @@
+const ALL_PERMISSIONS = [
+  "CREATE_TENANT","UPDATE_TENANT","LOCK_TENANT","VIEW_TENANT",
+  "CREATE_PLAN","UPDATE_PLAN","LOCK_PLAN","VIEW_PLAN","ASSIGN_PLAN","UPGRADE_PLAN",
+  "CREATE_USER","VIEW_USER","UPDATE_PROFILE","LOCK_USER",
+  "CREATE_MARKET","UPDATE_MARKET","LOCK_MARKET","VIEW_MARKET",
+  "CREATE_ZONE","UPDATE_ZONE","LOCK_ZONE","VIEW_ZONE",
+  "CREATE_KIOSK_TYPE","UPDATE_KIOSK_TYPE","VIEW_KIOSK_TYPE",
+  "CREATE_KIOSK","UPDATE_KIOSK","LOCK_KIOSK","VIEW_KIOSK",
+  "CREATE_MERCHANT","UPDATE_MERCHANT","VIEW_MERCHANT",
+  "ASSIGN_KIOSK",
+  "CREATE_FEE","UPDATE_FEE","APPLY_FEE",
+  "CREATE_PERIOD","VIEW_PERIOD","GENERATE_CHARGE","VIEW_CHARGE",
+  "COLLECT_FEE","VIEW_RECEIPT",
+  "START_SHIFT","END_SHIFT","VIEW_SHIFT",
+  "VIEW_DEBT","VIEW_REPORT","EXPORT_REPORT",
+  "VIEW_AUDIT_LOG",
+  "CREATE_NOTIFICATIONS","VIEW_NOTIFICATIONS",
+  "CREATE_PAYMENT","PAYMENT_WEBHOOK"
+];
+
+const ROLE_PERMISSIONS = {
+  super_admin: ["*"],
+  tenant_admin: [
+    "VIEW_PLAN","ASSIGN_PLAN","UPGRADE_PLAN",
+    "CREATE_USER","VIEW_USER","UPDATE_PROFILE","LOCK_USER",
+    "CREATE_MARKET","UPDATE_MARKET","LOCK_MARKET","VIEW_MARKET",
+    "CREATE_ZONE","UPDATE_ZONE","LOCK_ZONE","VIEW_ZONE",
+    "CREATE_KIOSK_TYPE","UPDATE_KIOSK_TYPE","VIEW_KIOSK_TYPE",
+    "CREATE_KIOSK","UPDATE_KIOSK","LOCK_KIOSK","VIEW_KIOSK",
+    "CREATE_MERCHANT","UPDATE_MERCHANT","VIEW_MERCHANT",
+    "ASSIGN_KIOSK",
+    "CREATE_FEE","UPDATE_FEE","APPLY_FEE",
+    "CREATE_PERIOD","VIEW_PERIOD","GENERATE_CHARGE","VIEW_CHARGE",
+    "COLLECT_FEE","VIEW_RECEIPT",
+    "START_SHIFT","END_SHIFT","VIEW_SHIFT",
+    "VIEW_DEBT","VIEW_REPORT","EXPORT_REPORT",
+    "VIEW_AUDIT_LOG",
+    "CREATE_NOTIFICATIONS","VIEW_NOTIFICATIONS","CREATE_PAYMENT"
+  ],
+  collector: [
+    "VIEW_KIOSK","VIEW_CHARGE","COLLECT_FEE","VIEW_RECEIPT","START_SHIFT","END_SHIFT","VIEW_SHIFT","VIEW_NOTIFICATIONS","CREATE_PAYMENT"
+  ],
+  merchant: [
+    "VIEW_RECEIPT","VIEW_NOTIFICATIONS","CREATE_PAYMENT"
+  ]
+};
+
+function parsePermissionList(value) {
+  if (!value) return null;
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function getPermissionsForRole(roleName, rawPermissions = null) {
+  if (roleName === "super_admin") return ["*"];
+  const parsed = parsePermissionList(rawPermissions);
+  if (parsed && parsed.length) return parsed;
+  return ROLE_PERMISSIONS[roleName] || [];
+}
+
+module.exports = {
+  ALL_PERMISSIONS,
+  ROLE_PERMISSIONS,
+  getPermissionsForRole,
+  parsePermissionList,
+};

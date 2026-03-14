@@ -525,8 +525,8 @@ VALUES
 
 INSERT INTO role (tenant_id, tenVaiTro)
 VALUES
-(1,'TENANT_ADMIN'),
-(1,'COLLECTOR');
+(1,'tenant_admin'),
+(1,'collector');
 
 INSERT INTO users (tenant_id, role_id, email, password_hash, hoTen)
 VALUES
@@ -848,8 +848,8 @@ INSERT INTO receipt (
 (1, 2800000, 'chuyen_khoan', 'Thu phí K14, K15', 'https://storage.example.com/receipts/ck_004.jpg', '2026-03-14 15:15:00', 3, 2);
 
 INSERT INTO receipt (receipt_id, tenant_id, soTienThu, hinhThucThanhToan, ghiChu, thoiGianThu, user_id, shift_id) VALUES
-(11, 1, 2500000, 'tien_mat', 'Thu tiền mặt từ nhiều kios', '2026-03-14 16:00:00', 2, 1),
-(12, 1, 1800000, 'chuyen_khoan', 'Thu chuyển khoản chiều', '2026-03-14 16:30:00', 3, 2);
+(13, 1, 2500000, 'tien_mat', 'Thu tiền mặt từ nhiều kios', '2026-03-14 16:00:00', 2, 1),
+(14, 1, 1800000, 'chuyen_khoan', 'Thu chuyển khoản chiều', '2026-03-14 16:30:00', 3, 2);
 
 INSERT INTO charge (
     tenant_id, period_id, kiosk_id, merchant_id, fee_id,
@@ -861,6 +861,50 @@ INSERT INTO charge (
 (1, 5, 4, 1, 3, 1200000, 'thang', 1200000, 0, 'chua_thu'),
 (1, 5, 5, 4, 1, 500000, 'thang', 500000, 0, 'chua_thu'),
 (1, 5, 6, 5, 2, 800000, 'thang', 800000, 0, 'chua_thu');
+
+INSERT INTO receipt (
+    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
+    thoiGianThu, user_id, shift_id
+) VALUES
+(1, 500000, 'tien_mat', 'Thu phí K01', '2026-03-14 07:30:00', 2, 1),
+(1, 800000, 'tien_mat', 'Thu phí K02', '2026-03-14 08:15:00', 2, 1),
+(1, 1200000, 'chuyen_khoan', 'Thu phí K03', '2026-03-14 09:00:00', 2, 1),
+(1, 600000, 'tien_mat', 'Thu phí K04', '2026-03-14 09:45:00', 2, 1),
+(1, 900000, 'chuyen_khoan', 'Thu phí K05', '2026-03-14 10:30:00', 2, 1),
+(1, 700000, 'tien_mat', 'Thu phí K06', '2026-03-14 11:00:00', 2, 1);
+
+INSERT INTO receipt (
+    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
+    thoiGianThu, user_id, shift_id
+) VALUES
+(1, 550000, 'tien_mat', 'Thu phí K07', '2026-03-14 12:00:00', 3, 2),
+(1, 850000, 'chuyen_khoan', 'Thu phí K08', '2026-03-14 12:45:00', 3, 2),
+(1, 1300000, 'tien_mat', 'Thu phí K09', '2026-03-14 13:30:00', 3, 2),
+(1, 650000, 'chuyen_khoan', 'Thu phí K10', '2026-03-14 14:15:00', 3, 2),
+(1, 950000, 'tien_mat', 'Thu phí K11', '2026-03-14 15:00:00', 3, 2),
+(1, 750000, 'tien_mat', 'Thu phí K12', '2026-03-14 15:30:00', 3, 2);
+
+INSERT INTO receipt (
+    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
+    thoiGianThu, user_id, shift_id
+) VALUES
+(1, 400000, 'tien_mat', 'Thu phí K13', '2026-03-14 16:30:00', 2, 3),
+(1, 700000, 'chuyen_khoan', 'Thu phí K14', '2026-03-14 17:15:00', 2, 3),
+(1, 1100000, 'tien_mat', 'Thu phí K15', '2026-03-14 18:00:00', 2, 3),
+(1, 500000, 'tien_mat', 'Thu phí K16', '2026-03-14 18:45:00', 2, 3);
+
+INSERT INTO shift (shift_id, tenant_id, user_id, thoiGianBatDauCa, thoiGianKetThucCa, trangThaiDoiSoat)
+VALUES (4, 1, 3, '2026-03-13 07:00:00', '2026-03-13 11:30:00', 'completed');
+
+INSERT INTO receipt (
+    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
+    thoiGianThu, user_id, shift_id
+) VALUES
+(1, 600000, 'tien_mat', 'Thu phí K17', '2026-03-13 07:30:00', 3, 4),
+(1, 900000, 'chuyen_khoan', 'Thu phí K18', '2026-03-13 08:15:00', 3, 4),
+(1, 1400000, 'tien_mat', 'Thu phí K19', '2026-03-13 09:00:00', 3, 4),
+(1, 700000, 'tien_mat', 'Thu phí K20', '2026-03-13 09:45:00', 3, 4),
+(1, 1000000, 'chuyen_khoan', 'Thu phí K21', '2026-03-13 10:30:00', 3, 4);
 
 INSERT INTO receipt_charge (receipt_id, charge_id, tenant_id, soTienDaTra) VALUES
 (11, 1, 1, 500000),
@@ -934,48 +978,6 @@ INSERT INTO shift (
 (1, 2, '2026-03-11 07:00:00', '2026-03-11 11:30:00', 2000000, 1700000, 'completed'),
 (1, 3, '2026-03-11 11:30:00', '2026-03-11 16:00:00', 2400000, 2100000, 'completed'),
 (1, 2, '2026-03-11 16:00:00', '2026-03-11 19:30:00', 1600000, 1300000, 'completed');
-
-INSERT INTO receipt (
-    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
-    thoiGianThu, user_id, shift_id
-) VALUES
-(1, 500000, 'tien_mat', 'Thu phí K01', '2026-03-14 07:30:00', 2, 1),
-(1, 800000, 'tien_mat', 'Thu phí K02', '2026-03-14 08:15:00', 2, 1),
-(1, 1200000, 'chuyen_khoan', 'Thu phí K03', '2026-03-14 09:00:00', 2, 1),
-(1, 600000, 'tien_mat', 'Thu phí K04', '2026-03-14 09:45:00', 2, 1),
-(1, 900000, 'chuyen_khoan', 'Thu phí K05', '2026-03-14 10:30:00', 2, 1),
-(1, 700000, 'tien_mat', 'Thu phí K06', '2026-03-14 11:00:00', 2, 1);
-
-INSERT INTO receipt (
-    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
-    thoiGianThu, user_id, shift_id
-) VALUES
-(1, 550000, 'tien_mat', 'Thu phí K07', '2026-03-14 12:00:00', 3, 2),
-(1, 850000, 'chuyen_khoan', 'Thu phí K08', '2026-03-14 12:45:00', 3, 2),
-(1, 1300000, 'tien_mat', 'Thu phí K09', '2026-03-14 13:30:00', 3, 2),
-(1, 650000, 'chuyen_khoan', 'Thu phí K10', '2026-03-14 14:15:00', 3, 2),
-(1, 950000, 'tien_mat', 'Thu phí K11', '2026-03-14 15:00:00', 3, 2),
-(1, 750000, 'tien_mat', 'Thu phí K12', '2026-03-14 15:30:00', 3, 2);
-
-INSERT INTO receipt (
-    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
-    thoiGianThu, user_id, shift_id
-) VALUES
-(1, 400000, 'tien_mat', 'Thu phí K13', '2026-03-14 16:30:00', 2, 3),
-(1, 700000, 'chuyen_khoan', 'Thu phí K14', '2026-03-14 17:15:00', 2, 3),
-(1, 1100000, 'tien_mat', 'Thu phí K15', '2026-03-14 18:00:00', 2, 3),
-(1, 500000, 'tien_mat', 'Thu phí K16', '2026-03-14 18:45:00', 2, 3);
-
-INSERT INTO receipt (
-    tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
-    thoiGianThu, user_id, shift_id
-) VALUES
-(1, 600000, 'tien_mat', 'Thu phí K17', '2026-03-13 07:30:00', 3, 4),
-(1, 900000, 'chuyen_khoan', 'Thu phí K18', '2026-03-13 08:15:00', 3, 4),
-(1, 1400000, 'tien_mat', 'Thu phí K19', '2026-03-13 09:00:00', 3, 4),
-(1, 700000, 'tien_mat', 'Thu phí K20', '2026-03-13 09:45:00', 3, 4),
-(1, 1000000, 'chuyen_khoan', 'Thu phí K21', '2026-03-13 10:30:00', 3, 4);
-
 
 
 SELECT * FROM users;

@@ -80,7 +80,7 @@ exports.login = async (req, res) => {
                     tenant_id: null,
                 },
                 process.env.JWT_SECRET, 
-                { expiresIn: "1h" }
+                { expiresIn: "60d" }
             );
 
             return res.json({
@@ -142,11 +142,11 @@ exports.login = async (req, res) => {
             const token = jwt.sign(
                 {
                     id: tenant.tenant_id,
-                    role: "TENANT_ADMIN",
+                    role: "tenant_admin",
                     tenant_id: tenant.tenant_id
                 },
                 process.env.JWT_SECRET, 
-                { expiresIn: "1h" }
+                { expiresIn: "60d" }
             );
 
             return res.json({
@@ -157,7 +157,7 @@ exports.login = async (req, res) => {
                     email: tenant.email,
                     tenBanQuanLy: tenant.tenBanQuanLy,
                     tenant_id: tenant.tenant_id,
-                    role: "TENANT_ADMIN"
+                    role: "tenant_admin"
                 },
             });
         }
