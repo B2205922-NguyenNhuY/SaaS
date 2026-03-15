@@ -82,7 +82,7 @@ CREATE TABLE plan_subscription (
   subscription_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id INT UNSIGNED NOT NULL,
   plan_id INT UNSIGNED NOT NULL,
-  trangThai ENUM('active','expired','trial','cancelled') NOT NULL DEFAULT 'active',
+  trangThai ENUM('active','expired','trial','cancelled') NOT NULL,
   ngayBatDau DATETIME NOT NULL,
   ngayKetThuc DATETIME NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -187,6 +187,7 @@ CREATE TABLE kiosk (
 CREATE TABLE merchant (
   merchant_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id INT UNSIGNED NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
   hoTen VARCHAR(150) NOT NULL,
   soDienThoai VARCHAR(15) NULL,
   CCCD CHAR(12) NOT NULL,
