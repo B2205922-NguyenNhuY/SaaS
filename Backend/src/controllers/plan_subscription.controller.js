@@ -1,137 +1,58 @@
-const planSubscriptionModel = require("../models/plan_subscription.model");
-const planModel = require("../models/plan.model");
-const db = require("../config/db");
-
+const planSubscriptionService= require("../services/plan_subscription.service");
 //Tạo Subscription
-exports.createSubscription = async (req, res) => {
-    const connection = await db.getConnection();
+exports.createSubscription = async (req, res, next) => {
     try{
-        const tenant_id = req.user.tenant_id;
-        const { plan_id } = req.body;
-
-        if(!plan_id){
-            return res.status(400).json({message: "Missing required fields"});
-        }
-
-        const plan = await planModel.getPlanById(plan_id);
-
-        if(plan.length === 0) {
-            return res.status(404).json({message: "Plan not found"});
-        }
-
-        await connection.beginTransaction();
-
-        const start = new Date();
-        const end = new Date();
-        end.setDate(end.getDate() + plan[0].duration_days);
-
-        const result = await planSubscriptionModel.createSubscription(connection,{tenant_id, plan_id, trangThai: 'pending', start, end});
-
-        await paymentModel.createPending(connection, {
-            tenant_id,
-            subscription_id: result.insertId,
-            amount: plan[0].price,
-            payment_type: 'subscription'
-        });
-
-        await connection.commit();
-
-        const session = await stripe.checkout.sessions.create({
-            mode: "subscription",
-            payment_method_types: ["card"],
-            line_items: [
-                {
-                price: plan[0].stripe_price_id,
-                quantity: 1
-                }
-            ],
-            success_url: `${process.env.CLIENT_URL}/success`,
-            cancel_url: `${process.env.CLIENT_URL}/cancel`,
-            metadata: {
-                tenant_id,
-                subscription_id
-            }
-        });
+        const result = await planSubscriptionService.createSubscription(req.user, req.body);
 
         res.status(201).json({
             message: "Subscription created successfully",
-            subscription_id: result.insertId
+            subscription_id: result.subscription_id,
+            checkout_url: result.checkout_url
         });
     } catch (error) {
-        await connection.rollback()
-        res.status(500).json({error: error.message});
-    } finally {
-        connection.release();
+        next(error);
     }
 };
 
 //Lấy tất cả Subscription
-exports.getAllSubscription = async (req, res) => {
+exports.getAllSubscription = async (req, res, next) => {
     try{
-        const [rows] = await planSubscriptionModel.getAllSubscriptions();
+        const rows = await planSubscriptionService.getAllSubscriptions();
 
         res.json(rows);
     } catch (error) {
-        res.status(500).json({error: error.message});
+        next(error);
     }
 }
 
-exports.getSubscriptionById = async (req, res) => {
+exports.getSubscriptionById = async (req, res, next) => {
     try{
-        const tenant_id = req.user.tenant_id;
-
-        const subscription = await planSubscriptionModel.getActiveByTenantForUpdate(tenant_id);
-        
-        if(subscription.length === 0){
-            return res.status(404).json({message: "subscription not found"});
-        }
-
-        const rows = await planSubscriptionModel.getSubscriptiontById(subscription[0].subscription_id);
+        const rows = await planSubscriptionService.getSubscriptiontById(req.user);
 
         res.json(rows);
     } catch (error) {
-        res.status(500).json({error: error.message})
+        next(error);
     }
 };
 
-exports.getSubscriptionbyStatus = async (req, res) => {
+exports.getSubscriptionbyStatus = async (req, res, next) => {
     try{
-        const {status} = req.query;
-
-        if(!status) {
-            return res.status(400).json({message: "Status is required"})
-        }
-
-        const allowesStatus = ['active', 'expired', 'trial'];
-
-        if(!allowedStatus.includes(status)) {
-            return res.status(400).json({message: "Invalid status"});
-        }
-
-        const [rows] = await planSubscriptionModel.getSubscriptiontByStatus(status);
+        const rows = await planSubscriptionService.getSubscriptiontByStatus(req.query.status);
 
         res.json(rows);
     } catch (error) {
-        res.status(500).json({error: error.message});
+        next(error);
     }
 };
 
-exports.updateSubscription = async (req, res) => {
+exports.updateSubscription = async (req, res, next) => {
     try {
-        const tenant_id = req.user.tenant_id;
-
-        const subscription = await planSubscriptionModel.getActiveByTenantForUpdate(tenant_id);
-        
-        if(!subscription){
-            return res.status(404).json({message: "subscription not found"});
-        }
-
-        await planSubscriptionModel.updateSubscriptionStatus(subscription[0].subscription_id);
+        await planSubscriptionService.updateSubscriptionStatus(subscription[0].subscription_id);
 
         res.json({
             message: "updated successfully",
         })
     } catch (error) {
-        res.status(500).json({error: error.message})
+        next(error);
     }
 };

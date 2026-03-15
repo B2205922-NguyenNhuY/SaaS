@@ -11,7 +11,7 @@ exports.createSuperAdmin = async (data) => {
     } = data;
 
     const [result] = await db.execute(
-        "INSERT INTO users (email, password_hash, soDienThoai, hoTen, trangThai) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO super_admin (email, password_hash, soDienThoai, hoTen, trangThai) VALUES (?, ?, ?, ?, ?)",
         [email, password_hash, soDienThoai, hoTen, trangThai]
     );
 

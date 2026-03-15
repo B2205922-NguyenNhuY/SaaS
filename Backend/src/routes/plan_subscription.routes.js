@@ -7,9 +7,10 @@ const { checkSubscriptionStatus } = require("../middlewares/checkSubscription.mi
 const { checkTenantAccess } = require("../middlewares/checkTenantAccess.middleware");
 const { checkTenantActive } = require("../middlewares/checkTenantActive.middlewares");
 const ROLES = require("../constants/role");
+const { checkUserActive } = require("../middlewares/checkUserActive.middlewares");
 
-router.post("/", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkTenantAccess, checkTenantActive, checkSubscriptionStatus, planSubscription.createSubscription);
-router.get("/", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkTenantAccess, checkTenantActive, checkSubscriptionStatus, planSubscription.getSubscriptionById);
-router.get("/status", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkTenantAccess, checkTenantActive, checkSubscriptionStatus, planSubscription.updateSubscription);
+router.post("/", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkUserActive, checkTenantAccess, checkTenantActive, checkSubscriptionStatus, planSubscription.createSubscription);
+router.get("/", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkUserActive, checkTenantAccess, checkTenantActive, checkSubscriptionStatus, planSubscription.getSubscriptionById);
+router.get("/status", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkUserActive, checkTenantAccess, checkTenantActive, checkSubscriptionStatus, planSubscription.updateSubscription);
 
 module.exports = router;

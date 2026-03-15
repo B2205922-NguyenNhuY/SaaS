@@ -1,87 +1,49 @@
-const planModel = require("../models/plan.model");
+const planService = require("../services/plan.service");
 
 //Tạo plan
-exports.createPlan = async (req, res) => {
+exports.createPlan = async (req, res, next) => {
     try{
-        const {tenGoi, giaTien, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho} = req.body;
-
-        if(!tenGoi || !giaTien || !gioiHanSoKiosk || !gioiHanUser || !gioiHanSoCho) {
-            return res.status(400).json({message: "Missing required fields"});
-        }
-
-        const duplicate = await planModel.checkDuplicate(tenGoi);
-
-        if(duplicate.length > 0){
-            return res.status(400).json({message: "Gói đã tồn tại"})
-        }
-
-        const result = await planModel.createPlan(req.body)
+        const result = await planService.createPlan(req.body)
 
         return res.status(202).json({
             message: "Plan created successfully",
-            plan_id: result.insertId
+            plan_id: result.plan_id
         })
     } catch (error) {
-        if(error.code === "ER_DUP_ENTRY"){
-            return res.status(400).json({message: "Gói đã tồn tại"});
-        }
-
-        res.status(500).json({error: error.message});
+        next(error);
     }
 };
 
 //Lấy tất cả Plan
-exports.getAllPlans = async(req, res) => {
+exports.getAllPlans = async(req, res, next) => {
     try{
-        const rows = await planModel.getAllPlans();
+        const rows = await planService.getAllPlans();
 
         res.json(rows);
     } catch (error){
-        res.status(500).json({error: error.message});
+        next(error);
     }
 };
 
 //Lấy Plan theo Id
-exports.getPlanById = async (req, res) => {
+exports.getPlanById = async (req, res, next) => {
     try{
-        const {id} = req.params;
-
-        const plan = await planModel.getPlanById(id);
-
-        if(!plan){
-            return res.status(404).json({message: "Gói không tồn tại"});
-        }
+        const plan = await planService.getPlanById(req.params.id);
 
         res.json(plan);
     } catch (error) {
-        res.status(500).json({error: error.message});
+        next(error);
     }
 };
 
 //Update Plan
-exports.updatePlan = async (req, res) => {
+exports.updatePlan = async (req, res, next) => {
     try{
-        const {tenGoi, giaTien, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho} = req.body;
-
-        const{id} = req.params;
-
-        const existing = await planModel.getPlanById(id);
-
-        if(!existing){
-            return res.status(404).json({message: "Gói không tồn tại"})
-        }
-
-        const duplicate = await planModel.checkDuplicateForUpdate(id, tenGoi);
-
-        if(duplicate.length>0){
-            return res.status(400).json({message: "Gói đã tồn tại"})
-        }
-
-        await planModel.updatePlan(id, req.body);
+        await planService.updatePlan(req.params.id, req.body);
 
         res.json({message: "Plan updated successfully"});
 
     } catch (error) {
-        res.status(500).json({error: error.message});
+        next(error);
     }
 };

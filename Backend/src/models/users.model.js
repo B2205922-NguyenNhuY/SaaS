@@ -29,17 +29,18 @@ exports.countAccountsByTenant = async (tenant_id) => {
         (SELECT COUNT(*) 
          FROM users 
          WHERE tenant_id = ? 
-           AND status = 'active' 
+           AND trangThai = 'active' 
            AND deleted_at IS NULL)
-        +
+       +
         (SELECT COUNT(*) 
-         FROM merchants 
-         WHERE tenant_id = ?)
+         FROM merchant 
+         WHERE tenant_id = ?
+            AND trangThai = 'active')
       ) AS total
     `,
     [tenant_id, tenant_id]
   );
-
+ /**/
   return Number(rows[0].total);
 };
 
@@ -65,7 +66,7 @@ exports.getUserById = async (id) => {
 //Lấy user thoe tenant
 exports.getUsersByTenant = async (tenant_id) => {
   const [rows] = await db.execute(
-    `SELECT u.*, r.role_name
+    `SELECT u.*, r.tenVaiTro
      FROM users u
      JOIN role r ON u.role_id = r.role_id
      WHERE u.tenant_id = ?
@@ -133,7 +134,7 @@ exports.checkDuplicateAdmin = async (email, soDienThoai) => {
 exports.checkDuplicate = async (email, soDienThoai, tenant_id) => {
     const [rows] = await db.execute(
         "SELECT user_id FROM users WHERE (email = ? AND tenant_id=?) OR (soDienThoai = ? AND tenant_id=?)",
-        [email, soDienThoai]
+        [email, tenant_id, soDienThoai, tenant_id]
     );
 
     return rows;

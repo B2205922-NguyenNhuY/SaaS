@@ -2,6 +2,7 @@ const db = require("../config/db");
 
 //Tạo Tenant
 exports.createTenant = async (tenantData) => {
+    console.log(tenantData);
     const { tenBanQuanLy, diachi, soDienThoai, email, trangThai } = tenantData;
 
     const [result] = await db.execute(

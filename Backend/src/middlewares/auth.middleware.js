@@ -16,6 +16,7 @@ exports.verifyToken = (req, res, next) => {
             id: decoded.id,
             role: decoded.role,
             tenant_id: decoded.tenant_id || null,
+            trangThai: decoded.trangThai
         };
 
         next();

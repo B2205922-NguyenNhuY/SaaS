@@ -20,6 +20,16 @@ exports.findSuperAdminByEmail = async (email) => {
     return rows[0];
 };
 
+//
+exports.findMerchantByPhone = async (soDienThoai) => {
+    const [rows] = await db.query(
+        `SELECT * FROM merchant WHERE soDienThoai = ? LIMIT 1`,
+        [soDienThoai]
+    );
+
+    return rows[0] || null;
+};
+
 //Tạo User
 exports.createUser = async (data) => {
     const {

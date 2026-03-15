@@ -8,10 +8,11 @@ const { checkTenantAccess } = require("../middlewares/checkTenantAccess.middlewa
 const { checkTenantActive } = require("../middlewares/checkTenantActive.middlewares");
  
 const { ROLES } = require("../constants/role");
+const { checkUserActive } = require("../middlewares/checkUserActive.middlewares");
 
-router.post("/", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), planController.createPlan);
-router.get("/", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN), checkTenantActive,planController.getAllPlans);
-router.get("/:id", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN), checkTenantActive, planController.getPlanById);
-router.put("/:id", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), planController.updatePlan);
+router.post("/", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, planController.createPlan);
+router.get("/", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive,planController.getAllPlans);
+router.get("/:id", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive, planController.getPlanById);
+router.put("/:id", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, planController.updatePlan);
 
 module.exports = router;

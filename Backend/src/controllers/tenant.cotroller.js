@@ -1,119 +1,61 @@
-const tenantModel = require("../models/tenant.model");
+const tenantService = require("../services/tenant.service");
 
 //Tạo Tennat mới
-exports.createTenant = async (req, res) => {
+exports.createTenant = async (req, res, next) => {
     try{
-        const duplicate = await tenantModel.checkDuplicate(
-            req.body.email, req.body.soDienThoai
-        );
-
-        if (duplicate.length>0) {
-            return res.status(400).json({
-                message: "Email hoặc Số điện thoại đã tồn tại"
-            });
-        }
-
-        const result = await tenantModel.createTenant(req.body);
+        const result = await tenantService.createTenant(req.body);
 
         res.status(201).json({
             message: "Tenant created successfully",
-            tenant_id: result.insertId
+            tenant_id: result.tenant_id
         });
 
     } catch (error) {
-        if (error.code === "ER_DUP_ENTRY") {
-            return res.status(400).json({ message: "Email hoặc số điện thoại đã tồn tại"});
-        }
-
-        res.status(500).json({error: error.message});
+        next(error);
     }
 };
 
 //Lấy tất cả Tenant
-exports.getAllTenants = async (req, res) => {
+exports.getAllTenants = async (req, res, next) => {
     try {
-        const rows = await tenantModel.getAllTenants();
-
+        const rows = await tenantService.getAllTenants();
         res.json(rows);
 
     } catch (error) {
-        res.status(500).json({error: error.message});
+        next(error);
     }
 };
 
 //Lấy Tenant theo ID
-exports.getTenantById = async (req, res) => {
+exports.getTenantById = async (req, res, next) => {
     try{
-        const { id } = req.params;
-
-        const tenant = await tenantModel.getTenantById(id);
-
-        if(!tenant) {
-            return res.status(404).json({message: "Tenant not found"});
-        }
+        const tenant = await tenantService.getTenantById(req.params.id);
 
         res.json(tenant);
         
     } catch (error) {
-        res.status(500).json({error: error.message});
+        next(error);
     }
 };
 
 //Update Tenant
-exports.updateTenantStatus = async(req, res) => {
+exports.updateTenantStatus = async(req, res, next) => {
     try{
-        const { id } = req.params;
-        const { trangThai } = req.body;
-
-        if(!["active", "suspended"].includes(trangThai)) {
-            return res.status(400).json({
-                message: "Invalid status"
-            });
-        }
-
-        const existing = await tenantModel.getTenantById(id);
-
-        if(!existing){
-            return res.status(400).json({message: "Tenant not found"});
-        }
-
-        await tenantModel.updateTenantStatus(id, trangThai);
+        await tenantService.updateTenantStatus(req.params.id, req.body.trangThai);
 
         res.json({message: "Tenant status updated susscessfully"});
     } catch (error) {
-        res.status(500).json({error: error.message});
+        next(error);
     }
 };
 
 //Update thông tin Tenant
-exports.updateTenantInfo = async (req, res) => {
+exports.updateTenantInfo = async (req, res, next) => {
     try {
-        const { id } = req.params;
-        const {
-            tenBanQuanLy,
-            diachi,
-            soDienThoai,
-            email
-        } = req.body;
-
-        const existing = await tenantModel.getTenantById(id);
-
-        if(!existing) {
-            return res.status(404).json({message: "Tenant not found"});
-        }
-
-        const duplicate = await tenantModel.checkDuplicateForUpdate(id, email, soDienThoai);
-
-        if(duplicate.length>0) {
-            return res.status(400).json({
-                message: "Email hoặc Số điện thoại đã tồn tại"
-            });
-        }
-
-        await tenantModel.updateTenantInfo(id, req.body);
+        await tenantService.updateTenantInfo(req.params.id, req.body);
 
         res.json({message: "Tenant updated successfully"});
     } catch (error) {
-        res.status(500).json({error: error.message});
+        next(error);
     }
 };

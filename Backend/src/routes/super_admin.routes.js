@@ -6,11 +6,12 @@ const auth = require("../middlewares/auth.middleware");
 const role = require("../middlewares/role.middleware");
 const superAdminController = require("../controllers/super_admin.controller");
 const { checkCreateUserPermission } = require("../middlewares/checkCreateUserPermission.middlewares");
+const { checkUserActive } = require("../middlewares/checkUserActive.middlewares");
 
-router.post("/", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), superAdminController.createSuperAdmin);
-router.get("/", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), superAdminController.getAllSuperAdmins);
-router.get("/:id", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), superAdminController.getSuperAdminById);
-router.put("/:id", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), superAdminController.updateSuperAdminInfo);
-router.patch("/:id/status", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), superAdminController.updateSuperAdminStatus);
+router.post("/", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.createSuperAdmin);
+router.get("/", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.getAllSuperAdmins);
+router.get("/:id", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.getSuperAdminById);
+router.put("/:id", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.updateSuperAdminInfo);
+router.patch("/:id/status", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.updateSuperAdminStatus);
 
 module.exports = router;

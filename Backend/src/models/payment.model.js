@@ -23,6 +23,13 @@ exports.markPaymentSucceeded = async (connection, payment_id) => {
   );
 };
 
+exports.updateSubscriptionId = async (connection, payment_id, subscription_id) => {
+  await connection.execute(
+    "UPDATE payment SET subscription_id = ? WHERE payment_id = ?",
+    [subscription_id,payment_id]
+  );
+}
+
 exports.updateInvoiceInfo = async (connection, stripeSubId, stripeInvoiceId, paymentIntentId, amount) => {
     console.log("Updating payment for subscription:", stripeSubId);
     console.log("Updating StripeInvoiceId:", stripeInvoiceId);

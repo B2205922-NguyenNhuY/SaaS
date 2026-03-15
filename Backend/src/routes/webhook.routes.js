@@ -3,7 +3,7 @@ const router = express.Router();
 const webhookController = require("../controllers/webhook.controller");
 
 router.post(
-  "/webhook",
+  "/",
   express.raw({ type: "application/json" }),
   webhookController.handleStripeWebhook
 );
