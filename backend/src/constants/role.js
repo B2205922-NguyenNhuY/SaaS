@@ -1,0 +1,68 @@
+const ROLES = {
+  SUPER_ADMIN: "SUPER_ADMIN",
+  TENANT_ADMIN: "TENANT_ADMIN",
+  COLLECTOR: "COLLECTOR",
+  MERCHANT: "MERCHANT",
+};
+
+const ROLE_ALIASES = {
+  super_admin: ROLES.SUPER_ADMIN,
+  superadmin: ROLES.SUPER_ADMIN,
+  tenant_admin: ROLES.TENANT_ADMIN,
+  tenantadmin: ROLES.TENANT_ADMIN,
+  collector: ROLES.COLLECTOR,
+  merchant: ROLES.MERCHANT,
+  SUPER_ADMIN: ROLES.SUPER_ADMIN,
+  TENANT_ADMIN: ROLES.TENANT_ADMIN,
+  COLLECTOR: ROLES.COLLECTOR,
+  MERCHANT: ROLES.MERCHANT,
+};
+
+function normalizeRole(role) {
+  if (!role) return role;
+  return (
+    ROLE_ALIASES[String(role)] ||
+    ROLE_ALIASES[String(role).trim()] ||
+    String(role).toUpperCase()
+  );
+}
+
+const PERMISSIONS_BY_ROLE = {
+  [ROLES.SUPER_ADMIN]: ["*"],
+  [ROLES.TENANT_ADMIN]: [
+    "CREATE_MARKET",
+    "UPDATE_MARKET",
+    "LOCK_MARKET",
+    "VIEW_MARKET",
+    "CREATE_ZONE",
+    "UPDATE_ZONE",
+    "LOCK_ZONE",
+    "VIEW_ZONE",
+    "CREATE_KIOSK_TYPE",
+    "UPDATE_KIOSK_TYPE",
+    "VIEW_KIOSK_TYPE",
+    "CREATE_KIOSK",
+    "UPDATE_KIOSK",
+    "LOCK_KIOSK",
+    "VIEW_KIOSK",
+    "CREATE_MERCHANT",
+    "UPDATE_MERCHANT",
+    "VIEW_MERCHANT",
+    "ASSIGN_KIOSK",
+  ],
+  [ROLES.COLLECTOR]: ["VIEW_MERCHANT"],
+  [ROLES.MERCHANT]: [],
+};
+
+const ROLE_CREATE_PERMISSION = {
+  [ROLES.SUPER_ADMIN]: [ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN, ROLES.COLLECTOR],
+  [ROLES.TENANT_ADMIN]: [ROLES.COLLECTOR],
+};
+
+module.exports = {
+  ROLES,
+  ROLE_ALIASES,
+  normalizeRole,
+  PERMISSIONS_BY_ROLE,
+  ROLE_CREATE_PERMISSION,
+};

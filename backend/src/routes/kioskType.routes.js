@@ -1,0 +1,10 @@
+const router = require("express").Router();
+const auth = require("../middlewares/auth");
+const permission = require("../middlewares/permission");
+const paginate = require("../middlewares/paginate");
+const C = require("../controllers/kioskType.controller");
+router.post("/", auth, permission("CREATE_KIOSK_TYPE"), C.create);
+router.put("/:id", auth, permission("UPDATE_KIOSK_TYPE"), C.update);
+router.get("/", auth, permission("VIEW_KIOSK_TYPE"), paginate, C.list);
+router.get("/:id", auth, permission("VIEW_KIOSK_TYPE"), C.getById);
+module.exports = router;
