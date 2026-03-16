@@ -31,9 +31,14 @@ exports.updateStatus = async (req, res, next) => {
 exports.list = async (req, res, next) => {
   try {
     const filters = {
+      market_id: req.query.market_id,
       zone_id: req.query.zone_id,
       type_id: req.query.type_id,
       trangThai: req.query.trangThai,
+      maKiosk: req.query.maKiosk,
+      viTri: req.query.viTri,
+      dienTich_min: req.query.dienTich_min,
+      dienTich_max: req.query.dienTich_max,
       q: req.query.q,
     };
     res.json(await S.list(req.user.tenant_id, filters, req.pagination));
@@ -44,19 +49,8 @@ exports.list = async (req, res, next) => {
 
 exports.getById = async (req, res, next) => {
   try {
-    const tenant_id = req.user.tenant_id;
-    const kiosk_id = Number(req.params.id);
-    const row = await S.getById(tenant_id, kiosk_id);
-    res.json(row);
+    res.json(await S.getById(req.user.tenant_id, Number(req.params.id)));
   } catch (e) {
     next(e);
   }
-};
-
-exports.getById = async (req, res, next) => { 
-  try { 
-    res.json(await S.getById(req.user.tenant_id, Number(req.params.id))); 
-  } catch (e) { 
-    next(e); 
-  } 
 };

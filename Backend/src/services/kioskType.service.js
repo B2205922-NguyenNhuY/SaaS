@@ -1,133 +1,120 @@
-const kioskTypeModel = require("../models/kioskType.model");
+const db = require("../config/db");
+const { isDuplicateKey } = require("./_dbErrors");
 
 const ALLOWED_SORT = new Set([
   "created_at",
   "updated_at",
   "type_id",
-  "tenLoai"
+  "tenLoai",
 ]);
+const pickSort = (s) => (ALLOWED_SORT.has(s) ? s : "created_at");
 
-const pickSort = (s) =>
-  ALLOWED_SORT.has(s) ? s : "created_at";
+async function existsTypeName(tenLoai, excludeId = null) {
+  const params = [tenLoai];
+  let sql = `SELECT type_id FROM kiosk_type WHERE tenLoai = ?`;
+  if (excludeId) {
+    sql += ` AND type_id <> ?`;
+    params.push(excludeId);
+  }
+  const [rows] = await db.query(sql + ` LIMIT 1`, params);
+  return rows.length > 0;
+}
 
 exports.create = async (body) => {
+  const tenLoai = String(body.tenLoai || "").trim();
+  if (!tenLoai)
+    throw Object.assign(new Error("tenLoai is required"), { statusCode: 400 });
+  if (await existsTypeName(tenLoai))
+    throw Object.assign(new Error("tenLoai already exists"), {
+      statusCode: 409,
+    });
 
-  const tenLoai = (body.tenLoai || "").trim();
-
-  if (!tenLoai) {
-    throw Object.assign(
-      new Error("tenLoai is required"),
-      { statusCode: 400 }
+  try {
+    const [r] = await db.query(
+      `INSERT INTO kiosk_type (tenLoai, moTa) VALUES (?, ?)`,
+      [tenLoai, body.moTa ?? null],
     );
+    return { type_id: r.insertId, tenLoai };
+  } catch (e) {
+    if (isDuplicateKey(e))
+      throw Object.assign(new Error("tenLoai already exists"), {
+        statusCode: 409,
+      });
+    throw e;
   }
-
-  const exists = await kioskTypeModel.existsTypeName(tenLoai);
-
-  if (exists) {
-    throw Object.assign(
-      new Error("tenLoai already exists"),
-      { statusCode: 409 }
-    );
-  }
-
-  const type_id = await kioskTypeModel.create(
-    tenLoai,
-    body.moTa ?? null
-  );
-
-  return { type_id, tenLoai };
 };
-
 
 exports.update = async (type_id, body) => {
+  const [currentRows] = await db.query(
+    `SELECT * FROM kiosk_type WHERE type_id = ? LIMIT 1`,
+    [type_id],
+  );
+  if (!currentRows.length)
+    throw Object.assign(new Error("Kiosk type not found"), { statusCode: 404 });
 
   const tenLoai =
-    body.tenLoai != null
-      ? String(body.tenLoai).trim()
-      : null;
+    body.tenLoai !== undefined
+      ? String(body.tenLoai || "").trim()
+      : currentRows[0].tenLoai;
+  const moTa = body.moTa !== undefined ? body.moTa : currentRows[0].moTa;
 
-  if (tenLoai) {
+  if (!tenLoai)
+    throw Object.assign(new Error("tenLoai is required"), { statusCode: 400 });
+  if (await existsTypeName(tenLoai, type_id))
+    throw Object.assign(new Error("tenLoai already exists"), {
+      statusCode: 409,
+    });
 
-    const exists =
-      await kioskTypeModel.existsTypeName(
-        tenLoai,
-        type_id
-      );
-
-    if (exists) {
-      throw Object.assign(
-        new Error("tenLoai already exists"),
-        { statusCode: 409 }
-      );
-    }
-  }
-
-  const affected = await kioskTypeModel.update(
-    type_id,
-    tenLoai,
-    body.moTa ?? null
-  );
-
-  if (!affected) {
-    throw Object.assign(
-      new Error("Kiosk type not found"),
-      { statusCode: 404 }
+  try {
+    await db.query(
+      `UPDATE kiosk_type SET tenLoai = ?, moTa = ? WHERE type_id = ?`,
+      [tenLoai, moTa, type_id],
     );
+    return { ok: true };
+  } catch (e) {
+    if (isDuplicateKey(e))
+      throw Object.assign(new Error("tenLoai already exists"), {
+        statusCode: 409,
+      });
+    throw e;
   }
-
-  return { ok: true };
 };
 
-
 exports.list = async (filters, pg) => {
-
   const where = ["1=1"];
   const params = [];
-
   if (filters.q) {
     where.push("(tenLoai LIKE ? OR moTa LIKE ?)");
     params.push(`%${filters.q}%`, `%${filters.q}%`);
   }
 
-  const whereSQL = where.join(" AND ");
-
   const sort = pickSort(pg.sort);
   const order = pg.order;
-
-  const total = await kioskTypeModel.count(
-    whereSQL,
-    params
-  );
-
-  const rows = await kioskTypeModel.list(
-    whereSQL,
+  const [[{ total }]] = await db.query(
+    `SELECT COUNT(*) AS total FROM kiosk_type WHERE ${where.join(" AND ")}`,
     params,
-    sort,
-    order,
-    pg.limit,
-    pg.offset
   );
-
+  const [rows] = await db.query(
+    `SELECT * FROM kiosk_type WHERE ${where.join(" AND ")} ORDER BY ${sort} ${order} LIMIT ? OFFSET ?`,
+    [...params, pg.limit, pg.offset],
+  );
   return {
     data: rows,
     meta: {
       page: pg.page,
       limit: pg.limit,
       total,
-      totalPages: Math.ceil(total / pg.limit)
-    }
+      totalPages: Math.ceil(total / pg.limit),
+    },
   };
 };
 
 exports.getById = async (type_id) => {
-  const type = await kioskTypeModel.getById(type_id);
-
-  if (!type) {
-    throw Object.assign(
-      new Error("Kiosk type not found"),
-      { statusCode: 404 }
-    );
-  }
-
-  return type;
+  const [rows] = await db.query(
+    `SELECT * FROM kiosk_type WHERE type_id = ? LIMIT 1`,
+    [type_id],
+  );
+  if (!rows.length)
+    throw Object.assign(new Error("Kiosk type not found"), { statusCode: 404 });
+  return rows[0];
 };

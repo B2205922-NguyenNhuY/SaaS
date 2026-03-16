@@ -496,3 +496,12 @@ CREATE TABLE audit_log (
   CONSTRAINT fk_audit_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant(tenant_id) ON DELETE set null,
   CONSTRAINT fk_audit_superadmin FOREIGN KEY (super_admin_id) REFERENCES super_admin(admin_id) ON DELETE set null
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+// thêm vào
+UPDATE kiosk k
+JOIN kiosk_assignment ka
+  ON ka.kiosk_id = k.kiosk_id
+ AND ka.tenant_id = k.tenant_id
+SET k.trangThai = 'occupied',
+    k.updated_at = NOW()
+WHERE ka.trangThai = 'active';

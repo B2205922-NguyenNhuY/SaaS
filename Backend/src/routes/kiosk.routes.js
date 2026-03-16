@@ -3,31 +3,27 @@ const { verifyToken } = require("../middlewares/auth.middleware");
 const { authorizeRoles } = require("../middlewares/role.middleware");
 const { ROLES } = require("../constants/role");
 const paginate = require("../middlewares/paginate");
-const kioskController = require("../controllers/kiosk.controller");
-const { checkUserActive } = require("../middlewares/checkUserActive.middlewares");
-const { checkTenantActive } = require("../middlewares/checkTenantActive.middlewares");
-const { checkTenantAccess } = require("../middlewares/checkTenantAccess.middleware");
-const { checkSubscriptionStatus } = require("../middlewares/checkSubscription.middlewares");
+const C = require("../controllers/kiosk.controller");
 
-router.post("/", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus, kioskController.create);
+router.post("/", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.create);
 
-router.put("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus, kioskController.update);
+router.put("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.update);
 
 router.patch(
   "/:id/status",
   verifyToken,
-  authorizeRoles(ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus,
-  kioskController.updateStatus,
+  authorizeRoles(ROLES.TENANT_ADMIN),
+  C.updateStatus,
 );
 
 router.get(
   "/",
   verifyToken,
-  authorizeRoles(ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive, checkSubscriptionStatus,
+  authorizeRoles(ROLES.TENANT_ADMIN),
   paginate,
-  kioskController.list,
+  C.list,
 );
 
-router.get("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus, kioskController.getById);
+router.get("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.getById);
 
 module.exports = router;

@@ -2,9 +2,7 @@ const S = require("../services/market.service");
 
 exports.create = async (req, res, next) => {
   try {
-    const tenant_id = req.user.tenant_id;
-    const data = await S.create(tenant_id, req.body);
-    res.status(201).json(data);
+    res.status(201).json(await S.create(req.user.tenant_id, req.body));
   } catch (e) {
     next(e);
   }
@@ -12,10 +10,9 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const tenant_id = req.user.tenant_id;
-    const id = Number(req.params.id);
-    const data = await S.update(tenant_id, id, req.body);
-    res.json(data);
+    res.json(
+      await S.update(req.user.tenant_id, Number(req.params.id), req.body),
+    );
   } catch (e) {
     next(e);
   }
@@ -23,10 +20,9 @@ exports.update = async (req, res, next) => {
 
 exports.updateStatus = async (req, res, next) => {
   try {
-    const tenant_id = req.user.tenant_id;
-    const id = Number(req.params.id);
-    const data = await S.updateStatus(tenant_id, id, req.body); // { trangThai }
-    res.json(data);
+    res.json(
+      await S.updateStatus(req.user.tenant_id, Number(req.params.id), req.body),
+    );
   } catch (e) {
     next(e);
   }
@@ -34,32 +30,23 @@ exports.updateStatus = async (req, res, next) => {
 
 exports.list = async (req, res, next) => {
   try {
-    const tenant_id = req.user.tenant_id;
-    const { page, limit, offset, sort, order } = req.pagination;
-
-    // lọc kép: tenant_id + (status/q)
     const filters = {
       trangThai: req.query.trangThai,
       q: req.query.q,
+      diaChi: req.query.diaChi,
+      min_dienTich: req.query.min_dienTich,
+      max_dienTich: req.query.max_dienTich,
     };
-
-    const out = await S.list(tenant_id, filters, {
-      page,
-      limit,
-      offset,
-      sort,
-      order,
-    });
-    res.json(out);
+    res.json(await S.list(req.user.tenant_id, filters, req.pagination));
   } catch (e) {
     next(e);
   }
 };
 
-exports.getById = async (req, res, next) => { 
-  try { 
-    res.json(await S.getById(req.user.tenant_id, Number(req.params.id))); 
-  } catch (e) { 
-    next(e); 
-  } 
+exports.getById = async (req, res, next) => {
+  try {
+    res.json(await S.getById(req.user.tenant_id, Number(req.params.id)));
+  } catch (e) {
+    next(e);
+  }
 };

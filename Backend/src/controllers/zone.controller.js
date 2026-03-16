@@ -7,6 +7,7 @@ exports.create = async (req, res, next) => {
     next(e);
   }
 };
+
 exports.update = async (req, res, next) => {
   try {
     res.json(
@@ -16,6 +17,7 @@ exports.update = async (req, res, next) => {
     next(e);
   }
 };
+
 exports.updateStatus = async (req, res, next) => {
   try {
     res.json(
@@ -25,12 +27,15 @@ exports.updateStatus = async (req, res, next) => {
     next(e);
   }
 };
+
 exports.list = async (req, res, next) => {
   try {
     const filters = {
       market_id: req.query.market_id,
       trangThai: req.query.trangThai,
       q: req.query.q,
+      tenCho: req.query.tenCho,
+      market_trangThai: req.query.market_trangThai,
     };
     res.json(await S.list(req.user.tenant_id, filters, req.pagination));
   } catch (e) {
@@ -38,10 +43,10 @@ exports.list = async (req, res, next) => {
   }
 };
 
-exports.getById = async (req, res, next) => { 
-  try { 
-    res.json(await S.getById(req.user.tenant_id, Number(req.params.id))); 
-  } catch (e) { 
-    next(e); 
-  } 
+exports.getById = async (req, res, next) => {
+  try {
+    res.json(await S.getById(req.user.tenant_id, Number(req.params.id)));
+  } catch (e) {
+    next(e);
+  }
 };

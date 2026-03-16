@@ -1,132 +1,180 @@
-const marketModel = require("../models/market.model");
+const db = require("../config/db");
+const { isDuplicateKey } = require("./_dbErrors");
+const { assertMarketQuota } = require("../utils/quota");
 
 const ALLOWED_SORT = new Set([
   "created_at",
   "updated_at",
   "market_id",
-  "tenCho"
+  "tenCho",
+  "diaChi",
+  "dienTich",
+  "trangThai",
 ]);
 
-function pickSort(sort) {
-  return ALLOWED_SORT.has(sort) ? sort : "created_at";
+const pickSort = (s) => (ALLOWED_SORT.has(s) ? s : "created_at");
+
+async function existsName(tenant_id, tenCho, excludeId = null) {
+  const params = [tenant_id, tenCho];
+  let sql = `SELECT market_id FROM market WHERE tenant_id = ? AND tenCho = ?`;
+
+  if (excludeId) {
+    sql += ` AND market_id <> ?`;
+    params.push(excludeId);
+  }
+
+  const [rows] = await db.query(sql + ` LIMIT 1`, params);
+  return rows.length > 0;
+}
+
+async function getMarketRaw(tenant_id, market_id) {
+  const [rows] = await db.query(
+    `SELECT * FROM market WHERE tenant_id = ? AND market_id = ? LIMIT 1`,
+    [tenant_id, market_id],
+  );
+  return rows[0] || null;
 }
 
 exports.create = async (tenant_id, body) => {
-
-  const tenCho = (body.tenCho || "").trim();
+  const tenCho = String(body.tenCho || "").trim();
+  const diaChi = body.diaChi ?? null;
+  const dienTich = body.dienTich ?? null;
 
   if (tenCho.length < 2) {
-    throw Object.assign(
-      new Error("tenCho is required"),
-      { statusCode: 400 }
-    );
+    throw Object.assign(new Error("tenCho is required"), { statusCode: 400 });
   }
 
-  const plan = await marketModel.getCurrentPlan(tenant_id);
-
-  if (!plan) {
-    throw Object.assign(
-      new Error("Subscription không hợp lệ hoặc đã hết hạn"),
-      { statusCode: 403 }
-    );
+  if (dienTich != null && Number(dienTich) <= 0) {
+    throw Object.assign(new Error("dienTich must be greater than 0"), {
+      statusCode: 400,
+    });
   }
 
-  const totalMarkets = await marketModel.countMarkets(tenant_id);
+  await assertMarketQuota(tenant_id);
 
-  if (totalMarkets >= Number(plan.gioiHanSoCho || 0)) {
-    throw Object.assign(
-      new Error("Đã vượt quá số lượng chợ cho phép của gói"),
-      { statusCode: 400 }
-    );
+  if (await existsName(tenant_id, tenCho)) {
+    throw Object.assign(new Error("tenCho already exists in this tenant"), {
+      statusCode: 409,
+    });
   }
 
-  const exists = await marketModel.existsName(tenant_id, tenCho);
-
-  if (exists) {
-    throw Object.assign(
-      new Error("tenCho already exists in this tenant"),
-      { statusCode: 409 }
+  try {
+    const [r] = await db.query(
+      `INSERT INTO market (tenant_id, tenCho, diaChi, dienTich, trangThai)
+       VALUES (?, ?, ?, ?, 'active')`,
+      [tenant_id, tenCho, diaChi, dienTich],
     );
+
+    return { market_id: r.insertId, tenant_id, tenCho };
+  } catch (e) {
+    if (isDuplicateKey(e)) {
+      throw Object.assign(new Error("tenCho already exists in this tenant"), {
+        statusCode: 409,
+      });
+    }
+    throw e;
   }
-
-  const market_id = await marketModel.create(tenant_id, {
-    tenCho,
-    diaChi: body.diaChi ?? null,
-    dienTich: body.dienTich ?? null
-  });
-
-  return { market_id, tenant_id, tenCho };
 };
 
 exports.update = async (tenant_id, market_id, body) => {
+  const current = await getMarketRaw(tenant_id, market_id);
+
+  if (!current) {
+    throw Object.assign(new Error("Market not found"), { statusCode: 404 });
+  }
 
   const tenCho =
-    body.tenCho != null ? String(body.tenCho).trim() : null;
+    body.tenCho !== undefined
+      ? String(body.tenCho || "").trim()
+      : current.tenCho;
 
-  if (tenCho) {
-    const exists = await marketModel.existsName(
-      tenant_id,
-      tenCho,
-      market_id
+  const diaChi = body.diaChi !== undefined ? body.diaChi : current.diaChi;
+  const dienTich =
+    body.dienTich !== undefined ? body.dienTich : current.dienTich;
+
+  if (tenCho.length < 2) {
+    throw Object.assign(new Error("tenCho is required"), { statusCode: 400 });
+  }
+
+  if (dienTich != null && Number(dienTich) <= 0) {
+    throw Object.assign(new Error("dienTich must be greater than 0"), {
+      statusCode: 400,
+    });
+  }
+
+  if (await existsName(tenant_id, tenCho, market_id)) {
+    throw Object.assign(new Error("tenCho already exists in this tenant"), {
+      statusCode: 409,
+    });
+  }
+
+  try {
+    await db.query(
+      `UPDATE market
+       SET tenCho = ?, diaChi = ?, dienTich = ?
+       WHERE tenant_id = ? AND market_id = ?`,
+      [tenCho, diaChi, dienTich, tenant_id, market_id],
     );
 
-    if (exists) {
+    return { ok: true };
+  } catch (e) {
+    if (isDuplicateKey(e)) {
+      throw Object.assign(new Error("tenCho already exists in this tenant"), {
+        statusCode: 409,
+      });
+    }
+    throw e;
+  }
+};
+
+exports.updateStatus = async (tenant_id, market_id, body) => {
+  const trangThai = body.trangThai;
+
+  if (!["active", "locked"].includes(trangThai)) {
+    throw Object.assign(new Error("Invalid trangThai"), { statusCode: 400 });
+  }
+
+  const current = await getMarketRaw(tenant_id, market_id);
+
+  if (!current) {
+    throw Object.assign(new Error("Market not found"), { statusCode: 404 });
+  }
+
+  if (trangThai === "locked") {
+    const [[child]] = await db.query(
+      `SELECT
+         (SELECT COUNT(*) FROM zone
+           WHERE tenant_id = ? AND market_id = ? AND trangThai = 'active') AS activeZones,
+         (SELECT COUNT(*)
+            FROM kiosk k
+            JOIN zone z ON z.zone_id = k.zone_id AND z.tenant_id = k.tenant_id
+           WHERE k.tenant_id = ? AND z.market_id = ?
+             AND k.trangThai IN ('available','occupied','maintenance')) AS activeKiosks`,
+      [tenant_id, market_id, tenant_id, market_id],
+    );
+
+    if (
+      Number(child.activeZones || 0) > 0 ||
+      Number(child.activeKiosks || 0) > 0
+    ) {
       throw Object.assign(
-        new Error("tenCho already exists in this tenant"),
-        { statusCode: 409 }
+        new Error(
+          "Cannot lock market while it still has active zones or kiosks",
+        ),
+        { statusCode: 409 },
       );
     }
   }
 
-  const affected = await marketModel.update(
-    tenant_id,
-    market_id,
-    {
-      tenCho,
-      diaChi: body.diaChi ?? null,
-      dienTich: body.dienTich ?? null
-    }
+  await db.query(
+    `UPDATE market SET trangThai = ? WHERE tenant_id = ? AND market_id = ?`,
+    [trangThai, tenant_id, market_id],
   );
-
-  if (!affected) {
-    throw Object.assign(
-      new Error("Market not found"),
-      { statusCode: 404 }
-    );
-  }
-
-  return { ok: true };
-};
-
-exports.updateStatus = async (tenant_id, market_id, body) => {
-
-  const { trangThai } = body;
-
-  if (!["active", "locked"].includes(trangThai)) {
-    throw Object.assign(
-      new Error("Invalid trangThai"),
-      { statusCode: 400 }
-    );
-  }
-
-  const affected = await marketModel.updateStatus(
-    tenant_id,
-    market_id,
-    trangThai
-  );
-
-  if (!affected) {
-    throw Object.assign(
-      new Error("Market not found"),
-      { statusCode: 404 }
-    );
-  }
 
   return { ok: true };
 };
 
 exports.list = async (tenant_id, filters, pg) => {
-
   const where = [`m.tenant_id = ?`];
   const params = [tenant_id];
 
@@ -135,25 +183,44 @@ exports.list = async (tenant_id, filters, pg) => {
     params.push(filters.trangThai);
   }
 
+  if (filters.diaChi) {
+    where.push(`m.diaChi LIKE ?`);
+    params.push(`%${filters.diaChi}%`);
+  }
+
+  if (filters.min_dienTich != null && filters.min_dienTich !== "") {
+    where.push(`m.dienTich >= ?`);
+    params.push(Number(filters.min_dienTich));
+  }
+
+  if (filters.max_dienTich != null && filters.max_dienTich !== "") {
+    where.push(`m.dienTich <= ?`);
+    params.push(Number(filters.max_dienTich));
+  }
+
   if (filters.q) {
     where.push(`(m.tenCho LIKE ? OR m.diaChi LIKE ?)`);
     params.push(`%${filters.q}%`, `%${filters.q}%`);
   }
 
-  const whereSQL = where.join(" AND ");
-
   const sort = pickSort(pg.sort);
-  const order = pg.order;
+  const order =
+    String(pg.order || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
 
-  const total = await marketModel.count(whereSQL, params);
-
-  const rows = await marketModel.list(
-    whereSQL,
+  const [[{ total }]] = await db.query(
+    `SELECT COUNT(*) AS total
+     FROM market m
+     WHERE ${where.join(" AND ")}`,
     params,
-    sort,
-    order,
-    pg.limit,
-    pg.offset
+  );
+
+  const [rows] = await db.query(
+    `SELECT m.*
+     FROM market m
+     WHERE ${where.join(" AND ")}
+     ORDER BY m.${sort} ${order}
+     LIMIT ? OFFSET ?`,
+    [...params, pg.limit, pg.offset],
   );
 
   return {
@@ -162,22 +229,17 @@ exports.list = async (tenant_id, filters, pg) => {
       page: pg.page,
       limit: pg.limit,
       total,
-      totalPages: Math.ceil(total / pg.limit)
-    }
+      totalPages: Math.ceil(total / pg.limit),
+    },
   };
 };
 
 exports.getById = async (tenant_id, market_id) => {
-
-  const market = await marketModel.getById(tenant_id, market_id);
+  const market = await getMarketRaw(tenant_id, market_id);
 
   if (!market) {
-    throw Object.assign(
-      new Error("Market not found"),
-      { statusCode: 404 }
-    );
+    throw Object.assign(new Error("Market not found"), { statusCode: 404 });
   }
 
   return market;
-
 };

@@ -1,12 +1,25 @@
 const db = require("../config/db");
-const model = require("../models/kioskAssignment.model");
+const { isDuplicateKey } = require("./_dbErrors");
+
+const ALLOWED_SORT = new Set([
+  "created_at",
+  "updated_at",
+  "assignment_id",
+  "ngayBatDau",
+  "ngayKetThuc",
+  "trangThai",
+]);
+
+const pickSort = (s) => (ALLOWED_SORT.has(s) ? s : "created_at");
 
 function todayYMD() {
   const d = new Date();
-  return d.toISOString().slice(0, 10);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-// assign kiosk
 exports.assign = async (tenant_id, body) => {
   const kiosk_id = Number(body.kiosk_id);
   const merchant_id = Number(body.merchant_id);
@@ -15,7 +28,7 @@ exports.assign = async (tenant_id, body) => {
   if (!kiosk_id || !merchant_id || !ngayBatDau) {
     throw Object.assign(
       new Error("kiosk_id, merchant_id, ngayBatDau are required"),
-      { statusCode: 400 }
+      { statusCode: 400 },
     );
   }
 
@@ -24,51 +37,121 @@ exports.assign = async (tenant_id, body) => {
   try {
     await conn.beginTransaction();
 
-    const active = await model.getActiveByKiosk(conn, tenant_id, kiosk_id);
+    const [[kiosk]] = await conn.query(
+      `SELECT kiosk_id, trangThai
+       FROM kiosk
+       WHERE tenant_id = ? AND kiosk_id = ?
+       FOR UPDATE`,
+      [tenant_id, kiosk_id],
+    );
+
+    if (!kiosk) {
+      throw Object.assign(new Error("Kiosk not found"), { statusCode: 404 });
+    }
+
+    if (kiosk.trangThai !== "available") {
+      throw Object.assign(
+        new Error("Only kiosk with status 'available' can be assigned"),
+        { statusCode: 409 },
+      );
+    }
+
+    const [[merchant]] = await conn.query(
+      `SELECT merchant_id, trangThai
+       FROM merchant
+       WHERE tenant_id = ? AND merchant_id = ?
+       FOR UPDATE`,
+      [tenant_id, merchant_id],
+    );
+
+    if (!merchant) {
+      throw Object.assign(new Error("Merchant not found"), {
+        statusCode: 404,
+      });
+    }
+
+    if (merchant.trangThai !== "active") {
+      throw Object.assign(new Error("Cannot assign inactive merchant"), {
+        statusCode: 409,
+      });
+    }
+
+    const [[active]] = await conn.query(
+      `SELECT assignment_id
+       FROM kiosk_assignment
+       WHERE tenant_id = ? AND kiosk_id = ? AND trangThai = 'active'
+       LIMIT 1
+       FOR UPDATE`,
+      [tenant_id, kiosk_id],
+    );
 
     if (active) {
       throw Object.assign(
         new Error("Kiosk already assigned. End current assignment first."),
-        { statusCode: 409 }
+        { statusCode: 409 },
       );
     }
 
-    const assignment_id = await model.create(conn, {
-      tenant_id,
-      kiosk_id,
-      merchant_id,
-      ngayBatDau,
-    });
+    const [r] = await conn.query(
+      `INSERT INTO kiosk_assignment
+        (tenant_id, kiosk_id, merchant_id, ngayBatDau, trangThai)
+       VALUES (?, ?, ?, ?, 'active')`,
+      [tenant_id, kiosk_id, merchant_id, ngayBatDau],
+    );
 
-    await model.updateKioskStatus(conn, tenant_id, kiosk_id, "occupied");
+    await conn.query(
+      `UPDATE kiosk
+       SET trangThai = 'occupied',
+           updated_at = NOW()
+       WHERE tenant_id = ? AND kiosk_id = ?`,
+      [tenant_id, kiosk_id],
+    );
 
     await conn.commit();
 
     return {
-      assignment_id,
+      assignment_id: r.insertId,
+      tenant_id,
       kiosk_id,
       merchant_id,
       ngayBatDau,
       trangThai: "active",
     };
-  } catch (err) {
+  } catch (e) {
     await conn.rollback();
-    throw err;
+
+    if (
+      isDuplicateKey(e) ||
+      String(e.message || "").includes("uq_ka_active_one")
+    ) {
+      throw Object.assign(
+        new Error(
+          "Kiosk already assigned (active). End current assignment first.",
+        ),
+        { statusCode: 409 },
+      );
+    }
+
+    throw e;
   } finally {
     conn.release();
   }
 };
 
-
-// end assignment
-exports.end = async (tenant_id, assignment_id) => {
-  const conn = await db.getConnection();
+exports.endAssignment = async (tenant_id, assignment_id) => {
   const ngayKetThuc = todayYMD();
+  const conn = await db.getConnection();
 
   try {
     await conn.beginTransaction();
 
-    const ka = await model.getById(conn, tenant_id, assignment_id);
+    const [[ka]] = await conn.query(
+      `SELECT assignment_id, kiosk_id, trangThai
+       FROM kiosk_assignment
+       WHERE tenant_id = ? AND assignment_id = ?
+       FOR UPDATE`,
+      [tenant_id, assignment_id],
+    );
 
     if (!ka) {
       throw Object.assign(new Error("Assignment not found"), {
@@ -82,52 +165,60 @@ exports.end = async (tenant_id, assignment_id) => {
       });
     }
 
-    await model.endAssignment(conn, tenant_id, assignment_id, ngayKetThuc);
+    await conn.query(
+      `UPDATE kiosk_assignment
+       SET ngayKetThuc = ?, trangThai = 'ended', updated_at = NOW()
+       WHERE tenant_id = ? AND assignment_id = ?`,
+      [ngayKetThuc, tenant_id, assignment_id],
+    );
 
-    await model.updateKioskStatus(conn, tenant_id, ka.kiosk_id, "available");
+    await conn.query(
+      `UPDATE kiosk
+       SET trangThai = 'available', updated_at = NOW()
+       WHERE tenant_id = ? AND kiosk_id = ?`,
+      [tenant_id, ka.kiosk_id],
+    );
 
     await conn.commit();
 
     return {
       ok: true,
       assignment_id,
+      kiosk_id: ka.kiosk_id,
       ngayKetThuc,
       trangThai: "ended",
+      kioskTrangThai: "available",
     };
-  } catch (err) {
+  } catch (e) {
     await conn.rollback();
-    throw err;
+    throw e;
   } finally {
     conn.release();
   }
 };
 
-
-// list assignment
 exports.list = async (tenant_id, filters, pg) => {
   const where = ["ka.tenant_id = ?"];
   const params = [tenant_id];
 
+  if (filters.market_id) {
+    where.push("mk.market_id = ?");
+    params.push(Number(filters.market_id));
+  }
+
+  if (filters.zone_id) {
+    where.push("z.zone_id = ?");
+    params.push(Number(filters.zone_id));
+  }
+
   if (filters.kiosk_id) {
-    const kiosk_id = Number(filters.kiosk_id);
-
-    if (!Number.isInteger(kiosk_id)) {
-      throw Object.assign(new Error("Invalid kiosk_id"), { statusCode: 400 });
-    }
-
     where.push("ka.kiosk_id = ?");
-    params.push(kiosk_id);
+    params.push(Number(filters.kiosk_id));
   }
 
   if (filters.merchant_id) {
-    const merchant_id = Number(filters.merchant_id);
-
-    if (!Number.isInteger(merchant_id)) {
-      throw Object.assign(new Error("Invalid merchant_id"), { statusCode: 400 });
-    }
-
     where.push("ka.merchant_id = ?");
-    params.push(merchant_id);
+    params.push(Number(filters.merchant_id));
   }
 
   if (filters.trangThai) {
@@ -135,62 +226,115 @@ exports.list = async (tenant_id, filters, pg) => {
     params.push(filters.trangThai);
   }
 
-  // whitelist sort
-  const allowedSort = ["created_at", "ngayBatDau", "ngayKetThuc"];
-  const sort = allowedSort.includes(pg.sort) ? pg.sort : "created_at";
+  if (filters.ngayBatDau_from) {
+    where.push("ka.ngayBatDau >= ?");
+    params.push(filters.ngayBatDau_from);
+  }
 
-  // chỉ cho ASC hoặc DESC
-  const order = pg.order === "ASC" ? "ASC" : "DESC";
+  if (filters.ngayBatDau_to) {
+    where.push("ka.ngayBatDau <= ?");
+    params.push(filters.ngayBatDau_to);
+  }
 
-  // ép kiểu limit offset
-  const limit = Number(pg.limit);
-    const offset = Number(pg.offset);
+  if (filters.ngayKetThuc_from) {
+    where.push("ka.ngayKetThuc >= ?");
+    params.push(filters.ngayKetThuc_from);
+  }
 
-    if (!Number.isInteger(limit) || limit <= 0) {
-    limit = 10;
-    }
+  if (filters.ngayKetThuc_to) {
+    where.push("ka.ngayKetThuc <= ?");
+    params.push(filters.ngayKetThuc_to);
+  }
 
-    if (!Number.isInteger(offset) || offset < 0) {
-    offset = 0;
-    }
+  if (filters.q) {
+    where.push(
+      "(m.hoTen LIKE ? OR k.maKiosk LIKE ? OR z.tenKhu LIKE ? OR mk.tenCho LIKE ?)",
+    );
+    params.push(
+      `%${filters.q}%`,
+      `%${filters.q}%`,
+      `%${filters.q}%`,
+      `%${filters.q}%`,
+    );
+  }
 
-  const total = await model.count(where.join(" AND "), params);
+  const sort = pickSort(pg.sort);
+  const order =
+    String(pg.order || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
 
-  console.log("limit:", limit);
-console.log("offset:", offset);
-console.log("sort:", sort);
-console.log("order:", order);
+  const fromJoin = `
+    FROM kiosk_assignment ka
+    JOIN merchant m
+      ON m.merchant_id = ka.merchant_id
+     AND m.tenant_id = ka.tenant_id
+    JOIN kiosk k
+      ON k.kiosk_id = ka.kiosk_id
+     AND k.tenant_id = ka.tenant_id
+    JOIN zone z
+      ON z.zone_id = k.zone_id
+     AND z.tenant_id = k.tenant_id
+    JOIN market mk
+      ON mk.market_id = z.market_id
+     AND mk.tenant_id = z.tenant_id
+  `;
 
-  const rows = await model.list(
-    where.join(" AND "),
+  const [[{ total }]] = await db.query(
+    `SELECT COUNT(*) AS total
+     ${fromJoin}
+     WHERE ${where.join(" AND ")}`,
     params,
-    sort,
-    order,
-    limit,
-    offset
+  );
+
+  const [rows] = await db.query(
+    `SELECT ka.*, m.hoTen AS merchantName, m.soDienThoai, m.CCCD,
+            k.maKiosk, k.viTri, k.trangThai AS kioskTrangThai,
+            z.zone_id, z.tenKhu, mk.market_id, mk.tenCho
+     ${fromJoin}
+     WHERE ${where.join(" AND ")}
+     ORDER BY ka.${sort} ${order}
+     LIMIT ? OFFSET ?`,
+    [...params, pg.limit, pg.offset],
   );
 
   return {
     data: rows,
     meta: {
       page: pg.page,
-      limit,
+      limit: pg.limit,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / pg.limit),
     },
   };
 };
 
-
-// get detail
 exports.getById = async (tenant_id, assignment_id) => {
-  const row = await model.getById(null, tenant_id, assignment_id);
+  const [rows] = await db.query(
+    `SELECT ka.*, m.hoTen AS merchantName, m.soDienThoai, m.CCCD,
+            k.maKiosk, k.viTri, k.trangThai AS kioskTrangThai,
+            z.zone_id, z.tenKhu, mk.market_id, mk.tenCho
+     FROM kiosk_assignment ka
+     JOIN merchant m
+       ON m.merchant_id = ka.merchant_id
+      AND m.tenant_id = ka.tenant_id
+     JOIN kiosk k
+       ON k.kiosk_id = ka.kiosk_id
+      AND k.tenant_id = ka.tenant_id
+     JOIN zone z
+       ON z.zone_id = k.zone_id
+      AND z.tenant_id = k.tenant_id
+     JOIN market mk
+       ON mk.market_id = z.market_id
+      AND mk.tenant_id = z.tenant_id
+     WHERE ka.tenant_id = ? AND ka.assignment_id = ?
+     LIMIT 1`,
+    [tenant_id, assignment_id],
+  );
 
-  if (!row) {
+  if (!rows.length) {
     throw Object.assign(new Error("Assignment not found"), {
       statusCode: 404,
     });
   }
 
-  return row;
+  return rows[0];
 };
