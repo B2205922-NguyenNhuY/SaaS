@@ -1,5 +1,9 @@
 const db = require("../config/db");
+<<<<<<< HEAD
 const bcrypt = require("bcrypt");
+=======
+const bcrypt = require("bcryptjs");
+>>>>>>> dd1d201 (update chức năng và csdl)
 const { isDuplicateKey } = require("./_dbErrors");
 
 const ALLOWED_SORT = new Set([

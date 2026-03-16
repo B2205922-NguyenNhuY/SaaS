@@ -33,11 +33,11 @@ router.get(
 );
 
 router.get(
-  "/list", 
-  verifyToken, 
+  "/list",
+  verifyToken,
   authorizeRoles(ROLES.SUPER_ADMIN),
   checkUserActive,
-  tenantController.listTenants
+  tenantController.listTenants,
 );
 
 router.get(
