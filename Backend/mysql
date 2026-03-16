@@ -1,12 +1,17 @@
+DROP DATABASE saas;
 
 CREATE DATABASE IF NOT EXISTS saas
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 USE saas;
 
+SET time_zone = '+07:00';
+
 CREATE TABLE super_admin (
   admin_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(150) NOT NULL UNIQUE,
+  soDienThoai VARCHAR(15) UNIQUE NOT NULL,
+  hoTen VARCHAR(100) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   trangThai ENUM('active','suspended') DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -35,16 +40,20 @@ CREATE TABLE plan (
   gioiHanSoKiosk INT UNSIGNED NOT NULL,
   gioiHanUser INT UNSIGNED NOT NULL,
   gioiHanSoCho INT UNSIGNED NOT NULL,
-  moTa TEXT,
+  moTa TEXT ,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_plan_name (tenGoi)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+ALTER TABLE plan
+ADD COLUMN trangThai ENUM('active','inactive') NOT NULL DEFAULT 'active';
 
 CREATE TABLE plan_subscription (
   subscription_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id INT UNSIGNED NOT NULL,
   plan_id INT UNSIGNED NOT NULL,
-  trangThai ENUM('active','expired','trial','cancelled') DEFAULT 'active',
+  stripe_subscription_id VARCHAR(255) NULL,
+  trangThai ENUM('active','expired','pending','trial','cancelled') not null,
   ngayBatDau DATETIME NOT NULL,
   ngayKetThuc DATETIME NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -68,14 +77,10 @@ CREATE TABLE plan_subscription (
 -- =========================================================
 CREATE TABLE role (
   role_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  tenant_id INT UNSIGNED NOT NULL,
-  tenVaiTro VARCHAR(100) NOT NULL,
+  tenVaiTro VARCHAR(100) UNIQUE NOT NULL,
   danhSachQuyen json,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_role_tenant_name (tenant_id, tenVaiTro),
-  UNIQUE KEY uq_role_id_tenant (role_id, tenant_id),
-  CONSTRAINT fk_role_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE users (
@@ -117,7 +122,7 @@ CREATE TABLE market (
 
   UNIQUE KEY uq_market_tenant_name (tenant_id, tenCho),
   UNIQUE KEY uq_market_id_tenant (market_id, tenant_id),
-
+  KEY idx_market_tenant (tenant_id),
   CONSTRAINT fk_market_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -169,7 +174,8 @@ CREATE TABLE kiosk (
   KEY idx_kiosk_zone (zone_id),
   KEY idx_kiosk_tenant (tenant_id),
   KEY idx_kiosk_status (tenant_id, trangThai),
-
+  KEY idx_kiosk_type (type_id),
+  
   CONSTRAINT fk_kiosk_zone  FOREIGN KEY (zone_id, tenant_id) REFERENCES zone(zone_id, tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_kiosk_type  FOREIGN KEY (type_id) REFERENCES kiosk_type(type_id) ON DELETE RESTRICT,
   CONSTRAINT fk_kiosk_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
@@ -180,7 +186,7 @@ CREATE TABLE kiosk (
 CREATE TABLE merchant (
   merchant_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id INT UNSIGNED NOT NULL,
-
+  password_hash VARCHAR(255) NOT NULL,
   hoTen VARCHAR(150) NOT NULL,
   soDienThoai VARCHAR(15),
   CCCD CHAR(12) not null,
@@ -246,7 +252,7 @@ CREATE TABLE fee_schedule (
 
   UNIQUE KEY uq_fee_tenant_name (tenant_id, tenBieuPhi),
   UNIQUE KEY uq_fee_id_tenant (fee_id, tenant_id),
-
+  KEY idx_fee_tenant (tenant_id),
   CONSTRAINT fk_fee_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -292,7 +298,7 @@ CREATE TABLE collection_period (
 
   UNIQUE KEY uq_period_range (tenant_id, ngayBatDau, ngayKetThuc),
   UNIQUE KEY uq_period_id_tenant (period_id, tenant_id),
-
+  KEY idx_period_tenant (tenant_id),
   CONSTRAINT fk_period_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -330,6 +336,7 @@ CREATE TABLE charge (
   -- snapshot để lịch sử không bị lệch khi đổi biểu phí
   donGiaApDung DECIMAL(12,2) NOT NULL,
   hinhThucApDung ENUM('ngay','thang') NOT NULL,
+  discountApDung DECIMAL(5,2) DEFAULT 0,
 
   soTienPhaiThu DECIMAL(12,2) NOT NULL,
   soTienDaThu DECIMAL(12,2) DEFAULT 0,
@@ -420,8 +427,47 @@ CREATE TABLE payment (
   
   UNIQUE KEY uq_payment_id_tenant (payment_id, tenant_id),
   
-  FOREIGN KEY (subscription_id, tenant_id) REFERENCES plan_subscription(subscription_id, tenant_id) ON DELETE RESTRICT,
-  FOREIGN KEY (receipt_id, tenant_id) REFERENCES receipt(receipt_id, tenant_id) ON DELETE RESTRICT
+  FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT,
+  FOREIGN KEY (subscription_id) REFERENCES plan_subscription(subscription_id) ON DELETE RESTRICT,
+  FOREIGN KEY (receipt_id) REFERENCES receipt(receipt_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE notification (
+  notification_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NULL,
+  title VARCHAR(150) NOT NULL,
+  content TEXT NOT NULL,
+  type ENUM('tenant','system') NOT NULL DEFAULT 'tenant',
+  created_by_tenantadmin INT UNSIGNED NULL,
+  created_by_superadmin INT UNSIGNED NULL,
+  expires_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_notification_tenant (tenant_id),
+  KEY idx_notification_type (type),
+  CONSTRAINT fk_notification_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE SET NULL,
+  CONSTRAINT fk_notification_user FOREIGN KEY (created_by_tenantadmin) REFERENCES users(user_id) ON DELETE SET NULL,
+  CONSTRAINT fk_notification_super_admin FOREIGN KEY (created_by_superadmin) REFERENCES super_admin(admin_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE notification_read (
+  -- Sửa từ BIGINT thành INT để khớp với bảng notification
+  notification_id INT UNSIGNED NOT NULL, 
+  user_id INT UNSIGNED NOT NULL,
+  tenant_id INT UNSIGNED NOT NULL,
+  read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY(notification_id, user_id),
+
+  CONSTRAINT fk_nr_notification
+    FOREIGN KEY(notification_id)
+    REFERENCES notification(notification_id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_nr_user
+    FOREIGN KEY(user_id, tenant_id)
+    REFERENCES users(user_id, tenant_id)
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
@@ -450,35 +496,3 @@ CREATE TABLE audit_log (
   CONSTRAINT fk_audit_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant(tenant_id) ON DELETE set null,
   CONSTRAINT fk_audit_superadmin FOREIGN KEY (super_admin_id) REFERENCES super_admin(admin_id) ON DELETE set null
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-/* bảng local_payment tạo ở frontend (khỏi vẽ vào ERD)
-CREATE TABLE local_payment (
-          local_id INTEGER PRIMARY KEY AUTOINCREMENT,
-          tenant_id INTEGER NOT NULL,
-          charge_id INTEGER NOT NULL,
-          merchant_id INTEGER NOT NULL,
-          amount REAL NOT NULL,
-          payment_method TEXT NOT NULL,
-          paid_at TEXT NOT NULL,
-          note TEXT,
-          local_image_path TEXT,
-          server_receipt_id INTEGER,
-          sync_status TEXT DEFAULT 'pending'
-        )
-*/
-
-INSERT INTO tenant (tenBanQuanLy, diaChi, soDienThoai, email, trangThai)
-VALUES ('Ban quan ly Cho Demo', 'Can Tho', '0987654321', 'tenant1@demo.com', 'active');
--- Chỗ mật khẩu chạy file hash.js để ra mật khẩu sau khi băm rồi thêm vào
-
-/* 
-- Khi bắt đầu và kết thúc ca sẽ bấm nút
-- Chỉnh lại payment cho plan và payment cho charge/reciept (dùng stripe api test)
-- nếu dùng trial thì sau khi hết hạn mà ko đăng kí gói thì sẽ khóa dữ liệu
-- Đăng nhập rồi có thể đổi mật khẩu
-- 
-- Mỗi charge = mỗi kiosk, frontend hiển thị hết charge của merchant đó, tổng charge = 1 receipt
-- 1 Merchant có nhiều kiosk, Thanh toán sẽ  thanh toán tổng, thanh toán chung sẽ trừ từ kỳ xa nhất
-- Khi đăng ký gói mới còn hạn gói cũ -> đổi suscription cũ thành 'expired' và tạo suscription mới 
-- target_id và entity_id dùng frontend xử lý lấy list
-*/
