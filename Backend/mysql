@@ -104,7 +104,7 @@ CREATE TABLE users (
   KEY idx_user_role (role_id),
 
   CONSTRAINT fk_user_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_user_role   FOREIGN KEY (role_id, tenant_id) REFERENCES role(role_id, tenant_id) ON DELETE RESTRICT
+  CONSTRAINT fk_user_role FOREIGN KEY (role_id) REFERENCES role(role_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =========================================================
