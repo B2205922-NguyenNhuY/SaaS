@@ -101,6 +101,26 @@ exports.changePassword = async (id, newPassword) => {
 
 };
 
+exports.listSuperAdmins = async (filters) => {
+
+  const { page, limit } = filters;
+
+  const offset = (page - 1) * limit;
+
+  const rows = await superAdminModel.listSuperAdmins(filters, offset, limit);
+
+  const total = await superAdminModel.countSuperAdmins(filters);
+
+  return {
+    data: rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+};
 
 //Update Super Admin
 exports.updateSuperAdminStatus = async(id, trangThai) => {

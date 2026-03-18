@@ -12,7 +12,15 @@ const { checkUserActive } = require("../middlewares/checkUserActive.middlewares"
 
 router.post("/", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, planController.createPlan);
 router.get("/", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive,planController.getAllPlans);
+router.get("/list", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive, planController.listPlans);
 router.get("/:id", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive, planController.getPlanById);
 router.put("/:id", verifyToken, authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, planController.updatePlan);
+router.patch(
+    "/:id/inactive",
+    verifyToken,
+    authorizeRoles(ROLES.SUPER_ADMIN), 
+    checkUserActive,
+    planController.inactivePlan
+);
 
 module.exports = router;

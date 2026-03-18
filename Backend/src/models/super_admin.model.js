@@ -37,6 +37,88 @@ exports.getSuperAdminById = async (id) => {
     return rows[0];
 };
 
+exports.listSuperAdmins = async (filters, offset, limit) => {
+
+  let sql = `
+    SELECT admin_id, email, hoTen, trangThai, created_at
+    FROM super_admin
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.keyword) {
+    sql += ` AND (email LIKE ? OR hoTen LIKE ?)`;
+    params.push(`%${filters.keyword}%`, `%${filters.keyword}%`);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.created_from) {
+    sql += ` AND created_at >= ?`;
+    params.push(filters.created_from);
+  }
+
+  if (filters.created_to) {
+    sql += ` AND created_at <= ?`;
+    params.push(filters.created_to);
+  }
+
+  const allowedSort = ["created_at","email","hoTen"];
+
+  const sortBy = allowedSort.includes(filters.sortBy)
+    ? filters.sortBy
+    : "created_at";
+
+  const sortOrder = filters.sortOrder === "ASC" ? "ASC" : "DESC";
+
+  sql += ` ORDER BY ${sortBy} ${sortOrder}`;
+
+  sql += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+
+
+  const [rows] = await db.execute(sql, params);
+
+  return rows;
+};
+
+exports.countSuperAdmins = async (filters) => {
+
+  let sql = `
+    SELECT COUNT(*) as total
+    FROM super_admin
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.keyword) {
+    sql += ` AND (email LIKE ? OR hoTen LIKE ?)`;
+    params.push(`%${filters.keyword}%`, `%${filters.keyword}%`);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.created_from) {
+    sql += ` AND created_at >= ?`;
+    params.push(filters.created_from);
+  }
+
+  if (filters.created_to) {
+    sql += ` AND created_at <= ?`;
+    params.push(filters.created_to);
+  }
+
+  const [rows] = await db.execute(sql, params);
+
+  return rows[0].total;
+};
 
 //Cập nhật thông tin user
 exports.updateSuperAdminInfo = async (id, data) => {

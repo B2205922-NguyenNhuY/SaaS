@@ -31,6 +31,15 @@ router.get(
   checkUserActive,
   tenantController.getAllTenants,
 );
+
+router.get(
+  "/list", 
+  verifyToken, 
+  authorizeRoles(ROLES.SUPER_ADMIN),
+  checkUserActive,
+  tenantController.listTenants
+);
+
 router.get(
   "/:id",
   verifyToken,
@@ -38,6 +47,7 @@ router.get(
   checkUserActive,
   tenantController.getTenantById,
 );
+
 router.put(
   "/:id",
   verifyToken,

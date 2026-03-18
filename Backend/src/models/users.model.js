@@ -1,8 +1,9 @@
 const db = require("../config/db");
 
 //Tạo User
-exports.createUser = async (data) => {
-    const {
+exports.createUser = async (conn, data) => {
+  connection = conn || db;
+  const {
         email,
         password_hash,
         hoTen,
@@ -12,11 +13,10 @@ exports.createUser = async (data) => {
         trangThai
     } = data;
 
-    const [result] = await db.execute(
+    const [result] = await connection.execute(
         "INSERT INTO users (email, password_hash, hoTen, soDienThoai, tenant_id, role_id, trangThai) VALUES (?, ?, ?, ?, ?, ?, ?)",
         [email, password_hash, hoTen, soDienThoai, tenant_id, role_id, trangThai]
     );
-
     return result;
 };
 
@@ -64,18 +64,232 @@ exports.getUserById = async (id) => {
 };
 
 //Lấy user thoe tenant
-exports.getUsersByTenant = async (tenant_id) => {
-  const [rows] = await db.execute(
-    `SELECT u.*, r.tenVaiTro
-     FROM users u
-     JOIN role r ON u.role_id = r.role_id
-     WHERE u.tenant_id = ?
-     AND u.trangThai != 'deleted'
-     ORDER BY u.created_at DESC`,
-    [tenant_id]
-  );
+exports.getUsersByTenant = async (filters, offset, limit) => {
+
+  let sql = `
+    SELECT 
+      u.user_id,
+      u.email,
+      u.hoTen,
+      u.soDienThoai,
+      u.trangThai,
+      u.created_at,
+      r.tenVaiTro
+    FROM users u
+    LEFT JOIN role r ON u.role_id = r.role_id
+    WHERE u.tenant_id = ?
+  `;
+
+  const params = [filters.tenant_id];
+
+  if (filters.role_id) {
+    sql += ` AND u.role_id = ?`;
+    params.push(filters.role_id);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND u.trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.keyword) {
+    sql += ` AND (
+      u.email LIKE ?
+      OR u.hoTen LIKE ?
+      OR u.soDienThoai LIKE ?
+    )`;
+
+    params.push(
+      `%${filters.keyword}%`,
+      `%${filters.keyword}%`,
+      `%${filters.keyword}%`
+    );
+  }
+
+  const allowedSort = ["created_at", "email", "hoTen"];
+
+  const sortBy = allowedSort.includes(filters.sortBy)
+    ? filters.sortBy
+    : "created_at";
+
+  const sortOrder = filters.sortOrder === "ASC" ? "ASC" : "DESC";
+
+  sql += ` ORDER BY u.${sortBy} ${sortOrder}`;
+
+  sql += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+
+
+  const [rows] = await db.execute(sql, params);
 
   return rows;
+};
+
+exports.listUsers = async (filters, offset, limit) => {
+
+  let sql = `
+    SELECT 
+      u.user_id,
+      u.email,
+      u.hoTen,
+      u.soDienThoai,
+      u.trangThai,
+      u.created_at,
+      r.tenVaiTro,
+      t.tenBanQuanLy
+    FROM users u
+    LEFT JOIN role r ON u.role_id = r.role_id
+    LEFT JOIN tenant t ON u.tenant_id = t.tenant_id
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.tenant_id) {
+    sql += ` AND u.tenant_id = ?`;
+    params.push(filters.tenant_id);
+  }
+
+  if (filters.role_id) {
+    sql += ` AND u.role_id = ?`;
+    params.push(filters.role_id);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND u.trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.keyword) {
+    sql += ` AND (
+      u.email LIKE ? 
+      OR u.hoTen LIKE ? 
+      OR u.soDienThoai LIKE ?
+    )`;
+    params.push(
+      `%${filters.keyword}%`,
+      `%${filters.keyword}%`,
+      `%${filters.keyword}%`
+    );
+  }
+
+  if (filters.created_from) {
+    sql += ` AND u.created_at >= ?`;
+    params.push(filters.created_from);
+  }
+
+  if (filters.created_to) {
+    sql += ` AND u.created_at <= ?`;
+    params.push(filters.created_to);
+  }
+
+  const allowedSort = ["created_at","email","hoTen"];
+
+  const sortBy = allowedSort.includes(filters.sortBy)
+    ? filters.sortBy
+    : "created_at";
+
+  const sortOrder = filters.sortOrder === "ASC" ? "ASC" : "DESC";
+
+  sql += ` ORDER BY u.${sortBy} ${sortOrder}`;
+
+  sql += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+
+  const [rows] = await db.execute(sql, params);
+
+  return rows;
+};
+
+exports.countUsersByTenant = async (filters) => {
+
+  let sql = `
+    SELECT COUNT(*) as total
+    FROM users u
+    WHERE u.tenant_id = ?
+  `;
+
+  const params = [filters.tenant_id];
+
+  if (filters.role_id) {
+    sql += ` AND u.role_id = ?`;
+    params.push(filters.role_id);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND u.trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.keyword) {
+    sql += ` AND (
+      u.email LIKE ?
+      OR u.hoTen LIKE ?
+      OR u.soDienThoai LIKE ?
+    )`;
+
+    params.push(
+      `%${filters.keyword}%`,
+      `%${filters.keyword}%`,
+      `%${filters.keyword}%`
+    );
+  }
+
+  const [rows] = await db.execute(sql, params);
+
+  return rows[0].total;
+};
+
+exports.countUsers = async (filters) => {
+
+  let sql = `
+    SELECT COUNT(*) as total
+    FROM users u
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.tenant_id) {
+    sql += ` AND u.tenant_id = ?`;
+    params.push(filters.tenant_id);
+  }
+
+  if (filters.role_id) {
+    sql += ` AND u.role_id = ?`;
+    params.push(filters.role_id);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND u.trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.keyword) {
+    sql += ` AND (
+      u.email LIKE ? 
+      OR u.hoTen LIKE ? 
+      OR u.soDienThoai LIKE ?
+    )`;
+
+    params.push(
+      `%${filters.keyword}%`,
+      `%${filters.keyword}%`,
+      `%${filters.keyword}%`
+    );
+  }
+
+  if (filters.created_from) {
+    sql += ` AND u.created_at >= ?`;
+    params.push(filters.created_from);
+  }
+
+  if (filters.created_to) {
+    sql += ` AND u.created_at <= ?`;
+    params.push(filters.created_to);
+  }
+
+  const [rows] = await db.execute(sql, params);
+
+  return rows[0].total;
 };
 
 //Cập nhật thông tin user
@@ -131,8 +345,9 @@ exports.checkDuplicateAdmin = async (email, soDienThoai) => {
 }
 
 //Kiểm tra trùng
-exports.checkDuplicate = async (email, soDienThoai, tenant_id) => {
-    const [rows] = await db.execute(
+exports.checkDuplicate = async (conn, email, soDienThoai, tenant_id) => {
+  const connection = conn || db;  
+  const [rows] = await connection.execute(
         "SELECT user_id FROM users WHERE (email = ? AND tenant_id=?) OR (soDienThoai = ? AND tenant_id=?)",
         [email, tenant_id, soDienThoai, tenant_id]
     );

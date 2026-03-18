@@ -10,6 +10,7 @@ const { checkUserActive } = require("../middlewares/checkUserActive.middlewares"
 
 router.post("/", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.createSuperAdmin);
 router.get("/", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.getAllSuperAdmins);
+router.get("/list", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.listSuperAdmins);
 router.get("/:id", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.getSuperAdminById);
 router.put("/:id", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.updateSuperAdminInfo);
 router.patch("/:id/status", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.updateSuperAdminStatus);

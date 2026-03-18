@@ -31,6 +31,89 @@ exports.getPlanById = async (id) => {
     return rows[0];
 };
 
+exports.listPlans = async (filters, offset, limit) => {
+
+  let sql = `
+    SELECT plan_id, tenGoi, giaTien, trangThai, created_at
+    FROM plan
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.keyword) {
+    sql += ` AND tenGoi LIKE ?`;
+    params.push(`%${filters.keyword}%`);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.gia_min) {
+    sql += ` AND giaTien >= ?`;
+    params.push(filters.gia_min);
+  }
+
+  if (filters.gia_max) {
+    sql += ` AND giaTien <= ?`;
+    params.push(filters.gia_max);
+  }
+
+  const allowedSort = ["created_at", "giaTien", "tenGoi"];
+
+  const sortBy = allowedSort.includes(filters.sortBy)
+    ? filters.sortBy
+    : "created_at";
+
+  const sortOrder = filters.sortOrder === "ASC" ? "ASC" : "DESC";
+
+  sql += ` ORDER BY ${sortBy} ${sortOrder}`;
+
+  sql += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+
+
+  const [rows] = await db.execute(sql, params);
+
+  return rows;
+};
+
+exports.countPlans = async (filters) => {
+
+  let sql = `
+    SELECT COUNT(*) as total
+    FROM plan
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.keyword) {
+    sql += ` AND tenGoi LIKE ?`;
+    params.push(`%${filters.keyword}%`);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.gia_min) {
+    sql += ` AND giaTien >= ?`;
+    params.push(filters.gia_min);
+  }
+
+  if (filters.gia_max) {
+    sql += ` AND giaTien <= ?`;
+    params.push(filters.gia_max);
+  }
+
+  const [rows] = await db.execute(sql, params);
+
+  return rows[0].total;
+};
+
 //Cập nhật thông tin Tenant
 exports.updatePlan = async (id, data) => {
     const {tenGoi, giaTien, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho} = data;
@@ -62,3 +145,21 @@ exports.checkDuplicateForUpdate = async (id,tenGoi) => {
 
     return rows;
 }
+
+exports.inactivePlan = async (plan_id) => {
+    const [result] = await db.execute(
+        "UPDATE plan SET trangThai = 'inactive' WHERE plan_id = ?",
+        [plan_id]
+    );
+
+    return result;
+};
+
+exports.isPlanActive = async (plan_id) => {
+    const [rows] = await db.execute(
+        "SELECT trangThai FROM plan WHERE plan_id = ?",
+        [plan_id]
+    );
+
+    return rows[0].trangThai === "active";
+};
