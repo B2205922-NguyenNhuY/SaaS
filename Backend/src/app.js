@@ -31,7 +31,7 @@ app.use("/api/fees", require("./routes/feeSchedule.routes"));
 app.use("/api/fee_assignments", require("./routes/feeAssignment.routes"));
 app.use("/api/collection_periods", require("./routes/collectionperiod.routes"));
 app.use("/api/charges", require("./routes/charge.routes"));
-app.use("/api/chages", require("./routes/charge.routes")); // alias typo from API sheet
+app.use("/api/chages", require("./routes/charge.routes")); 
 app.use("/api/receipts", require("./routes/receipt.routes"));
 app.use("/api/receipt_charges", require("./routes/receiptCharge.routes"));
 app.use("/api/debts", require("./routes/debt.routes"));
