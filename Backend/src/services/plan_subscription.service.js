@@ -7,12 +7,9 @@ const stripe = require("../config/stripe");
 
 //Tạo Subscription
 exports.createSubscription = async (user, body) => {
-    const connection = await db.getConnection();
-    try{
-        const tenant_id = user.tenant_id;
-        const { plan_id } = body;
+        const { tenant_id, plan_id } = body;
 
-        if(!plan_id){
+        if (!plan_id || !tenant_id) {
             throw Object.assign(
                 new Error("Missing required fields"),
                 { statusCode: 400 }
@@ -21,57 +18,47 @@ exports.createSubscription = async (user, body) => {
 
         const plan = await planModel.getPlanById(plan_id);
 
-        if(!plan || plan.length === 0) {
-           throw Object.assign(
+        if (!plan || plan.length === 0) {
+            throw Object.assign(
                 new Error("Plan not found"),
                 { statusCode: 404 }
             );
         }
 
-        await connection.beginTransaction();
+        // nếu đã inactive rồi
+        if (!await planModel.isPlanActive(plan_id)) {
+            throw Object.assign(
+                new Error("Plan already inactive"),
+                { statusCode: 400 }
+            );
+        }
 
-        const start = new Date();
-        const end = new Date();
-        end.setDate(end.getDate() + plan[0].duration_days);
+        await planSubscriptionModel.expireActiveByTenant(
+                  db,
+                  tenant_id
+                );
 
-        const result = await planSubscriptionModel.createSubscription(connection,{tenant_id, plan_id, trangThai: 'pending', start, end});
+        // Tính thời gian thủ công
+        const ngayBatDau = new Date();
+        const ngayKetThuc = new Date(ngayBatDau);
+        ngayKetThuc.setFullYear(ngayKetThuc.getFullYear() + 1);
 
-        await paymentModel.createPending(connection, {
-            tenant_id,
-            subscription_id: result.insertId,
-            amount: plan[0].price,
-            payment_type: 'subscription'
-        });
-
-        await connection.commit();
-
-        const session = await stripe.checkout.sessions.create({
-            mode: "subscription",
-            payment_method_types: ["card"],
-            line_items: [
-                {
-                price: plan[0].stripe_price_id,
-                quantity: 1
-                }
-            ],
-            success_url: `${process.env.CLIENT_URL}/success`,
-            cancel_url: `${process.env.CLIENT_URL}/cancel`,
-            metadata: {
-                tenant_id,
-                subscription_id
+        // Gọi model với đúng field DB
+        const result = await planSubscriptionModel.createSubscription(
+            db,
+            {
+                tenant_id: tenant_id ?? null,
+                plan_id: plan_id ?? null,
+                stripe_subscription_id: null, // chưa có thì set null
+                trangThai: "active",
+                ngayBatDau,
+                ngayKetThuc
             }
-        });
+        );
 
-       return {
-            subscription_id: result.insertId,
-            checkout_url: session.url
+        return {
+            subscription_id: result.insertId
         };
-    } catch (error) {
-        await connection.rollback()
-        throw error;
-    } finally {
-        connection.release();
-    }
 };
 
 //Lấy tất cả Subscription
@@ -104,7 +91,7 @@ exports.getSubscriptionbyStatus = async (status) => {
             );
         }
 
-        const allowesStatus = ['active', 'expired', 'trial'];
+        const allowedStatus = ['active', 'expired', 'trial'];
 
         if(!allowedStatus.includes(status)) {
             throw Object.assign(
@@ -114,6 +101,27 @@ exports.getSubscriptionbyStatus = async (status) => {
         }
 
         return await planSubscriptionModel.getSubscriptiontByStatus(status);
+};
+
+exports.listSubscriptions = async (filters) => {
+
+  const { page, limit } = filters;
+
+  const offset = (page - 1) * limit;
+
+  const rows = await planSubscriptionModel.listSubscriptions(filters, offset, limit);
+
+  const total = await planSubscriptionModel.countSubscriptions(filters);
+
+  return {
+    data: rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
 };
 
 exports.updateSubscription = async (user) => {

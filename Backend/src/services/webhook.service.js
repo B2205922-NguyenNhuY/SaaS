@@ -25,8 +25,6 @@ exports.handleStripeWebhook = async (req) => {
 
   try {
 
-    console.log("Stripe event:", event.type);
-
     // ===============================
     // checkout.session.completed
     // ===============================
@@ -44,8 +42,6 @@ exports.handleStripeWebhook = async (req) => {
         const payment_id = session.metadata.payment_id;
         const stripeSubId = session.subscription;
 
-        console.log("Stripe Subscription:", stripeSubId);
-        console.log("payment_id:", payment_id);
         await planSubscriptionModel.expireActiveByTenant(
           connection,
           tenant_id
@@ -57,7 +53,10 @@ exports.handleStripeWebhook = async (req) => {
             {
                 tenant_id,
                 plan_id,
-                stripe_subscription_id: stripeSubId
+                stripe_subscription_id: stripeSubId,
+                trangThai: "pending",
+                ngayBatDau: new Date(),
+                ngayKetThuc: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
             }
         );
 
@@ -93,14 +92,7 @@ exports.handleStripeWebhook = async (req) => {
 
         //const meta = invoice.parent?.subscription_details?.metadata || {};
 
-        console.log("EVENT:", event.type);
-        console.log("INVOICE:", invoice.id);
-        console.log("SUB:", stripeSubId);
-        console.log("AMOUNT:", invoice.amount_paid);
-        console.log("STATUS:", invoice.status);
-
         if (!stripeSubId) {
-            console.log("No stripe subscription id");
           return;
         }
 
@@ -111,10 +103,9 @@ exports.handleStripeWebhook = async (req) => {
             connection,
             stripeSubId
           );
-          console.log("sub:", sub);
+          
 
         if (!sub || sub.length === 0) {
-          console.log("Subscription not found:", stripeSubId);
           await connection.rollback();
           return;
         }
@@ -125,7 +116,6 @@ exports.handleStripeWebhook = async (req) => {
         const periodEnd = invoice.lines.data[0].period.end;;
 
         if (!periodEnd) {
-          console.log("Invalid period end");
           await connection.rollback();
           return;
         }
@@ -135,17 +125,12 @@ exports.handleStripeWebhook = async (req) => {
           .slice(0, 19)
           .replace("T", " ");
         
-        console.log("newEne",newEnd);
 
         await planSubscriptionModel.updateEndDate(
           connection,
           sub.subscription_id,
           newEnd
         );
-        console.log("stripeSubId:", stripeSubId);
-        console.log("invoiceId:", invoice.id);
-        console.log("AMOUNT:", invoice.amount_paid);
-
         await paymentModel.updateInvoiceInfo(
           connection,
           stripeSubId,
@@ -185,8 +170,6 @@ exports.handleStripeWebhook = async (req) => {
     }
 
   } catch (error) {
-
-    console.log("Webhook error:", error);
 
     try {
       await connection.rollback();

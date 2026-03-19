@@ -46,6 +46,27 @@ exports.getPlanById = async (id) => {
         return plan;
 };
 
+exports.listPlans = async (filters) => {
+
+  const { page, limit } = filters;
+
+  const offset = (page - 1) * limit;
+
+  const rows = await planModel.listPlans(filters, offset, limit);
+
+  const total = await planModel.countPlans(filters);
+
+  return {
+    data: rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+};
+
 //Update Plan
 exports.updatePlan = async (id, body) => {
         const {tenGoi} = body;
@@ -69,4 +90,36 @@ exports.updatePlan = async (id, body) => {
         }
 
         await planModel.updatePlan(id, body);
+};
+
+exports.inactivePlan = async (plan_id) => {
+    if (!plan_id) {
+        throw Object.assign(
+            new Error("Missing plan_id"),
+            { statusCode: 400 }
+        );
+    }
+
+    // check tồn tại
+    const plan = await planModel.getPlanById(plan_id);
+
+    if (!plan || plan.length === 0) {
+        throw Object.assign(
+            new Error("Plan not found"),
+            { statusCode: 404 }
+        );
+    }
+    console.log(plan);
+
+    // nếu đã inactive rồi
+    if (!await planModel.isPlanActive(plan_id)) {
+        throw Object.assign(
+            new Error("Plan already inactive"),
+            { statusCode: 400 }
+        );
+    }
+
+    await planModel.inactivePlan(plan_id);
+
+    return true;
 };

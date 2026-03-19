@@ -78,6 +78,7 @@ exports.createUser = async (creator, body) => {
       duplicate = await userModel.checkDuplicateAdmin(email, soDienThoai);
     } else {
       duplicate = await userModel.checkDuplicate(
+        null,
         email,
         soDienThoai,
         finalTenantId
@@ -113,7 +114,7 @@ exports.createUser = async (creator, body) => {
 
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const result = await userModel.createUser({
+    const result = await userModel.createUser(null,{
       email,
       password_hash,
       hoTen,
@@ -154,9 +155,44 @@ exports.getUserById = async (currentUser, id) => {
 
 //Lấy user theo Tenant
 exports.getUsersByTenant = async (user) => {
-    const users = await userModel.getUsersByTenant(user.tenant_id);
+    const { page, limit } = filters;
 
-    return users;
+  const offset = (page - 1) * limit;
+
+  const rows = await userModel.getUsersByTenant(filters, offset, limit);
+
+  const total = await userModel.countUsersByTenant(filters);
+
+  return {
+    data: rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+};
+
+exports.listUsers = async (filters) => {
+
+  const { page, limit } = filters;
+
+  const offset = (page - 1) * limit;
+
+  const rows = await userModel.listUsers(filters, offset, limit);
+
+  const total = await userModel.countUsers(filters);
+
+  return {
+    data: rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
 };
 
 //Đổi mật khẩu

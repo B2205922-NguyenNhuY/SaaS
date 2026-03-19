@@ -2,11 +2,11 @@ const db = require("../config/db");
 
 //Tạo Subscription
 exports.createSubscription = async (connection,data) => {
-    const {plan_id, tenant_id, stripe_subscription_id} = data;
+    const {plan_id, tenant_id, stripe_subscription_id, trangThai, ngayBatDau, ngayKetThuc} = data;
 
     const [result] = await connection.execute(
-        "INSERT INTO plan_subscription (plan_id, tenant_id, stripe_subscription_id, trangThai, ngayBatDau, ngayKetThuc) VALUES (?, ?, ?, 'pending', NOW(), DATE_ADD(NOW(), INTERVAL 1 YEAR))",
-        [plan_id, tenant_id, stripe_subscription_id]
+        "INSERT INTO plan_subscription (plan_id, tenant_id, stripe_subscription_id, trangThai, ngayBatDau, ngayKetThuc) VALUES (?, ?, ?, ?, ?, ?)",
+        [plan_id, tenant_id, stripe_subscription_id, trangThai, ngayBatDau, ngayKetThuc]
     );
 
     return result.insertId;
@@ -48,7 +48,6 @@ exports.getSubscriptionByStripeId = async (connection, stripe_subscription_id) =
         "SELECT * FROM plan_subscription WHERE stripe_subscription_id = ?",
         [stripe_subscription_id]
     );
-    console.log("sub:",rows);
 
     return rows[0];
 };
@@ -61,6 +60,121 @@ exports.getSubscriptiontByStatus = async (status) => {
     );
 
     return rows;
+};
+
+exports.listSubscriptions = async (filters, offset, limit) => {
+
+  let sql = `
+    SELECT 
+      ps.subscription_id,
+      ps.tenant_id,
+      ps.plan_id,
+      ps.trangThai,
+      ps.ngayBatDau,
+      ps.ngayKetThuc,
+      ps.created_at,
+      p.tenGoi,
+      t.tenBanQuanLy,
+      t.email
+    FROM plan_subscription ps
+    JOIN plan p ON ps.plan_id = p.plan_id
+    JOIN tenant t ON ps.tenant_id = t.tenant_id
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.tenant_id) {
+    sql += ` AND ps.tenant_id = ?`;
+    params.push(filters.tenant_id);
+  }
+
+  if (filters.plan_id) {
+    sql += ` AND ps.plan_id = ?`;
+    params.push(filters.plan_id);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND ps.trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.keyword) {
+    sql += ` AND (t.tenBanQuanLy LIKE ? OR t.email LIKE ?)`;
+    params.push(`%${filters.keyword}%`, `%${filters.keyword}%`);
+  }
+
+  if (filters.ngayBatDau) {
+    sql += ` AND ps.ngayBatDau >= ?`;
+    params.push(filters.ngayBatDau);
+  }
+
+  if (filters.ngayKetThuc) {
+    sql += ` AND ps.ngayKetThuc <= ?`;
+    params.push(filters.ngayKetThuc);
+  }
+
+  const allowedSort = ["created_at","ngayBatDau","ngayKetThuc"];
+
+  const sortBy = allowedSort.includes(filters.sortBy)
+    ? filters.sortBy
+    : "created_at";
+
+  const sortOrder = filters.sortOrder === "ASC" ? "ASC" : "DESC";
+
+  sql += ` ORDER BY ps.${sortBy} ${sortOrder}`;
+
+  sql += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+
+  const [rows] = await db.execute(sql, params);
+
+  return rows;
+};
+
+exports.countSubscriptions = async (filters) => {
+
+  let sql = `
+    SELECT COUNT(*) as total
+    FROM plan_subscription ps
+    JOIN tenant t ON ps.tenant_id = t.tenant_id
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.tenant_id) {
+    sql += ` AND ps.tenant_id = ?`;
+    params.push(filters.tenant_id);
+  }
+
+  if (filters.plan_id) {
+    sql += ` AND ps.plan_id = ?`;
+    params.push(filters.plan_id);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND ps.trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.keyword) {
+    sql += ` AND (t.tenBanQuanLy LIKE ? OR t.email LIKE ?)`;
+    params.push(`%${filters.keyword}%`, `%${filters.keyword}%`);
+  }
+
+  if (filters.ngayBatDau) {
+    sql += ` AND ps.ngayBatDau >= ?`;
+    params.push(filters.ngayBatDau);
+  }
+
+  if (filters.ngayKetThuc) {
+    sql += ` AND ps.ngayKetThuc <= ?`;
+    params.push(filters.ngayKetThuc);
+  }
+
+  const [rows] = await db.execute(sql, params);
+
+  return rows[0].total;
 };
 
 exports.updateEndDate = async (connection,subscription_id,endDate) => {

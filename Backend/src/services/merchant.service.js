@@ -1,5 +1,5 @@
 const db = require("../config/db");
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcrypt");
 const { isDuplicateKey } = require("./_dbErrors");
 
 const ALLOWED_SORT = new Set([

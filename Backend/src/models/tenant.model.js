@@ -1,13 +1,13 @@
 const db = require("../config/db");
 
 //Tạo Tenant
-exports.createTenant = async (tenantData) => {
-    console.log(tenantData);
-    const { tenBanQuanLy, diachi, soDienThoai, email, trangThai } = tenantData;
+exports.createTenant = async (connection, tenantData) => {
+    
+    const { tenBanQuanLy, diaChi, soDienThoai, email, trangThai } = tenantData;
 
-    const [result] = await db.execute(
-        "INSERT INTO tenant (tenBanQuanLy, diachi, soDienThoai, email, trangThai) VALUES (?, ?, ?, ?, ?)",
-        [tenBanQuanLy, diachi, soDienThoai, email, trangThai || 'active',]
+    const [result] = await connection.execute(
+        "INSERT INTO tenant (tenBanQuanLy, diaChi, soDienThoai, email, trangThai) VALUES (?, ?, ?, ?, ?)",
+        [tenBanQuanLy, diaChi, soDienThoai, email, trangThai || 'active',]
     );
 
     return result;
@@ -30,6 +30,82 @@ exports.getTenantById = async (id) => {
     );
 
     return rows[0];
+};
+
+//lọc
+exports.listTenants = async (filters, offset, limit) => {
+
+  let sql = `
+    SELECT *
+    FROM tenant
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.keyword) {
+    sql += ` AND (tenBanQuanLy LIKE ? OR email LIKE ?)`;
+    params.push(`%${filters.keyword}%`, `%${filters.keyword}%`);
+  }
+  
+  if (filters.trangThai) {
+    sql += ` AND trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.created_from) {
+    sql += ` AND created_at >= ?`;
+    params.push(filters.created_from);
+  }
+
+  if (filters.created_to) {
+    sql += ` AND created_at <= ?`;
+    params.push(filters.created_to);
+  }
+
+  sql += ` ORDER BY ${filters.sortBy} ${filters.sortOrder}`;
+
+  sql += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+  
+  const [rows] = await db.execute(sql, params);
+
+  return rows;
+};
+
+//đếm
+exports.countTenants = async (filters) => {
+
+  let sql = `
+    SELECT COUNT(*) as total
+    FROM tenant
+    WHERE 1=1
+  `;
+
+  const params = [];
+
+  if (filters.keyword) {
+    sql += ` AND (tenBanQuanLy LIKE ? OR email LIKE ?)`;
+    params.push(`%${filters.keyword}%`, `%${filters.keyword}%`);
+  }
+
+  if (filters.trangThai) {
+    sql += ` AND trangThai = ?`;
+    params.push(filters.trangThai);
+  }
+
+  if (filters.created_from) {
+    sql += ` AND created_at >= ?`;
+    params.push(filters.created_from);
+  }
+
+  if (filters.created_to) {
+    sql += ` AND created_at <= ?`;
+    params.push(filters.created_to);
+  }
+
+  const [rows] = await db.execute(sql, params);
+
+  return rows[0].total;
 };
 
 //Cập nhật thông tin Tenant
@@ -61,7 +137,7 @@ exports.updateTenantStatus = async(id, trangThai) => {
 
 //Kiểm tra trùng
 exports.checkDuplicate = async (email, soDienThoai) => {
-    const [rows] = await db.execute(
+  const [rows] = await db.execute(
         "SELECT tenant_id FROM tenant WHERE email = ? OR soDienThoai = ?",
         [email, soDienThoai]
     );

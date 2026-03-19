@@ -31,6 +31,19 @@ exports.getRoleById = async (id) => {
     return rows[0];
 };
 
+exports.getRoleByName = async (connection, roleName) => {
+  const [rows] = await connection.execute(
+     `
+    SELECT *
+    FROM role
+    WHERE tenVaiTro = ?
+    LIMIT 1
+  `,
+    [roleName]);
+
+  return rows[0]; // trả về 1 object
+};
+
 //Cập nhật thông tin Role
 exports.updateRole = async (id, data) => {
     const {
