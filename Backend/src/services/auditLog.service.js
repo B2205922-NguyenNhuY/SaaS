@@ -1,5 +1,4 @@
 const auditLogModel = require("../models/auditLog.model");
-const { normalizeRole, ROLES } = require("../constants/role");
 
 function normalizeJson(v) {
   try {
@@ -10,12 +9,12 @@ function normalizeJson(v) {
 }
 
 exports.getLogs = async (user, query, pagination) => {
-  const role = normalizeRole(user.role);
+  const role = user.role;
 
   const where = [];
   const params = [];
 
-  if (role === ROLES.SUPER_ADMIN) {
+  if (role === "super_admin") {
     where.push("1=1");
   } else {
     where.push("tenant_id = ?");

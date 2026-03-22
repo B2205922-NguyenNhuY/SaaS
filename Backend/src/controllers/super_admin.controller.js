@@ -51,7 +51,7 @@ exports.changePassword = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
 
-    await superAdminService.updatePassword(req.params.id, req.body.password_hash);
+    await superAdminService.changePassword(req.params.id, req.body.password_hash);
 
     await logAudit(req, {
       action: "CHANGE_SUPER_ADMIN_PASSWORD",
@@ -70,6 +70,7 @@ exports.changePassword = async (req, res, next) => {
   }
 };
 
+// Danh sách Super Admin
 exports.listSuperAdmins = async (req, res, next) => {
   try {
 
@@ -117,7 +118,7 @@ exports.updateSuperAdminStatus = async(req, res, next) => {
     }
 };
 
-//Update thông tin Tenant
+//Update thông tin Super Admin
 exports.updateSuperAdminInfo = async (req, res, next) => {
     try {
         const id = Number(req.params.id);

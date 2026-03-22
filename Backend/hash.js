@@ -1,9 +1,16 @@
+// hash-password.js
 const bcrypt = require('bcrypt');
 
-async function hashPassword() {
-  const hash = await bcrypt.hash("123456", 10);
-  console.log("Hashed password:");
-  console.log(hash);
-}
+const password = '123456';
+const saltRounds = 10;
 
-hashPassword();
+bcrypt.hash(password, saltRounds, (err, hash) => {
+    if (err) {
+        console.error('Error hashing password:', err);
+        return;
+    }
+    console.log('Original password:', password);
+    console.log('Hashed password:', hash);
+    console.log('\nCopy this hash to your database:');
+    console.log(hash);
+});

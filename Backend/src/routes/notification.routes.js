@@ -9,15 +9,42 @@ const { checkUserActive } = require("../middlewares/checkUserActive.middlewares"
 const { checkTenantActive } = require("../middlewares/checkTenantActive.middlewares");
 const { checkTenantAccess } = require("../middlewares/checkTenantAccess.middleware");
 const { checkSubscriptionStatus } = require("../middlewares/checkSubscription.middlewares");
+
 router.post(
   "/",
   verifyToken,
   authorizeRoles(ROLES.TENANT_ADMIN, ROLES.SUPER_ADMIN),
-  checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus,
+  checkUserActive,
   notificationController.createNotification,
 );
-router.get("/", verifyToken, checkUserActive, checkTenantActive, checkSubscriptionStatus, paginate, notificationController.getNotifications);
-router.get("/unread_count", verifyToken,checkUserActive, checkTenantActive, checkSubscriptionStatus, notificationController.getUnreadCount);
-router.post("/:id/read", verifyToken, checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus, notificationController.markAsRead);
-router.get("/:id", verifyToken, checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus, notificationController.getNotificationDetail);
+
+router.get(
+  "/",
+  verifyToken,
+  checkUserActive,
+  paginate,
+  notificationController.getNotifications,
+);
+
+router.get(
+  "/unread_count",
+  verifyToken,
+  checkUserActive,
+  notificationController.getUnreadCount,
+);
+
+router.post(
+  "/:id/read",
+  verifyToken,
+  checkUserActive,
+  notificationController.markAsRead,
+);
+
+router.get(
+  "/:id",
+  verifyToken,
+  checkUserActive,
+  notificationController.getNotificationDetail,
+);
+
 module.exports = router;

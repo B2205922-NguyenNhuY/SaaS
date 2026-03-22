@@ -14,5 +14,6 @@ router.get("/list", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), ch
 router.get("/:id", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.getSuperAdminById);
 router.put("/:id", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.updateSuperAdminInfo);
 router.patch("/:id/status", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.updateSuperAdminStatus);
+router.put("/:id/password", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN), checkUserActive, superAdminController.changePassword);
 
 module.exports = router;
