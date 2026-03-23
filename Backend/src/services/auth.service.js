@@ -52,7 +52,7 @@ exports.login = async (body) => {
         trangThai: superAdmin.trangThai,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "8h" }
+      { expiresIn: "60d" }
     );
 
     return {
@@ -96,7 +96,7 @@ exports.login = async (body) => {
         trangThai: user.trangThai,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "8h" }
+      { expiresIn: "60d" }
     );
 
     return {
@@ -134,7 +134,7 @@ exports.login = async (body) => {
         trangThai: merchant.trangThai,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "8h" }
+      { expiresIn: "60d" }
     );
 
     return {

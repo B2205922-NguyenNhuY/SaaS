@@ -4,7 +4,7 @@
       <div class="sidebar-header">
         <h2>MarketHub</h2>
         <p style="font-size: 12px; margin-top: 8px; color: #666">
-          {{ user?.tenant_name || 'Tenant Admin' }}
+          {{ user?.hoTen || 'Tenant Admin' }}
         </p>
       </div>
       <div class="sidebar-nav">

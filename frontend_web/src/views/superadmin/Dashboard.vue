@@ -114,21 +114,19 @@
             <th>Trạng thái</th>
             <th>Bắt đầu</th>
             <th>Kết thúc</th>
-            <th>Giá</th>
-          </tr>
+            </tr>
         </thead>
         <tbody>
           <tr v-for="s in subs" :key="s.subscription_id">
-            <td class="cell-name">{{ s.tenBanQuanLy }}</td>
+            <td class="cell-name">{{ s.tenBanQuanLy }}  </td>
             <td><span class="plan-tag">{{ s.tenGoi }}</span></td>
             <td>
               <span class="badge" :class="s.trangThai === 'active' ? 'badge-green' : 'badge-amber'">
-                {{ s.trangThai }}
+                {{ s.trangThai === 'active' ? 'Hoạt động' : s.trangThai }}
               </span>
             </td>
             <td class="cell-date">{{ d(s.ngayBatDau) }}</td>
             <td class="cell-date">{{ d(s.ngayKetThuc) }}</td>
-            <td class="cell-price">{{ price(s.giaTien) }}</td>
           </tr>
           <tr v-if="!subs.length">
             <td colspan="6" class="empty">Chưa có dữ liệu</td>
@@ -282,7 +280,9 @@ onMounted(async () => {
       stats.value[3].value = todayLogs.length
     }
     
-    const subRes = await api.get('/plan_subscription/list?limit=10')
+    const subRes = await api.get('/plan_subscription/list?limit=5&sortBy=created_at&sortOrder=DESC')
+    console.log('Subscription response:', subRes.data) 
+    
     if (subRes.data && subRes.data.data) {
       subs.value = subRes.data.data
       stats.value[2].value = subRes.data.pagination?.total || subs.value.length
@@ -321,7 +321,6 @@ async function getChartData(days: Date[]) {
 
 const d = (v: string) => v ? new Date(v).toLocaleDateString('vi-VN') : '—'
 const dt = (v: string) => v ? new Date(v).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—'
-const price = (v: number) => v ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v) : '—'
 
 const fmtAction = (a: string) => {
   if (!a) return '—'
@@ -432,7 +431,7 @@ const getTenantPlan = (tenantId: number) => {
 .cell-name { font-size: 13px; font-weight: 500; color: #1a2e1a; }
 .cell-sub { font-size: 11.5px; color: #94a894; }
 .cell-date { font-size: 12px; color: #6b836b; white-space: nowrap; }
-.cell-price { font-size: 13px; font-weight: 500; color: #1a2e1a; }
+
 
 .badge { display: inline-flex; padding: 2px 8px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
 .badge-green { background: #eef7ee; color: #2d6e2d; }
