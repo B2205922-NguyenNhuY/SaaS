@@ -2,9 +2,9 @@ const planModel = require("../models/plan.model");
 
 //Tạo plan
 exports.createPlan = async (body) => {
-        const {tenGoi, giaTien, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho} = body;
+        const {tenGoi, giaTien,  moTa, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho} = body;
 
-        if(!tenGoi || !giaTien || !gioiHanSoKiosk || !gioiHanUser || !gioiHanSoCho) {
+        if(!tenGoi || !giaTien || !moTa || !gioiHanSoKiosk || !gioiHanUser || !gioiHanSoCho) {
             throw Object.assign(
                 new Error("Missing required fields"),
                 { statusCode: 400 }
@@ -20,7 +20,14 @@ exports.createPlan = async (body) => {
             );
         }
 
-        const result = await planModel.createPlan(body);
+        const result = await planModel.createPlan({
+            tenGoi,
+            giaTien,
+            moTa,
+            gioiHanSoKiosk,
+            gioiHanUser,
+            gioiHanSoCho
+        });
 
         return {
             plan_id: result.insertId
@@ -69,7 +76,7 @@ exports.listPlans = async (filters) => {
 
 //Update Plan
 exports.updatePlan = async (id, body) => {
-        const {tenGoi} = body;
+        const {tenGoi, moTa} = body;
 
         const existing = await planModel.getPlanById(id);
 

@@ -7,10 +7,28 @@ const bcrypt = require("bcrypt");
 const SALT_ROUNDS = 10;
 
 exports.createTenant = async (body) => {
-  const { tenBanQuanLy, diachi, soDienThoai, email, admin, firstMarket } = body;
+  const { 
+    tenBanQuanLy, 
+    diachi, 
+    soDienThoai, 
+    email, 
+    maSoThue,
+    tenCongTy,
+    nguoiDaiDien,
+    chucVu,
+    giayPhepKinhDoanh,
+    ngayCapPhep,
+    noiCapPhep,
+    admin, 
+    firstMarket 
+  } = body;
 
   if (!email || !diachi || !tenBanQuanLy || !soDienThoai) {
     throw Object.assign(new Error("Missing tenant fields"), { statusCode: 400 });
+  }
+
+  if (!maSoThue) {
+    throw Object.assign(new Error("Mã số thuế là bắt buộc"), { statusCode: 400 });
   }
 
   if (!admin || !admin.email || !admin.password || !admin.hoTen || !admin.soDienThoai) {
@@ -22,15 +40,20 @@ exports.createTenant = async (body) => {
     throw Object.assign(new Error("Email hoặc SĐT tenant đã tồn tại"), { statusCode: 400 });
   }
 
+  const duplicateMST = await tenantModel.checkDuplicateMST(maSoThue);
+  if (duplicateMST.length > 0) {
+    throw Object.assign(new Error("Mã số thuế đã tồn tại"), { statusCode: 400 });
+  }
+
   const password_hash = await bcrypt.hash(admin.password, SALT_ROUNDS);
   const connection = await db.getConnection();
 
   try {
     await connection.beginTransaction();
 
-    const role = await roleModel.getRoleByName(connection, "tenant_admin");
+    const role = await roleModel.getRoleByName(connection, "TenantAdmin");
     if (!role) {
-      throw Object.assign(new Error("Role tenant_admin không tồn tại"), { statusCode: 400 });
+      throw Object.assign(new Error("Role TenantAdmin không tồn tại"), { statusCode: 400 });
     }
 
     const tenantResult = await tenantModel.createTenant(connection, {
@@ -38,6 +61,13 @@ exports.createTenant = async (body) => {
       diaChi: diachi,
       soDienThoai,
       email,
+      maSoThue,
+      tenCongTy,
+      nguoiDaiDien,
+      chucVu,
+      giayPhepKinhDoanh,
+      ngayCapPhep,
+      noiCapPhep,
       trangThai: "active",
     });
     const tenantId = tenantResult.insertId;
@@ -57,26 +87,24 @@ exports.createTenant = async (body) => {
       trangThai: "active",
     });
 
-    // Tạo chợ đầu tiên (bắt buộc)
-    if (!firstMarket || !firstMarket.tenCho) {
-      throw Object.assign(new Error("Phải có ít nhất 1 chợ khi tạo tenant"), { statusCode: 400 });
+    if (firstMarket && firstMarket.tenCho) {
+      const [marketResult] = await connection.execute(
+        `INSERT INTO market (tenant_id, tenCho, diaChi, dienTich, trangThai) VALUES (?, ?, ?, ?, 'active')`,
+        [tenantId, firstMarket.tenCho, firstMarket.diaChi || null, firstMarket.dienTich || null]
+      );
     }
-
-    const [marketResult] = await connection.execute(
-      `INSERT INTO market (tenant_id, tenCho, diaChi, dienTich, trangThai) VALUES (?, ?, ?, ?, 'active')`,
-      [tenantId, firstMarket.tenCho, firstMarket.diaChi || null, firstMarket.dienTich || null]
-    );
-    const marketId = marketResult.insertId;
 
     await connection.commit();
 
     return {
       tenant_id: tenantId,
       admin_user_id: userResult.insertId,
-      market_id: marketId,
     };
   } catch (error) {
-    try { await connection.rollback(); } catch (_) {}
+    try { 
+      await connection.rollback(); 
+      console.error('Transaction rolled back:', error.message);
+    } catch (_) {}
 
     if (error.code === "ER_DUP_ENTRY") {
       throw Object.assign(new Error("Email hoặc SĐT đã tồn tại"), { statusCode: 400 });
@@ -125,7 +153,19 @@ exports.updateTenantStatus = async (id, trangThai) => {
 };
 
 exports.updateTenantInfo = async (id, body) => {
-  const { tenBanQuanLy, diachi, soDienThoai, email } = body;
+  const { 
+    tenBanQuanLy, 
+    diachi, 
+    soDienThoai, 
+    email,
+    maSoThue,
+    tenCongTy,
+    nguoiDaiDien,
+    chucVu,
+    giayPhepKinhDoanh,
+    ngayCapPhep,
+    noiCapPhep
+  } = body;
 
   if (!email || !diachi || !tenBanQuanLy || !soDienThoai) {
     throw Object.assign(new Error("Missing required fields"), { statusCode: 400 });
@@ -136,9 +176,9 @@ exports.updateTenantInfo = async (id, body) => {
     throw Object.assign(new Error("Tenant not found"), { statusCode: 404 });
   }
 
-  const duplicate = await tenantModel.checkDuplicateForUpdate(id, email, soDienThoai);
+  const duplicate = await tenantModel.checkDuplicateForUpdate(id, email, soDienThoai, maSoThue);
   if (duplicate.length > 0) {
-    throw Object.assign(new Error("Email hoặc Số điện thoại đã tồn tại"), { statusCode: 400 });
+    throw Object.assign(new Error("Email, SĐT hoặc MST đã tồn tại"), { statusCode: 400 });
   }
 
   await tenantModel.updateTenantInfo(id, body);

@@ -4,7 +4,7 @@
     <aside class="sa-sidebar">
       <div class="sidebar-top">
         <div class="sidebar-logo">
-          <img src="/logo.png" alt="MarketHub" class="logo-img" />
+          <img src="/logo.png" alt="MarketHub" class="logo-img" :class="{ 'logo-collapsed': sidebarCollapsed }" />
         </div>
         <button class="collapse-btn" @click="sidebarCollapsed = !sidebarCollapsed">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -221,16 +221,18 @@ function iconProfile() { return `<svg width="16" height="16" viewBox="0 0 24 24"
 .sidebar-logo {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   overflow: hidden;
-  justify-content: center;
-  flex: 1; 
+  flex: 1;
 }
 
 .logo-img {
-  width: 100px; height: 100px;
+  width: 100px;
+  height: 100px;
   object-fit: contain;
   flex-shrink: 0;
+  transition: all 0.25s ease;
 }
 
 .logo-label {
@@ -238,6 +240,11 @@ function iconProfile() { return `<svg width="16" height="16" viewBox="0 0 24 24"
   font-weight: 600;
   color: #1a2e1a;
   white-space: nowrap;
+}
+
+.sa-shell.collapsed .logo-img {
+  width: 32px;
+  height: 32px;
 }
 
 .collapse-btn {

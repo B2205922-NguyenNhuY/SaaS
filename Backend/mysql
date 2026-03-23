@@ -31,6 +31,16 @@ CREATE TABLE tenant (
   UNIQUE KEY uq_tenant_phone (soDienThoai)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Cập nhật thêm thông tin quản lý của tenant admin
+ALTER TABLE tenant 
+ADD COLUMN maSoThue VARCHAR(20) NULL UNIQUE AFTER email,
+ADD COLUMN tenCongTy VARCHAR(200) NULL AFTER maSoThue,
+ADD COLUMN nguoiDaiDien VARCHAR(100) NULL AFTER tenCongTy,
+ADD COLUMN chucVu VARCHAR(50) NULL AFTER nguoiDaiDien,
+ADD COLUMN giayPhepKinhDoanh VARCHAR(50) NULL AFTER chucVu,
+ADD COLUMN ngayCapPhep DATE NULL AFTER giayPhepKinhDoanh,
+ADD COLUMN noiCapPhep VARCHAR(255) NULL AFTER ngayCapPhep;
+
 CREATE TABLE plan (
   plan_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenGoi VARCHAR(100) NOT NULL,
@@ -69,6 +79,10 @@ CREATE TABLE plan_subscription (
   CONSTRAINT fk_ps_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_ps_plan   FOREIGN KEY (plan_id)   REFERENCES plan(plan_id)     ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ -- Liên kết mã số thuế
+ALTER TABLE plan_subscription 
+ADD COLUMN maSoThueKhachHang VARCHAR(20) NULL AFTER tenant_id;
 
 -- =========================================================
 -- 2) RBAC + USERS (siết tenant bằng FK kép)
@@ -460,6 +474,7 @@ ALTER TABLE notification
     FOREIGN KEY (zone_id) REFERENCES zone(zone_id) ON DELETE SET NULL;
 
 CREATE TABLE notification_read (
+  -- Sửa từ BIGINT thành INT để khớp với bảng notification
   notification_id INT UNSIGNED NOT NULL, 
   user_id INT UNSIGNED NOT NULL,
   tenant_id INT UNSIGNED NOT NULL,
@@ -505,19 +520,6 @@ CREATE TABLE audit_log (
   CONSTRAINT fk_audit_superadmin FOREIGN KEY (super_admin_id) REFERENCES super_admin(admin_id) ON DELETE set null
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-<<<<<<< Updated upstream
-// thêm vào
-UPDATE kiosk k
-JOIN kiosk_assignment ka
-  ON ka.kiosk_id = k.kiosk_id
- AND ka.tenant_id = k.tenant_id
-SET k.trangThai = 'occupied',
-    k.updated_at = NOW()
-WHERE ka.trangThai = 'active';
-=======
-ALTER TABLE audit_log
-  ADD COLUMN ip_address VARCHAR(45) NULL AFTER giaTriMoi;
-
 -- UPDATE kiosk k
 -- JOIN kiosk_assignment ka
 --   ON ka.kiosk_id = k.kiosk_id
@@ -525,4 +527,3 @@ ALTER TABLE audit_log
 -- SET k.trangThai = 'occupied',
 --     k.updated_at = NOW()
 -- WHERE ka.trangThai = 'active';
->>>>>>> Stashed changes

@@ -2,11 +2,11 @@ const db = require("../config/db");
 
 //Tạo Plan
 exports.createPlan = async (Data) => {
-    const { tenGoi, giaTien, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho } = Data;
+    const { tenGoi, giaTien, moTa, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho } = Data;
 
     const [result] = await db.execute(
-        "INSERT INTO plan(tenGoi, giaTien, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho) VALUES (?,?,?,?,?)",
-        [tenGoi,giaTien,gioiHanSoKiosk,gioiHanUser,gioiHanSoCho]
+        "INSERT INTO plan(tenGoi, giaTien, moTa, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho) VALUES (?,?,?,?,?,?)",
+        [tenGoi,giaTien,moTa,gioiHanSoKiosk,gioiHanUser,gioiHanSoCho]
     )
 
     return result;
@@ -31,10 +31,12 @@ exports.getPlanById = async (id) => {
     return rows[0];
 };
 
+// Danh sách plan
 exports.listPlans = async (filters, offset, limit) => {
 
   let sql = `
-    SELECT plan_id, tenGoi, giaTien, trangThai, created_at
+    SELECT plan_id, tenGoi, giaTien, trangThai, created_at, 
+           gioiHanSoCho, gioiHanSoKiosk, gioiHanUser, moTa
     FROM plan
     WHERE 1=1
   `;
@@ -73,11 +75,11 @@ exports.listPlans = async (filters, offset, limit) => {
 
   sql += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
 
-
   const [rows] = await db.execute(sql, params);
 
   return rows;
 };
+ 
 
 exports.countPlans = async (filters) => {
 
@@ -116,11 +118,11 @@ exports.countPlans = async (filters) => {
 
 //Cập nhật thông tin Tenant
 exports.updatePlan = async (id, data) => {
-    const {tenGoi, giaTien, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho} = data;
+    const {tenGoi, giaTien, moTa, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho} = data;
 
     const [result] = await db.execute(
-        "UPDATE plan SET tenGoi=?, giaTien=?, gioiHanSoKiosk=?, gioiHanUser=?, gioiHanSoCho=? WHERE plan_id=?",
-        [tenGoi,giaTien,gioiHanSoKiosk,gioiHanUser,gioiHanSoCho,id]
+        "UPDATE plan SET tenGoi=?, giaTien=?, moTa=?, gioiHanSoKiosk=?, gioiHanUser=?, gioiHanSoCho=? WHERE plan_id=?",
+        [tenGoi,giaTien,moTa,gioiHanSoKiosk,gioiHanUser,gioiHanSoCho,id]
     );
 
     return result;

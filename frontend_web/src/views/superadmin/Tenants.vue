@@ -144,6 +144,45 @@
                 <input v-model="form.diachi" placeholder="123 Lê Lợi, Q1, TP.HCM" />
               </div>
             </div>
+            <div class="section-label" style="margin-top: 8px;">Thông tin doanh nghiệp</div>
+    
+            <div class="form-row">
+              <div class="field">
+                <label>Mã số thuế <span class="req">*</span></label>
+                <input v-model="form.maSoThue" placeholder="0101234567" />
+              </div>
+              <div class="field">
+                <label>Tên công ty</label>
+                <input v-model="form.tenCongTy" placeholder="Công ty TNHH Quản lý Chợ" />
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="field">
+                <label>Người đại diện</label>
+                <input v-model="form.nguoiDaiDien" placeholder="Nguyễn Văn A" />
+              </div>
+              <div class="field">
+                <label>Chức vụ</label>
+                <input v-model="form.chucVu" placeholder="Giám đốc" />
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="field">
+                <label>Giấy phép kinh doanh</label>
+                <input v-model="form.giayPhepKinhDoanh" placeholder="GPKD số 12345" />
+              </div>
+              <div class="field">
+                <label>Ngày cấp phép</label>
+                <input v-model="form.ngayCapPhep" type="date" />
+              </div>
+            </div>
+            
+            <div class="field">
+              <label>Nơi cấp phép</label>
+              <input v-model="form.noiCapPhep" placeholder="Sở Kế hoạch và Đầu tư TP.HCM" />
+            </div>
 
             <template v-if="!editingTenant">
               <div class="section-label" style="margin-top: 8px;">Tài khoản Admin Tenant</div>
@@ -258,8 +297,20 @@ const form = reactive({
   email: '',
   soDienThoai: '',
   diachi: '',
-  admin: { hoTen: '', email: '', soDienThoai: '', password: '' },
-})
+  maSoThue: '',          
+  tenCongTy: '',        
+  nguoiDaiDien: '',     
+  chucVu: '',            
+  giayPhepKinhDoanh: '', 
+  ngayCapPhep: '',     
+  noiCapPhep: '',  
+  admin: { 
+    hoTen: '', 
+    email: '', 
+    soDienThoai: '', 
+    password: '' 
+  },
+});
 
 const assignForm = reactive({ plan_id: '' as string | number })
 
@@ -323,7 +374,17 @@ function changePage(p: number) { filters.page = p; fetchTenants() }
 function openCreate() {
   editingTenant.value = null
   Object.assign(form, {
-    tenBanQuanLy: '', email: '', soDienThoai: '', diachi: '',
+    tenBanQuanLy: '',
+    email: '',
+    soDienThoai: '',
+    diachi: '',
+    maSoThue: '',
+    tenCongTy: '',
+    nguoiDaiDien: '',
+    chucVu: '',
+    giayPhepKinhDoanh: '',
+    ngayCapPhep: '',
+    noiCapPhep: '',
     admin: { hoTen: '', email: '', soDienThoai: '', password: '' },
   })
   formError.value = ''
@@ -337,6 +398,13 @@ function openEdit(t: any) {
     email: t.email ?? '',
     soDienThoai: t.soDienThoai ?? '',
     diachi: t.diaChi ?? '',
+    maSoThue: t.maSoThue ?? '',
+    tenCongTy: t.tenCongTy ?? '',
+    nguoiDaiDien: t.nguoiDaiDien ?? '',
+    chucVu: t.chucVu ?? '',
+    giayPhepKinhDoanh: t.giayPhepKinhDoanh ?? '',
+    ngayCapPhep: t.ngayCapPhep ?? '',
+    noiCapPhep: t.noiCapPhep ?? '',
   })
   formError.value = ''
   showModal.value = true
@@ -362,16 +430,25 @@ async function toggleStatus(t: any) {
 }
 
 async function submitTenant() {
+
   if (!form.tenBanQuanLy || !form.email || !form.soDienThoai || !form.diachi) {
     formError.value = 'Vui lòng điền đầy đủ thông tin Tenant'
     return
   }
+  
+  if (!form.maSoThue) {
+    formError.value = 'Mã số thuế là bắt buộc'
+    return
+  }
+  
   if (!editingTenant.value && (!form.admin.hoTen || !form.admin.email || !form.admin.password || !form.admin.soDienThoai)) {
     formError.value = 'Vui lòng điền đầy đủ thông tin Admin'
     return
   }
+  
   saving.value = true
   formError.value = ''
+  
   try {
     if (editingTenant.value) {
       await api.put(`/tenant/${editingTenant.value.tenant_id}`, {
@@ -379,6 +456,13 @@ async function submitTenant() {
         email: form.email,
         soDienThoai: form.soDienThoai,
         diachi: form.diachi,
+        maSoThue: form.maSoThue,
+        tenCongTy: form.tenCongTy,
+        nguoiDaiDien: form.nguoiDaiDien,
+        chucVu: form.chucVu,
+        giayPhepKinhDoanh: form.giayPhepKinhDoanh,
+        ngayCapPhep: form.ngayCapPhep,
+        noiCapPhep: form.noiCapPhep,
       })
     } else {
       await api.post('/tenant', {
@@ -386,6 +470,13 @@ async function submitTenant() {
         email: form.email,
         soDienThoai: form.soDienThoai,
         diachi: form.diachi,
+        maSoThue: form.maSoThue,
+        tenCongTy: form.tenCongTy,
+        nguoiDaiDien: form.nguoiDaiDien,
+        chucVu: form.chucVu,
+        giayPhepKinhDoanh: form.giayPhepKinhDoanh,
+        ngayCapPhep: form.ngayCapPhep,
+        noiCapPhep: form.noiCapPhep,
         admin: {
           hoTen: form.admin.hoTen,
           email: form.admin.email,
