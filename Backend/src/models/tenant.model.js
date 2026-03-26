@@ -149,6 +149,21 @@ exports.updateTenantInfo = async (id, data) => {
         noiCapPhep
     } = data;
 
+    const params = [
+        tenBanQuanLy !== undefined ? tenBanQuanLy : null,
+        diachi !== undefined ? diachi : null,
+        soDienThoai !== undefined ? soDienThoai : null,
+        email !== undefined ? email : null,
+        maSoThue !== undefined ? maSoThue : null,
+        tenCongTy !== undefined ? tenCongTy : null,
+        nguoiDaiDien !== undefined ? nguoiDaiDien : null,
+        chucVu !== undefined ? chucVu : null,
+        giayPhepKinhDoanh !== undefined ? giayPhepKinhDoanh : null,
+        ngayCapPhep !== undefined ? ngayCapPhep : null,
+        noiCapPhep !== undefined ? noiCapPhep : null,
+        id
+    ];
+
     const [result] = await db.execute(
         `UPDATE tenant SET 
             tenBanQuanLy = ?, 
@@ -163,11 +178,7 @@ exports.updateTenantInfo = async (id, data) => {
             ngayCapPhep = ?,
             noiCapPhep = ?
         WHERE tenant_id = ?`,
-        [
-            tenBanQuanLy, diachi, soDienThoai, email,
-            maSoThue, tenCongTy, nguoiDaiDien, chucVu,
-            giayPhepKinhDoanh, ngayCapPhep, noiCapPhep, id
-        ]
+        params
     );
 
     return result;
@@ -209,4 +220,12 @@ exports.checkDuplicateForUpdate = async (id, email, soDienThoai, maSoThue) => {
         [email, soDienThoai, maSoThue, id]
     );
     return rows;
+};
+
+exports.deleteTenant = async (tenant_id) => {
+  const [result] = await db.execute(
+    "DELETE FROM tenant WHERE tenant_id = ?",
+    [tenant_id]
+  );
+  return result;
 };

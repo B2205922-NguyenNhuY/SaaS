@@ -44,7 +44,7 @@
           <router-link to="/super-admin/tenants" class="see-all">Xem tất cả →</router-link>
         </div>
         <div v-if="loading" class="sk-rows">
-          <div v-for="i in 5" :key="i" class="sk-row"></div>
+          <div v-for="i in 10" :key="i" class="sk-row"></div>
         </div>
         <table v-else class="tbl">
           <thead>
@@ -174,6 +174,14 @@ const stats = ref<Array<{ label: string; value: number | string; bg: string; col
   { label: 'Audit Log hôm nay', value: '—', bg: '#f5f3ff', color: '#7c3aed', icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>` },
 ])
 
+function formatDateVN(date: Date | string): string {
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 async function renderChart() {
   if (!chartCanvas.value) return
   
@@ -269,16 +277,16 @@ onMounted(async () => {
     }
     
     const chartLogRes = await api.get('/audit_logs/superadmin?limit=100000')
-    if (chartLogRes.data && chartLogRes.data.data) {
-      chartLogsData = chartLogRes.data.data
-      
-      const todayStr = new Date().toISOString().split('T')[0]
-      const todayLogs = chartLogsData.filter((log: AuditLog) => {
-        const logDate = new Date(log.thoiGianThucHien || log.created_at || '').toISOString().split('T')[0]
-        return logDate === todayStr
-      })
-      stats.value[3].value = todayLogs.length
-    }
+  if (chartLogRes.data && chartLogRes.data.data) {
+    chartLogsData = chartLogRes.data.data
+    
+    const todayStr = formatDateVN(new Date())
+    const todayLogs = chartLogsData.filter((log: AuditLog) => {
+      const logDate = formatDateVN(log.thoiGianThucHien || log.created_at || '')
+      return logDate === todayStr
+    })
+    stats.value[3].value = todayLogs.length
+  }
     
     const subRes = await api.get('/plan_subscription/list?limit=5&sortBy=created_at&sortOrder=DESC')
     console.log('Subscription response:', subRes.data) 
@@ -308,9 +316,9 @@ async function getChartData(days: Date[]) {
   const values = new Array(7).fill(0)
   
   chartLogsData.forEach((log: AuditLog) => {
-    const logDate = new Date(log.thoiGianThucHien || log.created_at || '')
-    const logDateStr = logDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
-    const index = labels.indexOf(logDateStr)
+    const logDateStr = formatDateVN(log.thoiGianThucHien || log.created_at || '')
+    const logLabel = new Date(logDateStr).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+    const index = labels.indexOf(logLabel)
     if (index !== -1) {
       values[index]++
     }

@@ -73,10 +73,22 @@ exports.getUsersByTenant = async (req, res, next) => {
 exports.changePassword = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
+    const { newPassword } = req.body;
+    
+    console.log('Change password request:', { id, newPassword: !!newPassword }); // Debug
+    
+    if (!newPassword) {
+      return res.status(400).json({ message: "Vui lòng nhập mật khẩu mới" });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Mật khẩu phải có ít nhất 6 ký tự" });
+    }
+    
     const old = await userService.getUserById(req.user, id);
-
-    await userService.updatePassword(req.params.id, req.body.newPassword);
-
+    
+    await userService.updatePassword(id, newPassword);
+    
     await logAudit(req, {
       action: "CHANGE_PASSWORD",
       entity_type: "user",
@@ -84,12 +96,12 @@ exports.changePassword = async (req, res, next) => {
       oldValue: { password: "******" },
       newValue: { password: "******" },
     });
-
+    
     res.json({
       message: "Password updated successfully",
     });
-
   } catch (error) {
+    console.error('Change password error:', error);
     next(error);
   }
 };

@@ -199,10 +199,6 @@
               </div>
             </div>
 
-            <div class="info-note">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Super Admin gán plan cơ bản miễn phí. Tenant Admin tự nâng cấp qua Stripe.
-            </div>
             <div class="error-banner" v-if="assignError">{{ assignError }}</div>
             <div class="success-banner" v-if="assignSuccess">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -390,11 +386,6 @@ async function submitAssign() {
 function fmtPrice(p: number): string {
   if (!p) return 'Miễn phí'
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p)
-}
-
-function parsedFeatures(plan: any): string[] {
-  if (!plan.moTa) return []
-  try { return JSON.parse(plan.moTa) } catch { return plan.moTa.split('\n').filter(Boolean) }
 }
 
 function ini(name: string): string {

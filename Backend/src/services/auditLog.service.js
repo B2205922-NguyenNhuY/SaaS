@@ -17,24 +17,23 @@ exports.getLogs = async (user, query, pagination) => {
   if (role === "super_admin") {
     where.push("1=1");
   } else {
-    where.push("tenant_id = ?");
+    where.push("al.tenant_id = ?");
     params.push(user.tenant_id);
   }
 
   if (query.entity_type) {
-    where.push("entity_type = ?");
+    where.push("al.entity_type = ?");
     params.push(query.entity_type);
   }
 
   if (query.entity_id) {
-    where.push("entity_id = ?");
+    where.push("al.entity_id = ?");
     params.push(query.entity_id);
   }
 
   const whereSQL = where.join(" AND ");
 
   const total = await auditLogModel.count(whereSQL, params);
-
   const rows = await auditLogModel.list(
     whereSQL,
     params,

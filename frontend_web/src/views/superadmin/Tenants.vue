@@ -122,6 +122,7 @@
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
+
           <div class="modal-body">
             <div class="section-label">Thông tin Tenant</div>
             <div class="form-row">
@@ -144,8 +145,8 @@
                 <input v-model="form.diachi" placeholder="123 Lê Lợi, Q1, TP.HCM" />
               </div>
             </div>
-            <div class="section-label" style="margin-top: 8px;">Thông tin doanh nghiệp</div>
-    
+
+            <div class="section-label" style="margin-top:4px">Thông tin doanh nghiệp</div>
             <div class="form-row">
               <div class="field">
                 <label>Mã số thuế <span class="req">*</span></label>
@@ -156,7 +157,6 @@
                 <input v-model="form.tenCongTy" placeholder="Công ty TNHH Quản lý Chợ" />
               </div>
             </div>
-            
             <div class="form-row">
               <div class="field">
                 <label>Người đại diện</label>
@@ -167,7 +167,6 @@
                 <input v-model="form.chucVu" placeholder="Giám đốc" />
               </div>
             </div>
-            
             <div class="form-row">
               <div class="field">
                 <label>Giấy phép kinh doanh</label>
@@ -178,14 +177,13 @@
                 <input v-model="form.ngayCapPhep" type="date" />
               </div>
             </div>
-            
             <div class="field">
               <label>Nơi cấp phép</label>
               <input v-model="form.noiCapPhep" placeholder="Sở Kế hoạch và Đầu tư TP.HCM" />
             </div>
 
             <template v-if="!editingTenant">
-              <div class="section-label" style="margin-top: 8px;">Tài khoản Admin Tenant</div>
+              <div class="section-label" style="margin-top:4px">Tài khoản Admin Tenant</div>
               <div class="form-row">
                 <div class="field">
                   <label>Họ tên <span class="req">*</span></label>
@@ -206,10 +204,64 @@
                   <input v-model="form.admin.password" type="password" placeholder="••••••••" />
                 </div>
               </div>
+
+              <div class="section-header">
+                <div class="section-label" style="margin:0">Danh sách Chợ <span class="section-optional">(tuỳ chọn)</span></div>
+                <button class="btn-add-market" @click="addMarket">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Thêm chợ
+                </button>
+              </div>
+
+              <div v-if="form.markets.length === 0" class="market-empty">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b0c4b0" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span>Chưa có chợ nào — nhấn "Thêm chợ" để thêm</span>
+              </div>
+
+              <div
+                v-for="(m, idx) in form.markets"
+                :key="idx"
+                class="market-card"
+              >
+                <div class="market-card-head">
+                  <span class="market-card-index">Chợ {{ idx + 1 }}</span>
+                  <button class="market-remove-btn" @click="removeMarket(idx)" title="Xóa chợ này">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+                <div class="form-row">
+                  <div class="field">
+                    <label>Tên chợ <span class="req">*</span></label>
+                    <input v-model="m.tenCho" placeholder="Chợ Bến Thành" />
+                  </div>
+                  <div class="field">
+                    <label>Địa chỉ chợ</label>
+                    <input v-model="m.diaChi" placeholder="Đường Lê Lợi, Q1" />
+                  </div>
+                </div>
+                <div class="field" style="max-width:200px">
+                  <label>Diện tích (m²)</label>
+                  <input v-model="m.dienTich" type="number" min="1" placeholder="500" />
+                </div>
+              </div>
+
+              <div v-if="marketResult" class="market-result">
+                <div v-if="marketResult.created.length" class="market-result-ok">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  Đã tạo {{ marketResult.created.length }} chợ:
+                  <span v-for="c in marketResult.created" :key="c.market_id" class="market-chip">{{ c.tenCho }}</span>
+                </div>
+                <div v-if="marketResult.errors.length" class="market-result-err">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Lỗi {{ marketResult.errors.length }} chợ:
+                  <span v-for="e in marketResult.errors" :key="e.tenCho" class="market-chip market-chip--err">{{ e.tenCho }}: {{ e.message }}</span>
+                </div>
+              </div>
             </template>
 
             <div class="error-banner" v-if="formError">{{ formError }}</div>
           </div>
+
           <div class="modal-footer">
             <button class="btn-ghost" @click="closeModal">Hủy</button>
             <button class="btn-primary" @click="submitTenant" :disabled="saving">
@@ -265,10 +317,14 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import api from '@/api/axios'
 
-const router = useRouter()
+interface MarketForm {
+  tenCho: string
+  diaChi: string
+  dienTich: string | number
+}
+
 const loading = ref(true)
 const saving = ref(false)
 const showModal = ref(false)
@@ -280,6 +336,7 @@ const fetchError = ref('')
 const tenants = ref<any[]>([])
 const availablePlans = ref<any[]>([])
 const pagination = ref({ total: 0, totalPages: 1, page: 1, limit: 10 })
+const marketResult = ref<{ created: any[]; errors: any[] } | null>(null)
 
 const filters = reactive({
   keyword: '',
@@ -297,26 +354,30 @@ const form = reactive({
   email: '',
   soDienThoai: '',
   diachi: '',
-  maSoThue: '',          
-  tenCongTy: '',        
-  nguoiDaiDien: '',     
-  chucVu: '',            
-  giayPhepKinhDoanh: '', 
-  ngayCapPhep: '',     
-  noiCapPhep: '',  
-  admin: { 
-    hoTen: '', 
-    email: '', 
-    soDienThoai: '', 
-    password: '' 
-  },
-});
+  maSoThue: '',
+  tenCongTy: '',
+  nguoiDaiDien: '',
+  chucVu: '',
+  giayPhepKinhDoanh: '',
+  ngayCapPhep: '',
+  noiCapPhep: '',
+  admin: { hoTen: '', email: '', soDienThoai: '', password: '' },
+  markets: [] as MarketForm[],
+})
 
 const assignForm = reactive({ plan_id: '' as string | number })
 
 const selectedPlan = computed(() =>
   availablePlans.value.find(p => p.plan_id === assignForm.plan_id)
 )
+
+function addMarket() {
+  form.markets.push({ tenCho: '', diaChi: '', dienTich: '' })
+}
+
+function removeMarket(idx: number) {
+  form.markets.splice(idx, 1)
+}
 
 let debounceTimer: ReturnType<typeof setTimeout>
 function debouncedFetch() {
@@ -358,7 +419,6 @@ async function fetchTenants() {
 
     const qs = new URLSearchParams(params).toString()
     const res = await api.get(`/tenant/list?${qs}`)
-
     tenants.value = res.data.data ?? []
     pagination.value = res.data.pagination ?? { total: 0, totalPages: 1, page: 1, limit: 10 }
   } catch (e: any) {
@@ -373,19 +433,13 @@ function changePage(p: number) { filters.page = p; fetchTenants() }
 
 function openCreate() {
   editingTenant.value = null
+  marketResult.value = null
   Object.assign(form, {
-    tenBanQuanLy: '',
-    email: '',
-    soDienThoai: '',
-    diachi: '',
-    maSoThue: '',
-    tenCongTy: '',
-    nguoiDaiDien: '',
-    chucVu: '',
-    giayPhepKinhDoanh: '',
-    ngayCapPhep: '',
-    noiCapPhep: '',
+    tenBanQuanLy: '', email: '', soDienThoai: '', diachi: '',
+    maSoThue: '', tenCongTy: '', nguoiDaiDien: '', chucVu: '',
+    giayPhepKinhDoanh: '', ngayCapPhep: '', noiCapPhep: '',
     admin: { hoTen: '', email: '', soDienThoai: '', password: '' },
+    markets: [],
   })
   formError.value = ''
   showModal.value = true
@@ -393,6 +447,7 @@ function openCreate() {
 
 function openEdit(t: any) {
   editingTenant.value = t
+  marketResult.value = null
   Object.assign(form, {
     tenBanQuanLy: t.tenBanQuanLy ?? '',
     email: t.email ?? '',
@@ -410,7 +465,10 @@ function openEdit(t: any) {
   showModal.value = true
 }
 
-function closeModal() { showModal.value = false }
+function closeModal() {
+  showModal.value = false
+  marketResult.value = null
+}
 
 function openAssignPlan(t: any) {
   assignTarget.value = t
@@ -430,25 +488,35 @@ async function toggleStatus(t: any) {
 }
 
 async function submitTenant() {
-
   if (!form.tenBanQuanLy || !form.email || !form.soDienThoai || !form.diachi) {
     formError.value = 'Vui lòng điền đầy đủ thông tin Tenant'
     return
   }
-  
   if (!form.maSoThue) {
     formError.value = 'Mã số thuế là bắt buộc'
     return
   }
-  
   if (!editingTenant.value && (!form.admin.hoTen || !form.admin.email || !form.admin.password || !form.admin.soDienThoai)) {
     formError.value = 'Vui lòng điền đầy đủ thông tin Admin'
     return
   }
-  
+
+  const marketsToCreate = form.markets.filter(m => m.tenCho.trim().length > 0)
+  for (const m of marketsToCreate) {
+    if (m.tenCho.trim().length < 2) {
+      formError.value = 'Tên chợ phải có ít nhất 2 ký tự'
+      return
+    }
+    if (m.dienTich && Number(m.dienTich) <= 0) {
+      formError.value = 'Diện tích chợ phải lớn hơn 0'
+      return
+    }
+  }
+
   saving.value = true
   formError.value = ''
-  
+  marketResult.value = null
+
   try {
     if (editingTenant.value) {
       await api.put(`/tenant/${editingTenant.value.tenant_id}`, {
@@ -464,8 +532,10 @@ async function submitTenant() {
         ngayCapPhep: form.ngayCapPhep,
         noiCapPhep: form.noiCapPhep,
       })
+      closeModal()
+      fetchTenants()
     } else {
-      await api.post('/tenant', {
+      const createRes = await api.post('/tenant', {
         tenBanQuanLy: form.tenBanQuanLy,
         email: form.email,
         soDienThoai: form.soDienThoai,
@@ -483,12 +553,38 @@ async function submitTenant() {
           soDienThoai: form.admin.soDienThoai,
           password: form.admin.password,
         },
+        markets: marketsToCreate.map(m => ({
+          tenCho: m.tenCho.trim(),
+          diaChi: m.diaChi.trim() || null,
+          dienTich: m.dienTich ? Number(m.dienTich) : null,
+        })),
       })
+
+      const created = createRes.data?.marketsCreated ?? []
+      const errors  = createRes.data?.marketsErrors  ?? []
+
+      if (marketsToCreate.length > 0) {
+        marketResult.value = { created, errors }
+        if (errors.length > 0) {
+          fetchTenants()
+          return
+        }
+      }
+
+      closeModal()
+      fetchTenants()
     }
-    closeModal()
-    fetchTenants()
   } catch (e: any) {
-    formError.value = e.response?.data?.message || 'Lỗi khi lưu'
+    const errorMessage = e.response?.data?.message || 'Lỗi khi lưu'
+    
+    if (errorMessage.includes('email đã tồn tại') || 
+        errorMessage.includes('số điện thoại đã tồn tại') ||
+        errorMessage.includes('Mã số thuế đã tồn tại') ||
+        errorMessage.includes('Email admin đã tồn tại')) {
+      formError.value = errorMessage
+    } else {
+      formError.value = errorMessage
+    }
   } finally {
     saving.value = false
   }
@@ -602,8 +698,9 @@ select, .date-input { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4
 .btn-outline { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; background: white; border: 1.5px solid #d4e4d4; border-radius: 10px; color: #4a654a; font-size: 13px; font-family: 'Be Vietnam Pro', sans-serif; cursor: pointer; }
 .btn-outline:hover { background: #f0f7f0; }
 
+/* Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
-.modal { background: white; border-radius: 16px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+.modal { background: white; border-radius: 16px; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
 .modal--sm { max-width: 420px; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px 14px; border-bottom: 1px solid #f0f5f0; }
 .modal-header h3 { font-size: 15px; font-weight: 600; color: #1a2e1a; margin: 0; }
@@ -620,12 +717,36 @@ select, .date-input { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4
 .field input, .field select { width: 100%; height: 40px; padding: 0 12px; border: 1.5px solid #d4e4d4; border-radius: 10px; font-size: 13.5px; font-family: 'Be Vietnam Pro', sans-serif; color: #1a2e1a; background: #fbfdfb; outline: none; transition: border .2s; }
 .field input:focus, .field select:focus { border-color: #3d8c3d; background: white; }
 
+/* Section header cho chợ */
+.section-header { display: flex; align-items: center; justify-content: space-between; }
+.section-optional { font-size: 10px; color: #b0c4b0; font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 4px; }
+
+.btn-add-market { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; background: #eef7ee; border: 1px solid #c6e6c6; border-radius: 8px; color: #2d6e2d; font-size: 12.5px; font-weight: 500; font-family: 'Be Vietnam Pro', sans-serif; cursor: pointer; transition: background .15s; }
+.btn-add-market:hover { background: #ddf0dd; }
+
+/* Market empty state */
+.market-empty { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: #fafcfa; border: 1px dashed #d4e4d4; border-radius: 10px; color: #94a894; font-size: 12.5px; }
+
+/* Market card */
+.market-card { background: #fafcfa; border: 1px solid #e2ede2; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.market-card-head { display: flex; align-items: center; justify-content: space-between; }
+.market-card-index { font-size: 12px; font-weight: 600; color: #3d8c3d; }
+.market-remove-btn { width: 26px; height: 26px; background: none; border: 1px solid #fecaca; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #dc2626; transition: background .15s; }
+.market-remove-btn:hover { background: #fef2f2; }
+
+/* Market result */
+.market-result { background: #f7faf7; border: 1px solid #e2ede2; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
+.market-result-ok { display: flex; align-items: flex-start; gap: 6px; color: #2d6e2d; flex-wrap: wrap; }
+.market-result-ok svg { flex-shrink: 0; margin-top: 1px; }
+.market-result-err { display: flex; align-items: flex-start; gap: 6px; color: #b91c1c; flex-wrap: wrap; }
+.market-result-err svg { flex-shrink: 0; margin-top: 1px; }
+.market-chip { display: inline-block; background: #eef7ee; border: 1px solid #c6e6c6; border-radius: 6px; padding: 1px 8px; margin: 2px 0; color: #2d4a2d; font-size: 12px; }
+.market-chip--err { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+
 .plan-preview { background: #f7faf7; border: 1px solid #e2ede2; border-radius: 10px; padding: 12px 14px; }
 .plan-preview-name { font-size: 14px; font-weight: 600; color: #1a2e1a; margin-bottom: 3px; }
 .plan-preview-price { font-size: 18px; font-weight: 700; color: #3d8c3d; margin-bottom: 6px; }
 .plan-preview-limits { display: flex; gap: 12px; font-size: 12px; color: #6b836b; }
-
-.error-banner { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 9px 12px; color: #b91c1c; font-size: 13px; }
 
 .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35); border-top-color: white; border-radius: 50%; animation: spin .65s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }

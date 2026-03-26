@@ -19,7 +19,8 @@ exports.createAuditLog = async (...args) => {
 
 exports.count = async (whereSQL, params) => {
   const [[{ total }]] = await db.query(
-    `SELECT COUNT(*) total FROM audit_log WHERE ${whereSQL}`, params
+    `SELECT COUNT(*) total FROM audit_log al WHERE ${whereSQL}`, 
+    params
   );
   return total;
 };

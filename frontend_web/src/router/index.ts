@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { Components } from 'ant-design-vue/es/date-picker/generatePicker'
 
 const routes = [
   {
@@ -96,6 +97,78 @@ const routes = [
         component: () => import('@/views/tenantadmin/FeeManagement.vue'),
         meta: { title: 'Quản lý Phí' },
       },
+      {
+        path: 'notifications',
+        name: 'TenantNotifications',
+        component: () => import('@/views/tenantadmin/Notifications.vue'),
+        meta: { title: 'Thông báo' },
+      },
+      {
+        path: 'profile',
+        name: 'TenantProfile',
+        component: () => import('@/views/tenantadmin/Profile.vue'),
+        meta: { title: 'Profile' },
+      },
+      {
+        path: 'audit-logs',
+        name: 'TenantAuditLogs',
+        component: () => import('@/views/tenantadmin/AuditLog.vue'),
+        meta: { title: 'Audit Log' },
+      },
+      {
+        path: 'reports',
+        name: 'Report',
+        component: () => import('@/views/tenantadmin/Report.vue'),
+        meta: {title: 'Báo cáo'},
+      },
+      {
+        path: 'charges',
+        name: 'Charge',
+        component: () => import('@/views/tenantadmin/Charge.vue'),
+        meta: {title: 'Khoản thu'},
+      },
+      {
+        path: 'collection_periods',
+        name: 'CollectionPeriod',
+        component: () => import('@/views/tenantadmin/CollectionPeriod.vue'),
+        meta: {title: 'Kỳ thu'},
+      },
+      {
+        path: 'debts',
+        name: 'Debt',
+        component: () => import('@/views/tenantadmin/Debt.vue'),
+        meta: {title: 'Công nợ'},
+      },
+      {
+        path: 'merchants',
+        name: 'Merchant',
+        component: () => import('@/views/tenantadmin/Merchant.vue'),
+        meta: {title: 'Tiểu thương'},
+      },
+      {
+        path: 'plans',
+        name: 'Plan',
+        component: () => import('@/views/tenantadmin/Plan.vue'),
+        meta: {title: 'Gói cước'},
+      },
+      {
+        path: 'receipts',
+        name: 'Receipt',
+        component: () => import('@/views/tenantadmin/Receipt.vue'),
+        meta: {title: 'Phiếu thu'},
+      },
+      {
+        path: 'shifts',
+        name: 'Shift',
+        component: () => import('@/views/tenantadmin/Shift.vue'),
+        meta: {title: 'Ca làm'},
+      },
+      {
+        path: 'zones',
+        name: 'Zone',
+        component: () => import('@/views/tenantadmin/Zone.vue'),
+        meta: {title: 'Khu vực'},
+      },       
     ],
   },
 

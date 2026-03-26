@@ -43,7 +43,7 @@ router.get(
 router.get(
   "/:id",
   verifyToken,
-  authorizeRoles(ROLES.SUPER_ADMIN),
+  authorizeRoles(ROLES.SUPER_ADMIN, ROLES.TENANT_ADMIN),
   checkUserActive,
   tenantController.getTenantById,
 );

@@ -3,15 +3,18 @@ const userModel = require("../models/users.model");
 const roleModel = require("../models/role.model");
 const db = require("../config/db");
 const bcrypt = require("bcrypt");
+const MarketService = require("./market.service");
 
 const SALT_ROUNDS = 10;
 
+const { ROLE_CREATE_PERMISSION, ROLES } = require("../constants/role");
+
 exports.createTenant = async (body) => {
-  const { 
-    tenBanQuanLy, 
-    diachi, 
-    soDienThoai, 
-    email, 
+  const {
+    tenBanQuanLy,
+    email,
+    soDienThoai,
+    diachi,
     maSoThue,
     tenCongTy,
     nguoiDaiDien,
@@ -19,96 +22,110 @@ exports.createTenant = async (body) => {
     giayPhepKinhDoanh,
     ngayCapPhep,
     noiCapPhep,
-    admin, 
-    firstMarket 
+    admin,
+    markets = [],
   } = body;
 
-  if (!email || !diachi || !tenBanQuanLy || !soDienThoai) {
-    throw Object.assign(new Error("Missing tenant fields"), { statusCode: 400 });
+  if (!tenBanQuanLy || !email || !soDienThoai || !diachi || !maSoThue) {
+    throw Object.assign(new Error("Missing required fields"), { statusCode: 400 });
   }
 
-  if (!maSoThue) {
-    throw Object.assign(new Error("Mã số thuế là bắt buộc"), { statusCode: 400 });
+  if (!admin?.hoTen || !admin?.email || !admin?.soDienThoai || !admin?.password) {
+    throw Object.assign(new Error("Admin info is required"), { statusCode: 400 });
   }
 
-  if (!admin || !admin.email || !admin.password || !admin.hoTen || !admin.soDienThoai) {
-    throw Object.assign(new Error("Missing admin fields"), { statusCode: 400 });
-  }
-
-  const duplicateTenant = await tenantModel.checkDuplicate(email, soDienThoai);
-  if (duplicateTenant.length > 0) {
-    throw Object.assign(new Error("Email hoặc SĐT tenant đã tồn tại"), { statusCode: 400 });
-  }
-
-  const duplicateMST = await tenantModel.checkDuplicateMST(maSoThue);
-  if (duplicateMST.length > 0) {
-    throw Object.assign(new Error("Mã số thuế đã tồn tại"), { statusCode: 400 });
-  }
-
-  const password_hash = await bcrypt.hash(admin.password, SALT_ROUNDS);
   const connection = await db.getConnection();
-
+  
   try {
     await connection.beginTransaction();
 
-    const role = await roleModel.getRoleByName(connection, "TenantAdmin");
-    if (!role) {
-      throw Object.assign(new Error("Role TenantAdmin không tồn tại"), { statusCode: 400 });
+    const [existingTenant] = await connection.execute(
+      "SELECT tenant_id FROM tenant WHERE email = ? OR soDienThoai = ?",
+      [email, soDienThoai]
+    );
+    
+    if (existingTenant.length > 0) {
+      throw Object.assign(new Error("Email hoặc số điện thoại đã tồn tại"), { statusCode: 400 });
     }
 
-    const tenantResult = await tenantModel.createTenant(connection, {
+    const [existingMST] = await connection.execute(
+      "SELECT tenant_id FROM tenant WHERE maSoThue = ?",
+      [maSoThue]
+    );
+    
+    if (existingMST.length > 0) {
+      throw Object.assign(new Error("Mã số thuế đã tồn tại"), { statusCode: 400 });
+    }
+
+    const result = await tenantModel.createTenant(connection, {
       tenBanQuanLy,
-      diaChi: diachi,
+      diaChi: diachi,      
       soDienThoai,
       email,
       maSoThue,
-      tenCongTy,
-      nguoiDaiDien,
-      chucVu,
-      giayPhepKinhDoanh,
-      ngayCapPhep,
-      noiCapPhep,
-      trangThai: "active",
+      tenCongTy: tenCongTy ?? null,
+      nguoiDaiDien: nguoiDaiDien ?? null,
+      chucVu: chucVu ?? null,
+      giayPhepKinhDoanh: giayPhepKinhDoanh ?? null,
+      ngayCapPhep: ngayCapPhep ?? null,
+      noiCapPhep: noiCapPhep ?? null,
     });
-    const tenantId = tenantResult.insertId;
 
-    const duplicateUser = await userModel.checkDuplicate(connection, admin.email, admin.soDienThoai, tenantId);
-    if (duplicateUser.length > 0) {
-      throw Object.assign(new Error("Email hoặc SĐT admin đã tồn tại"), { statusCode: 400 });
+    const tenant_id = result.insertId;
+
+    const [existingAdmin] = await connection.execute(
+      "SELECT user_id FROM users WHERE email = ?",
+      [admin.email]
+    );
+    
+    if (existingAdmin.length > 0) {
+      throw Object.assign(new Error("Email admin đã tồn tại trong hệ thống"), { statusCode: 400 });
     }
 
-    const userResult = await userModel.createUser(connection, {
-      email: admin.email,
-      password_hash,
-      hoTen: admin.hoTen,
-      soDienThoai: admin.soDienThoai,
-      tenant_id: tenantId,
-      role_id: role.role_id,
-      trangThai: "active",
-    });
+    const [roles] = await connection.execute(
+      "SELECT role_id FROM role WHERE tenVaiTro = ?",
+      ["TenantAdmin"]
+    );
+    
+    if (roles.length === 0) {
+      throw Object.assign(new Error("Role TenantAdmin không tồn tại"), { statusCode: 500 });
+    }
 
-    if (firstMarket && firstMarket.tenCho) {
-      const [marketResult] = await connection.execute(
-        `INSERT INTO market (tenant_id, tenCho, diaChi, dienTich, trangThai) VALUES (?, ?, ?, ?, 'active')`,
-        [tenantId, firstMarket.tenCho, firstMarket.diaChi || null, firstMarket.dienTich || null]
-      );
+    const role_id = roles[0].role_id;
+    const password_hash = await bcrypt.hash(admin.password, SALT_ROUNDS);
+
+    await connection.execute(
+      `INSERT INTO users (
+        tenant_id, role_id, email, password_hash, 
+        hoTen, soDienThoai, trangThai
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [tenant_id, role_id, admin.email, password_hash, admin.hoTen, admin.soDienThoai, "active"]
+    );
+
+    const marketResults = { created: [], errors: [] };
+    
+    for (const m of markets) {
+      const tenCho = String(m.tenCho || "").trim();
+      if (!tenCho) continue;
+
+      try {
+        const [marketResult] = await connection.execute(
+          `INSERT INTO market (tenant_id, tenCho, diaChi, dienTich) 
+           VALUES (?, ?, ?, ?)`,
+          [tenant_id, tenCho, m.diaChi || null, m.dienTich ? Number(m.dienTich) : null]
+        );
+        marketResults.created.push({ market_id: marketResult.insertId, tenCho });
+      } catch (e) {
+        marketResults.errors.push({ tenCho, message: e.message });
+      }
     }
 
     await connection.commit();
-
-    return {
-      tenant_id: tenantId,
-      admin_user_id: userResult.insertId,
-    };
+    
+    return { tenant_id, marketResults };
+    
   } catch (error) {
-    try { 
-      await connection.rollback(); 
-      console.error('Transaction rolled back:', error.message);
-    } catch (_) {}
-
-    if (error.code === "ER_DUP_ENTRY") {
-      throw Object.assign(new Error("Email hoặc SĐT đã tồn tại"), { statusCode: 400 });
-    }
+    await connection.rollback();
     throw error;
   } finally {
     connection.release();
@@ -153,10 +170,10 @@ exports.updateTenantStatus = async (id, trangThai) => {
 };
 
 exports.updateTenantInfo = async (id, body) => {
-  const { 
-    tenBanQuanLy, 
-    diachi, 
-    soDienThoai, 
+  const {
+    tenBanQuanLy,
+    diachi,
+    soDienThoai,
     email,
     maSoThue,
     tenCongTy,
@@ -164,7 +181,7 @@ exports.updateTenantInfo = async (id, body) => {
     chucVu,
     giayPhepKinhDoanh,
     ngayCapPhep,
-    noiCapPhep
+    noiCapPhep,
   } = body;
 
   if (!email || !diachi || !tenBanQuanLy || !soDienThoai) {
@@ -181,5 +198,19 @@ exports.updateTenantInfo = async (id, body) => {
     throw Object.assign(new Error("Email, SĐT hoặc MST đã tồn tại"), { statusCode: 400 });
   }
 
-  await tenantModel.updateTenantInfo(id, body);
+  const updateData = {
+    tenBanQuanLy,
+    diachi,
+    soDienThoai,
+    email,
+    maSoThue,
+    tenCongTy: tenCongTy ?? null,      
+    nguoiDaiDien: nguoiDaiDien ?? null,
+    chucVu: chucVu ?? null,
+    giayPhepKinhDoanh: giayPhepKinhDoanh ?? null,
+    ngayCapPhep: ngayCapPhep ?? null,
+    noiCapPhep: noiCapPhep ?? null,
+  };
+
+  await tenantModel.updateTenantInfo(id, updateData);
 };

@@ -474,7 +474,6 @@ ALTER TABLE notification
     FOREIGN KEY (zone_id) REFERENCES zone(zone_id) ON DELETE SET NULL;
 
 CREATE TABLE notification_read (
-  -- Sửa từ BIGINT thành INT để khớp với bảng notification
   notification_id INT UNSIGNED NOT NULL, 
   user_id INT UNSIGNED NOT NULL,
   tenant_id INT UNSIGNED NOT NULL,

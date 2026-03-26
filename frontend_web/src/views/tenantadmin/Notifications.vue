@@ -92,28 +92,41 @@
               <textarea v-model="form.content" rows="4" placeholder="Nội dung thông báo..."></textarea>
             </div>
 
-            <template v-if="isSuperAdmin">
+            <!-- TENANT ADMIN -->
+            <template>
               <div class="field">
                 <label>Gửi đến</label>
                 <select v-model="form.target_type">
-                  <option value="all">Toàn bộ hệ thống (tất cả người dùng)</option>
-                  <option value="tenant">Một Tenant cụ thể</option>
-                  <option value="role">Theo vai trò trong hệ thống</option>
+                  <option value="tenant">Toàn bộ người dùng trong tenant</option>
+                  <option value="market">Theo chợ</option>
+                  <option value="zone">Theo khu vực</option>
+                  <option value="role">Theo vai trò</option>
                 </select>
               </div>
-              <div class="field" v-if="form.target_type === 'tenant'">
-                <label>Chọn Tenant <span class="req">*</span></label>
-                <select v-model="form.tenant_id">
-                  <option :value="null">-- Chọn Tenant --</option>
-                  <option v-for="t in tenants" :key="t.tenant_id" :value="t.tenant_id">
-                    {{ t.tenBanQuanLy }} ({{ t.email }})
-                  </option>
+              <div class="field" v-if="form.target_type === 'market'">
+                <label>Chọn chợ <span class="req">*</span></label>
+                <select v-model="form.market_id" @change="loadZones">
+                  <option :value="null">-- Chọn chợ --</option>
+                  <option v-for="m in markets" :key="m.market_id" :value="m.market_id">{{ m.tenCho }}</option>
+                </select>
+              </div>
+              <div class="field" v-if="form.target_type === 'zone'">
+                <label>Chọn chợ trước</label>
+                <select v-model="form.market_id" @change="loadZones">
+                  <option :value="null">-- Chọn chợ --</option>
+                  <option v-for="m in markets" :key="m.market_id" :value="m.market_id">{{ m.tenCho }}</option>
+                </select>
+              </div>
+              <div class="field" v-if="form.target_type === 'zone' && zones.length">
+                <label>Chọn khu vực <span class="req">*</span></label>
+                <select v-model="form.zone_id">
+                  <option :value="null">-- Chọn khu --</option>
+                  <option v-for="z in zones" :key="z.zone_id" :value="z.zone_id">{{ z.tenKhu }}</option>
                 </select>
               </div>
               <div class="field" v-if="form.target_type === 'role'">
                 <label>Vai trò nhận thông báo</label>
                 <select v-model="form.target_role">
-                  <option value="tenant_admin">Quản lý chợ (Tenant Admin)</option>
                   <option value="collector">Thu ngân (Collector)</option>
                   <option value="merchant">Tiểu thương (Merchant)</option>
                 </select>
@@ -192,6 +205,14 @@ async function fetchNotifs() {
     meta.value = res.data.meta || { total: 0, totalPages: 1 }
   } catch {}
   finally { loading.value = false }
+}
+
+async function loadZones() {
+  if (!form.market_id) { zones.value = []; return }
+  try {
+    const res = await api.get(`/zone?market_id=${form.market_id}`)
+    zones.value = Array.isArray(res.data) ? res.data : (res.data.data || [])
+  } catch { zones.value = [] }
 }
 
 function openCreate() {

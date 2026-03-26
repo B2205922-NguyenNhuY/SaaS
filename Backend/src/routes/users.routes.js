@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-
 const { ROLES } = require("../constants/role")
 const auth = require("../middlewares/auth.middleware");
 const role = require("../middlewares/role.middleware");
@@ -17,5 +16,12 @@ router.get("/list", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN,ROLE
 router.get("/:id", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN,ROLES.TENANT_ADMIN), checkUserActive, checkTenantAccess, checkTenantActive, checkSubscriptionStatus, userController.getUserById);
 router.put("/:id", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN,ROLES.TENANT_ADMIN), checkUserActive, checkTenantAccess, checkTenantActive, checkSubscriptionStatus, userController.updateUserInfo);
 router.patch("/:id/status", auth.verifyToken, role.authorizeRoles(ROLES.SUPER_ADMIN,ROLES.TENANT_ADMIN), checkUserActive, checkTenantAccess, checkTenantActive, checkSubscriptionStatus, userController.updateUserStatus);
+router.put(
+  "/:id/password",
+  auth.verifyToken,
+  role.authorizeRoles(ROLES.TENANT_ADMIN, ROLES.MERCHANT, ROLES.COLLECTOR),
+  checkUserActive,
+  userController.changePassword
+);
 
 module.exports = router;

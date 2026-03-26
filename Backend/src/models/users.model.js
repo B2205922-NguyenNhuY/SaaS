@@ -317,10 +317,9 @@ exports.updateUserStatus = async(id, trangThai) => {
 //Đổi mật khẩu
 exports.updatePassword = async (user_id, password_hash) => {
   const [result] = await db.execute(
-    "UPDATE users SET password_hash = ? WHERE user_id = ?",
+    "UPDATE users SET password_hash = ?, updated_at = NOW() WHERE user_id = ?",
     [password_hash, user_id]
   );
-
   return result;
 };
 
@@ -364,3 +363,11 @@ exports.checkDuplicateForUpdate = async (id, email, soDienThoai) => {
 
     return rows;
 }
+
+exports.findByEmail = async (email) => {
+  const [rows] = await db.execute(
+    "SELECT * FROM users WHERE email = ?",
+    [email]
+  );
+  return rows[0];
+};
