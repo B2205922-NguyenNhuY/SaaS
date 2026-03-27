@@ -120,5 +120,18 @@ exports.getShifts = async (user) => {
 
 // Lấy shift đang mở
 exports.getActiveShift = async (user) => {
-  return await shiftModel.getActiveShift(user.id, user.tenant_id);
+  const shift = await shiftModel.getActiveShift(user.id, user.tenant_id);
+
+  if (!shift) return null;
+
+  const totals = await shiftModel.calculateShiftTotal(
+    shift.shift_id,
+    user.tenant_id,
+  );
+
+  return {
+    ...shift,
+    tongTienMatThuDuoc: Number(totals?.tienMat || 0),
+    tongChuyenKhoanThuDuoc: Number(totals?.chuyenKhoan || 0),
+  };
 };

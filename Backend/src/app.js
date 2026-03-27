@@ -21,7 +21,10 @@ app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/super_admin", require("./routes/super_admin.routes"));
 
 app.use("/api/market", require("./routes/market.routes"));
+app.use("/api/markets", require("./routes/market.routes"));
 app.use("/api/zone", require("./routes/zone.routes"));
+app.use("/api/zones", require("./routes/zone.routes"));
+
 app.use("/api/kioskType", require("./routes/kioskType.routes"));
 app.use("/api/kiosk", require("./routes/kiosk.routes"));
 app.use("/api/merchant", require("./routes/merchant.routes"));
@@ -31,7 +34,7 @@ app.use("/api/fees", require("./routes/feeSchedule.routes"));
 app.use("/api/fee_assignments", require("./routes/feeAssignment.routes"));
 app.use("/api/collection_periods", require("./routes/collectionperiod.routes"));
 app.use("/api/charges", require("./routes/charge.routes"));
-app.use("/api/chages", require("./routes/charge.routes")); 
+app.use("/api/chages", require("./routes/charge.routes"));
 app.use("/api/receipts", require("./routes/receipt.routes"));
 app.use("/api/receipt_charges", require("./routes/receiptCharge.routes"));
 app.use("/api/debts", require("./routes/debt.routes"));
@@ -39,7 +42,9 @@ app.use("/api/reports", require("./routes/report.routes"));
 app.use("/api/audit_logs", require("./routes/auditlog.routes"));
 app.use("/api/shifts", require("./routes/shift.routes"));
 app.use("/api/notifications", require("./routes/notification.routes"));
+const path = require("path");
 
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 app.use(errorMiddleware);
 
 module.exports = app;

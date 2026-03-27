@@ -53,7 +53,7 @@ router.patch(
 router.get(
   "/",
   verifyToken,
-  authorizeRoles(ROLES.TENANT_ADMIN),
+  authorizeRoles(ROLES.TENANT_ADMIN, ROLES.COLLECTOR),
   checkUserActive,
   checkTenantActive,
   checkTenantAccess,
@@ -65,7 +65,7 @@ router.get(
 router.get(
   "/:id",
   verifyToken,
-  authorizeRoles(ROLES.TENANT_ADMIN),
+  authorizeRoles(ROLES.TENANT_ADMIN, ROLES.COLLECTOR),
   checkUserActive,
   checkTenantActive,
   checkTenantAccess,

@@ -1,37 +1,41 @@
 import 'package:flutter/material.dart';
+
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
-// ← Thêm class này
 class AppRoles {
-  static const String superAdmin  = 'super_admin';
+  static const String superAdmin = 'super_admin';
   static const String tenantAdmin = 'tenant_admin';
-  static const String collector   = 'collector';
-  static const String merchant    = 'merchant';
+  static const String collector = 'collector';
+  static const String merchant = 'merchant';
 }
 
 class AuthProvider extends ChangeNotifier {
-  final _authService    = AuthService();
-  final _storageService = StorageService();
+  final AuthService _authService = AuthService();
+  final StorageService _storageService = StorageService();
 
-  AuthStatus status   = AuthStatus.initial;
-  String?    token;
-  String?    role;
-  String?    userName;
-  String?    errorMessage;
+  AuthStatus status = AuthStatus.initial;
+  String? token;
+  String? role;
+  String? userName;
+  String? errorMessage;
 
-  // ← Thêm getter này
-  bool get isSuperAdmin  => role == AppRoles.superAdmin;
+  bool get isSuperAdmin => role == AppRoles.superAdmin;
   bool get isTenantAdmin => role == AppRoles.tenantAdmin;
+  bool get isCollector => role == AppRoles.collector;
 
-  // ← Thêm getter này
   String get homeRoute {
     switch (role) {
-      case AppRoles.superAdmin:  return '/super-admin';
-      case AppRoles.tenantAdmin: return '/tenant-admin';
-      default:                   return '/';
+      case AppRoles.superAdmin:
+        return '/super-admin';
+      case AppRoles.tenantAdmin:
+        return '/tenant-admin';
+      case AppRoles.collector:
+        return '/collector';
+      default:
+        return '/';
     }
   }
 
@@ -66,21 +70,23 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     await _authService.logout();
     await _storageService.clearSession();
-    token = null; role = null; userName = null;
+    token = null;
+    role = null;
+    userName = null;
     status = AuthStatus.unauthenticated;
     notifyListeners();
   }
 
   Future<void> _saveAndNotify(Map<String, dynamic> data) async {
-    token    = data['token'];
+    token = data['token']?.toString();
     final user = data['user'] as Map<String, dynamic>?;
-    role     = user?['role'];
-    userName = user?['email'] ?? user?['hoTen'] ?? '';
+    role = user?['role']?.toString();
+    userName = user?['hoTen']?.toString() ?? user?['email']?.toString() ?? '';
 
     await _storageService.saveSession(
-      token: token!,
-      role:  role ?? '',
-      name:  userName ?? '',
+      token: token ?? '',
+      role: role ?? '',
+      name: userName ?? '',
     );
 
     status = AuthStatus.authenticated;

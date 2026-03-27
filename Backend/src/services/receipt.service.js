@@ -1,12 +1,9 @@
 const receiptModel = require("../models/receipt.model");
 const chargeModel = require("../models/charge.model");
+const shiftModel = require("../models/shift.model");
 const auditLogModel = require("../models/auditLog.model");
 const db = require("../config/db");
 
-/**
- * TẠO BIÊN LAI THU PHÍ (RECEIPT)
- * Bao gồm: Tạo Receipt -> Tạo liên kết Receipt_Charge -> Cập nhật trạng thái Charge
- */
 exports.createReceipt = async (data, user) => {
   const connection = await db.getConnection();
 
@@ -14,9 +11,22 @@ exports.createReceipt = async (data, user) => {
     const tenant_id = user.tenant_id;
     await connection.beginTransaction();
 
-    // 1. VALIDATION ĐẦU VÀO
     if (!data.soTienThu || data.soTienThu <= 0) {
       throw Object.assign(new Error("Số tiền thu không hợp lệ"), {
+        statusCode: 400,
+      });
+    }
+    if (data.hinhThucThanhToan === "chuyen_khoan" && !data.anhChupThanhToan) {
+      throw Object.assign(new Error("Chuyển khoản phải có ảnh xác nhận"), {
+        statusCode: 400,
+      });
+    }
+
+    if (
+      data.hinhThucThanhToan !== "tien_mat" &&
+      data.hinhThucThanhToan !== "chuyen_khoan"
+    ) {
+      throw Object.assign(new Error("Hình thức thanh toán không hợp lệ"), {
         statusCode: 400,
       });
     }
@@ -32,24 +42,22 @@ exports.createReceipt = async (data, user) => {
       );
     }
 
-    // 2. KIỂM TRA SHIFT (CA LÀM VIỆC) - Tránh lỗi Foreign Key
-    if (data.shift_id) {
-      const [shiftExists] = await connection.execute(
-        "SELECT shift_id FROM shift WHERE shift_id = ? AND tenant_id = ?",
-        [data.shift_id, tenant_id],
-      );
-      if (shiftExists.length === 0) {
-        throw Object.assign(
-          new Error(
-            "Ca làm việc không tồn tại hoặc không thuộc quyền quản lý của bạn",
-          ),
-          { statusCode: 400 },
-        );
-      }
+    const activeShift = await shiftModel.getActiveShift(user.id, tenant_id);
+    if (!activeShift) {
+      throw Object.assign(new Error("Bạn phải mở ca trước khi thu phí"), {
+        statusCode: 400,
+      });
     }
 
+    if (
+      !data.shift_id ||
+      Number(data.shift_id) !== Number(activeShift.shift_id)
+    ) {
+      throw Object.assign(new Error("Ca thu không hợp lệ"), {
+        statusCode: 400,
+      });
+    }
 
-    // 3. TẠO BIÊN LAI (RECEIPT) TRONG DB
     const receipt = await receiptModel.createReceipt(connection, {
       tenant_id: tenant_id,
       soTienThu: data.soTienThu,
@@ -58,12 +66,11 @@ exports.createReceipt = async (data, user) => {
       anhChupThanhToan: data.anhChupThanhToan || null,
       thoiGianThu: data.thoiGianThu || new Date(),
       user_id: user.id,
-      shift_id: data.shift_id || null,
+      shift_id: data.shift_id,
     });
 
     const receipt_id = receipt.insertId;
 
-    // 4. XỬ LÝ CHI TIẾT TỪNG KHOẢN PHÍ THANH TOÁN
     for (const item of data.charges) {
       if (!item.charge_id || !item.soTien || item.soTien <= 0) {
         throw new Error(
@@ -71,7 +78,6 @@ exports.createReceipt = async (data, user) => {
         );
       }
 
-      // Lấy thông tin nợ hiện tại của Charge
       const currentCharge = await chargeModel.getChargeById(
         tenant_id,
         item.charge_id,
@@ -81,49 +87,31 @@ exports.createReceipt = async (data, user) => {
           `Khoản phí ID ${item.charge_id} không tồn tại trong hệ thống`,
         );
       }
-      console.log("receiptCharge", {
-  receipt_id,
-  charge_id: item.charge_id,
-  tenant_id,
-  soTienDaTra: item.soTien
-});
-      // A. Tạo bản ghi liên kết (Bắt buộc để getDetail không bị NULL)
+
       await receiptModel.createReceiptCharge(connection, {
         receipt_id,
         charge_id: item.charge_id,
         tenant_id: tenant_id,
-        soTienDaTra: item.soTien, // Số tiền thực tế trả trong lần này
+        soTienDaTra: item.soTien,
       });
 
-      // B. Tính toán cộng dồn nợ trên bảng Charge
       const tongDaThuMoi =
         Number(currentCharge.soTienDaThu) + Number(item.soTien);
       const soTienPhaiThu = Number(currentCharge.soTienPhaiThu);
-
-      // Xác định trạng thái mới (da_thu nếu đã trả đủ, ngược lại là no)
       const trangThaiMoi =
         tongDaThuMoi >= soTienPhaiThu - 0.01 ? "da_thu" : "no";
-console.log("updateCharge", {
-  soTienDaThu: Math.min(tongDaThuMoi, soTienPhaiThu),
-  trangThai: trangThaiMoi
-});
-      // C. Cập nhật bảng Charge (Truyền connection để chạy trong Transaction)
+
       await chargeModel.updateDebtStatus(
         item.charge_id,
         tenant_id,
         {
-          soTienDaThu: Math.min(tongDaThuMoi, soTienPhaiThu), // Không cho phép thu vượt quá số phải thu
+          soTienDaThu: Math.min(tongDaThuMoi, soTienPhaiThu),
           trangThai: trangThaiMoi,
         },
         connection,
       );
     }
-console.log("auditLog", {
-  tenant_id,
-  user_id: user.id,
-  entity_id: receipt_id
-});
-    // 5. GHI LOG HỆ THỐNG
+
     await auditLogModel.createAuditLog(connection, {
       tenant_id: tenant_id,
       user_id: user.id,
@@ -136,7 +124,24 @@ console.log("auditLog", {
         charges: data.charges,
       },
     });
+    if (data.shift_id) {
+      const [[totals]] = await connection.query(
+        `SELECT
+       COALESCE(SUM(CASE WHEN hinhThucThanhToan = 'tien_mat' THEN soTienThu ELSE 0 END), 0) AS tienMat,
+       COALESCE(SUM(CASE WHEN hinhThucThanhToan = 'chuyen_khoan' THEN soTienThu ELSE 0 END), 0) AS chuyenKhoan
+     FROM receipt
+     WHERE shift_id = ? AND tenant_id = ?`,
+        [data.shift_id, tenant_id],
+      );
 
+      await connection.query(
+        `UPDATE shift
+        SET tongTienMatThuDuoc = ?,
+            tongChuyenKhoanThuDuoc = ?
+      WHERE shift_id = ? AND tenant_id = ?`,
+        [totals.tienMat, totals.chuyenKhoan, data.shift_id, tenant_id],
+      );
+    }
     await connection.commit();
     return {
       success: true,
@@ -145,12 +150,13 @@ console.log("auditLog", {
     };
   } catch (err) {
     await connection.rollback();
-    // Bắt lỗi MySQL Foreign Key để trả về thông báo dễ hiểu
     if (err.code === "ER_NO_REFERENCED_ROW_2") {
-      if (err.message.includes("fk_receipt_shift"))
+      if (err.message.includes("fk_receipt_shift")) {
         err.message = "Ca làm việc không hợp lệ";
-      if (err.message.includes("fk_rc_charge"))
+      }
+      if (err.message.includes("fk_rc_charge")) {
         err.message = "Khoản phí không tồn tại";
+      }
     }
     throw err;
   } finally {
@@ -158,9 +164,6 @@ console.log("auditLog", {
   }
 };
 
-/**
- * LẤY DANH SÁCH BIÊN LAI (CÓ PHÂN TRANG)
- */
 exports.getReceipts = async (user, pagination, query = {}) => {
   const where = ["r.tenant_id = ?"];
   const params = [user.tenant_id];
@@ -194,9 +197,6 @@ exports.getReceipts = async (user, pagination, query = {}) => {
   };
 };
 
-/**
- * LẤY CHI TIẾT BIÊN LAI KÈM DANH SÁCH CÁC KHOẢN PHÍ ĐÃ TRẢ
- */
 exports.getReceiptDetail = async (receipt_id, user) => {
   const rows = await receiptModel.getReceiptDetail(receipt_id, user.tenant_id);
 
@@ -216,7 +216,6 @@ exports.getReceiptDetail = async (receipt_id, user) => {
     nhanVienThu: rows[0].nhanVienThu,
   };
 
-  // Map danh sách charges, loại bỏ các dòng null do JOIN nếu có
   const charges = rows
     .filter((r) => r.charge_id !== null)
     .map((r) => ({
@@ -226,7 +225,7 @@ exports.getReceiptDetail = async (receipt_id, user) => {
       kyThu: r.tenKyThu,
       bieuPhi: r.tenBieuPhi,
       soTienPhaiThu: r.soTienPhaiThu,
-      soTienDaTra: r.soTienDaTra, // Số tiền của riêng lần thanh toán này
+      soTienDaTra: r.soTienDaTra,
     }));
 
   return {
