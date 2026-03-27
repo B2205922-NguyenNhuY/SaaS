@@ -2,6 +2,7 @@ const stripe = require("../config/stripe");
 const db = require("../config/db");
 const paymentModel = require("../models/payment.model");
 const planSubscriptionModel = require("../models/plan_subscription.model");
+const planModel = require("../models/plan.model");
 
 exports.createCheckoutSession = async (user, body) => {
   const connection = await db.getConnection();

@@ -21,7 +21,8 @@ exports.getRevenueByMarket = async (tenant_id, from, to) => {
       m.tenCho,
       COALESCE(SUM(r.soTienThu), 0) AS tongThu
     FROM market m
-    LEFT JOIN kiosk k ON k.market_id = m.market_id AND k.tenant_id = m.tenant_id
+    LEFT JOIN zone z ON z.market_id = m.market_id AND z.tenant_id = m.tenant_id
+    LEFT JOIN kiosk k ON k.zone_id = z.zone_id AND k.tenant_id = z.tenant_id
     LEFT JOIN charge c ON c.kiosk_id = k.kiosk_id AND c.tenant_id = k.tenant_id
     LEFT JOIN receipt_charge rc ON rc.charge_id = c.charge_id AND rc.tenant_id = c.tenant_id
     LEFT JOIN receipt r ON r.receipt_id = rc.receipt_id AND r.tenant_id = rc.tenant_id

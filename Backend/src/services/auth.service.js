@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 
 const authModel = require("../models/auth.model");
 const userModel = require("../models/users.model");
-const admin = require("../config/firebase");
+const admin = require("firebase-admin");
 
 const SALT_ROUNDS = 10;
 
@@ -156,6 +156,53 @@ exports.login = async (body) => {
 
 exports.googleLogin = async (body) => {
   const { idToken } = body;
+
   const decoded = await admin.auth().verifyIdToken(idToken);
-  return { message: "Google login success", user: decoded };
+  const email = decoded.email;
+
+  if (!email) {
+    throw Object.assign(new Error("Không lấy được email từ Google"), { statusCode: 400 });
+  }
+
+  const superAdmin = await authModel.findSuperAdminByEmail(email);
+  if (superAdmin) {
+    if (superAdmin.trangThai !== 'active') {
+      throw Object.assign(new Error("Tài khoản không hoạt động"), { statusCode: 403 });
+    }
+    const token = jwt.sign(
+      { id: superAdmin.admin_id, role: 'super_admin', tenant_id: null, trangThai: superAdmin.trangThai },
+      process.env.JWT_SECRET,
+      { expiresIn: '60d' }
+    );
+    return {
+      token,
+      user: { id: superAdmin.admin_id, email: superAdmin.email, hoTen: superAdmin.hoTen, role: 'super_admin', tenant_id: null }
+    };
+  }
+
+  const user = await authModel.findUserByEmail(email);
+  if (user) {
+    if (user.trangThai !== 'active') {
+      throw Object.assign(new Error("Tài khoản không hoạt động"), { statusCode: 403 });
+    }
+    const roleNormalized =
+      user.tenVaiTro === 'TenantAdmin' ? 'tenant_admin'
+      : user.tenVaiTro === 'ThuNgan' ? 'collector'
+      : user.tenVaiTro.toLowerCase();
+
+    const token = jwt.sign(
+      { id: user.user_id, role: roleNormalized, tenant_id: user.tenant_id, trangThai: user.trangThai },
+      process.env.JWT_SECRET,
+      { expiresIn: '60d' }
+    );
+    return {
+      token,
+      user: { id: user.user_id, email: user.email, hoTen: user.hoTen, role: roleNormalized, tenant_id: user.tenant_id }
+    };
+  }
+
+  throw Object.assign(
+    new Error("Email này chưa được đăng ký trong hệ thống. Vui lòng liên hệ quản trị viên."),
+    { statusCode: 404 }
+  );
 };

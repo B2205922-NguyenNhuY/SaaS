@@ -42,6 +42,18 @@ exports.getSubscriptiontById = async (id) => {
     return rows[0];
 };
 
+exports.getSubscriptionsByTenantId = async (tenant_id) => {
+  const [rows] = await db.execute(
+    `SELECT ps.*, p.tenGoi, p.giaTien, p.gioiHanSoCho, p.gioiHanSoKiosk, p.gioiHanUser
+     FROM plan_subscription ps
+     JOIN plan p ON ps.plan_id = p.plan_id
+     WHERE ps.tenant_id = ?
+     ORDER BY ps.created_at DESC`,
+    [tenant_id]
+  );
+  return rows;
+};
+
 //Lấy subscription theo stripe_subscription_id
 exports.getSubscriptionByStripeId = async (connection, stripe_subscription_id) => {
     const [rows] = await connection.execute(

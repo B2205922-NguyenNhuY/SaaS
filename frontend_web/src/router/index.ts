@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Components } from 'ant-design-vue/es/date-picker/generatePicker'
 
 const routes = [
   {
@@ -168,7 +167,13 @@ const routes = [
         name: 'Zone',
         component: () => import('@/views/tenantadmin/Zone.vue'),
         meta: {title: 'Khu vực'},
-      },       
+      },   
+      {
+        path: 'payment-success',
+        name: 'Payment',
+        component: () => import('@/views/tenantadmin/Payment.vue'),
+        meta: {title: 'Thanh toán thành công'},
+      },     
     ],
   },
 

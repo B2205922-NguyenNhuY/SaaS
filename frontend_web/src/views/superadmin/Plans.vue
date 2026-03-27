@@ -113,6 +113,10 @@
               <label>Giới hạn người dùng</label>
               <input v-model.number="form.gioiHanUser" type="number" placeholder="50" min="0" />
             </div>
+            <div class="field">
+              <label>Stripe Price ID</label>
+              <input v-model="form.stripe_price_id" placeholder="price_xxxxxxxxxxxxxxxx" />
+            </div>
             <div class="error-banner" v-if="formError">{{ formError }}</div>
           </div>
           <div class="modal-footer">
@@ -176,7 +180,10 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input v-model="tenantSearch" placeholder="Tìm tên hoặc email tenant..." />
               </div>
-              <div class="tenant-list-wrap">
+              <div v-if="loadingAssigned" class="tenant-msg" style="border: 1px solid #e2ede2; border-radius: 10px;">
+                Đang kiểm tra danh sách đã gán...
+              </div>
+              <div class="tenant-list-wrap" v-else>
                 <div v-if="loadingTenants" class="tenant-msg">Đang tải danh sách tenant...</div>
                 <div
                   v-for="t in filteredTenants"
@@ -235,7 +242,7 @@ const plans = ref<any[]>([])
 const meta = ref({ total: 0, totalPages: 1 })
 
 const filters = reactive({ keyword: '', trangThai: '', page: 1, limit: 12, sortBy: 'created_at', sortOrder: 'DESC' })
-const form = reactive({ tenGoi: '', giaTien: 0, moTa: '', gioiHanUser: 0, gioiHanSoKiosk: 0, gioiHanSoCho: 0 })
+const form = reactive({ tenGoi: '', giaTien: 0, moTa: '', gioiHanUser: 0, gioiHanSoKiosk: 0, gioiHanSoCho: 0, stripe_price_id: '' })
 
 const assignModal = ref(false)
 const assigningPlan = ref<any>(null)
@@ -246,14 +253,16 @@ const savingAssign = ref(false)
 const tenantList = ref<any[]>([])
 const tenantSearch = ref('')
 const loadingTenants = ref(false)
+const assignedTenantIds = ref<Set<number>>(new Set())
+const loadingAssigned = ref(false)
 
 const filteredTenants = computed(() => {
   const q = tenantSearch.value.trim().toLowerCase()
-  if (!q) return tenantList.value
-  return tenantList.value.filter(t =>
-    t.tenBanQuanLy?.toLowerCase().includes(q) ||
-    t.email?.toLowerCase().includes(q)
-  )
+  return tenantList.value.filter(t => {
+    if (assignedTenantIds.value.has(t.tenant_id)) return false
+    if (!q) return true
+    return t.tenBanQuanLy?.toLowerCase().includes(q) || t.email?.toLowerCase().includes(q)
+  })
 })
 
 let debounceTimer: any
@@ -268,6 +277,7 @@ onMounted(async () => {
   } catch {}
   finally { loadingTenants.value = false }
 })
+
 
 async function fetchPlans() {
   loading.value = true
@@ -284,7 +294,7 @@ function changePage(p: number) { filters.page = p; fetchPlans() }
 
 function openCreate() {
   editingPlan.value = null
-  Object.assign(form, { tenGoi: '', giaTien: 0, moTa: '', gioiHanUser: 0, gioiHanSoKiosk: 0, gioiHanSoCho: 0 })
+  Object.assign(form, { tenGoi: '', giaTien: 0, moTa: '', gioiHanUser: 0, gioiHanSoKiosk: 0, gioiHanSoCho: 0, stripe_price_id: '' })
   formError.value = ''
   showModal.value = true
 }
@@ -299,6 +309,7 @@ async function openEdit(plan: any) {
     gioiHanUser: plan.gioiHanUser ?? 0,
     gioiHanSoKiosk: plan.gioiHanSoKiosk ?? 0,
     gioiHanSoCho: plan.gioiHanSoCho ?? 0,
+    stripe_price_id: plan.stripe_price_id ?? '',
   })
   showModal.value = true
   try {
@@ -317,13 +328,24 @@ async function openEdit(plan: any) {
 
 function closeModal() { showModal.value = false }
 
-function openAssign(plan: any) {
+async function openAssign(plan: any) {
   assigningPlan.value = plan
   assignForm.tenant_id = 0
   tenantSearch.value = ''
   assignError.value = ''
   assignSuccess.value = false
   assignModal.value = true
+
+  loadingAssigned.value = true
+  try {
+    const res = await api.get(`/plan_subscription/list?plan_id=${plan.plan_id}&trangThai=active&limit=200`)
+    const rows = res.data?.data || []
+    assignedTenantIds.value = new Set(rows.map((r: any) => r.tenant_id))
+  } catch {
+    assignedTenantIds.value = new Set()
+  } finally {
+    loadingAssigned.value = false
+  }
 }
 
 function confirmInactive(plan: any) { targetPlan.value = plan; confirmModal.value = true }
@@ -339,6 +361,7 @@ async function submitPlan() {
       gioiHanUser: form.gioiHanUser,
       gioiHanSoKiosk: form.gioiHanSoKiosk,
       gioiHanSoCho: form.gioiHanSoCho,
+      stripe_price_id: form.stripe_price_id || null, 
     }
     if (editingPlan.value) {
       await api.put(`/plan/${editingPlan.value.plan_id}`, payload)
@@ -374,6 +397,8 @@ async function submitAssign() {
       tenant_id: assignForm.tenant_id,
       plan_id: assigningPlan.value.plan_id,
     })
+    assignedTenantIds.value.add(assignForm.tenant_id)
+    
     assignSuccess.value = true
     assignForm.tenant_id = 0
     tenantSearch.value = ''
