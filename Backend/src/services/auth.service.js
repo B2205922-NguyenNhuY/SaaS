@@ -1,11 +1,19 @@
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
+const jwt    = require("jsonwebtoken");
+const admin  = require("firebase-admin");
 
 const authModel = require("../models/auth.model");
 const userModel = require("../models/users.model");
-const admin = require("firebase-admin");
 
 const SALT_ROUNDS = 10;
+
+function normalizeRole(tenVaiTro) {
+  switch (tenVaiTro) {
+    case "TenantAdmin": return "tenant_admin";
+    case "ThuNgan":     return "collector";
+    default:            return "unknown";
+  }
+}
 
 exports.register = async (body) => {
   const { email, password, hoTen, soDienThoai, tenant_id, role_id } = body;
@@ -14,7 +22,7 @@ exports.register = async (body) => {
     throw Object.assign(new Error("Missing required fields"), { statusCode: 400 });
   }
 
-  const duplicate = await userModel.checkDuplicate(email, soDienThoai);
+  const duplicate = await userModel.checkDuplicate(null, email, soDienThoai, tenant_id);
   if (duplicate.length > 0) {
     throw Object.assign(new Error("Email hoặc Số điện thoại đã tồn tại"), { statusCode: 400 });
   }
@@ -33,24 +41,15 @@ exports.login = async (body) => {
   }
 
   const superAdmin = await authModel.findSuperAdminByEmail(email);
-
   if (superAdmin) {
     if (superAdmin.trangThai !== "active") {
       throw Object.assign(new Error("Account is not active"), { statusCode: 403 });
     }
-
     const isMatch = await bcrypt.compare(password, superAdmin.password_hash);
-    if (!isMatch) {
-      throw Object.assign(new Error("Password is wrong"), { statusCode: 401 });
-    }
+    if (!isMatch) throw Object.assign(new Error("Password is wrong"), { statusCode: 401 });
 
     const token = jwt.sign(
-      {
-        id: superAdmin.admin_id,
-        role: "super_admin",
-        tenant_id: null,
-        trangThai: superAdmin.trangThai,
-      },
+      { id: superAdmin.admin_id, role: "super_admin", tenant_id: null, trangThai: superAdmin.trangThai },
       process.env.JWT_SECRET,
       { expiresIn: "60d" }
     );
@@ -71,30 +70,16 @@ exports.login = async (body) => {
   }
 
   const user = await authModel.findUserByEmail(email);
-
   if (user) {
     if (user.trangThai !== "active") {
       throw Object.assign(new Error("Account is not active"), { statusCode: 403 });
     }
-
     const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      throw Object.assign(new Error("Password is wrong"), { statusCode: 401 });
-    }
+    if (!isMatch) throw Object.assign(new Error("Password is wrong"), { statusCode: 401 });
 
-    const roleNormalized =
-      user.tenVaiTro === "TenantAdmin" ? "tenant_admin"
-      : user.tenVaiTro === "ThuNgan" ? "collector"
-      : user.tenVaiTro === "QuanLy" ? "manager"
-      : user.tenVaiTro.toLowerCase();
-
+    const role  = normalizeRole(user.tenVaiTro);
     const token = jwt.sign(
-      {
-        id: user.user_id,
-        role: roleNormalized,
-        tenant_id: user.tenant_id,
-        trangThai: user.trangThai,
-      },
+      { id: user.user_id, role, tenant_id: user.tenant_id, trangThai: user.trangThai },
       process.env.JWT_SECRET,
       { expiresIn: "60d" }
     );
@@ -108,31 +93,22 @@ exports.login = async (body) => {
         hoTen: user.hoTen,
         soDienThoai: user.soDienThoai,
         tenant_id: user.tenant_id,
-        role: roleNormalized,
+        role,
         trangThai: user.trangThai,
       },
     };
   }
 
   const merchant = await authModel.findMerchantByPhone(email);
-
   if (merchant) {
     if (merchant.trangThai !== "active") {
       throw Object.assign(new Error("Account is not active"), { statusCode: 403 });
     }
-
     const isMatch = await bcrypt.compare(password, merchant.password_hash);
-    if (!isMatch) {
-      throw Object.assign(new Error("Password is wrong"), { statusCode: 401 });
-    }
+    if (!isMatch) throw Object.assign(new Error("Password is wrong"), { statusCode: 401 });
 
     const token = jwt.sign(
-      {
-        id: merchant.merchant_id,
-        role: "merchant",
-        tenant_id: merchant.tenant_id,
-        trangThai: merchant.trangThai,
-      },
+      { id: merchant.merchant_id, role: "merchant", tenant_id: merchant.tenant_id, trangThai: merchant.trangThai },
       process.env.JWT_SECRET,
       { expiresIn: "60d" }
     );
@@ -158,7 +134,7 @@ exports.googleLogin = async (body) => {
   const { idToken } = body;
 
   const decoded = await admin.auth().verifyIdToken(idToken);
-  const email = decoded.email;
+  const email   = decoded.email;
 
   if (!email) {
     throw Object.assign(new Error("Không lấy được email từ Google"), { statusCode: 400 });
@@ -166,38 +142,34 @@ exports.googleLogin = async (body) => {
 
   const superAdmin = await authModel.findSuperAdminByEmail(email);
   if (superAdmin) {
-    if (superAdmin.trangThai !== 'active') {
+    if (superAdmin.trangThai !== "active") {
       throw Object.assign(new Error("Tài khoản không hoạt động"), { statusCode: 403 });
     }
     const token = jwt.sign(
-      { id: superAdmin.admin_id, role: 'super_admin', tenant_id: null, trangThai: superAdmin.trangThai },
+      { id: superAdmin.admin_id, role: "super_admin", tenant_id: null, trangThai: superAdmin.trangThai },
       process.env.JWT_SECRET,
-      { expiresIn: '60d' }
+      { expiresIn: "60d" }
     );
     return {
       token,
-      user: { id: superAdmin.admin_id, email: superAdmin.email, hoTen: superAdmin.hoTen, role: 'super_admin', tenant_id: null }
+      user: { id: superAdmin.admin_id, email: superAdmin.email, hoTen: superAdmin.hoTen, role: "super_admin", tenant_id: null },
     };
   }
 
   const user = await authModel.findUserByEmail(email);
   if (user) {
-    if (user.trangThai !== 'active') {
+    if (user.trangThai !== "active") {
       throw Object.assign(new Error("Tài khoản không hoạt động"), { statusCode: 403 });
     }
-    const roleNormalized =
-      user.tenVaiTro === 'TenantAdmin' ? 'tenant_admin'
-      : user.tenVaiTro === 'ThuNgan' ? 'collector'
-      : user.tenVaiTro.toLowerCase();
-
+    const role  = normalizeRole(user.tenVaiTro);
     const token = jwt.sign(
-      { id: user.user_id, role: roleNormalized, tenant_id: user.tenant_id, trangThai: user.trangThai },
+      { id: user.user_id, role, tenant_id: user.tenant_id, trangThai: user.trangThai },
       process.env.JWT_SECRET,
-      { expiresIn: '60d' }
+      { expiresIn: "60d" }
     );
     return {
       token,
-      user: { id: user.user_id, email: user.email, hoTen: user.hoTen, role: roleNormalized, tenant_id: user.tenant_id }
+      user: { id: user.user_id, email: user.email, hoTen: user.hoTen, role, tenant_id: user.tenant_id },
     };
   }
 

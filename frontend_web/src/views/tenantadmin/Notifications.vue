@@ -3,7 +3,6 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Thông báo</h1>
-        <p class="page-sub">{{ isSuperAdmin ? 'Tạo và quản lý thông báo hệ thống' : 'Thông báo nội bộ chợ' }}</p>
       </div>
       <button class="btn-primary" @click="openCreate">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -12,14 +11,17 @@
     </div>
 
     <div class="notif-layout">
+      <!-- Danh sách -->
       <div class="notif-list-panel">
         <div class="panel-head">
           <span class="panel-title">Danh sách</span>
           <span class="unread-chip" v-if="unreadCount > 0">{{ unreadCount }} chưa đọc</span>
         </div>
+
         <div v-if="loading" class="sk-list">
           <div v-for="i in 6" :key="i" class="sk-notif"></div>
         </div>
+
         <div v-else class="notif-items">
           <div
             v-for="n in notifications" :key="n.notification_id"
@@ -31,17 +33,18 @@
             <div class="notif-item-body">
               <div class="notif-item-header">
                 <div class="notif-item-title">{{ n.title }}</div>
-                <span class="target-chip" :class="`target-${n.target_type}`">{{ targetLabel(n) }}</span>
+                <span class="target-chip" :class="targetChipClass(n)">{{ targetLabel(n) }}</span>
               </div>
               <div class="notif-item-preview">{{ truncate(n.content) }}</div>
               <div class="notif-item-time">{{ dt(n.created_at) }}</div>
             </div>
           </div>
-          <div v-if="!notifications.length" class="empty">Không có thông báo</div>
+          <div v-if="!notifications.length" class="empty">Không có thông báo nào</div>
         </div>
+
         <div class="pagination-sm" v-if="meta.totalPages > 1">
           <button :disabled="page <= 1" @click="page--; fetchNotifs()">←</button>
-          <span>{{ page }}/{{ meta.totalPages }}</span>
+          <span>{{ page }} / {{ meta.totalPages }}</span>
           <button :disabled="page >= meta.totalPages" @click="page++; fetchNotifs()">→</button>
         </div>
       </div>
@@ -50,18 +53,19 @@
         <div class="detail-head">
           <div class="detail-head-top">
             <h2 class="detail-title">{{ selected.title }}</h2>
-            <span class="target-chip" :class="`target-${selected.target_type}`">{{ targetLabel(selected) }}</span>
+            <span class="target-chip" :class="targetChipClass(selected)">{{ targetLabel(selected) }}</span>
           </div>
           <div class="detail-meta">{{ dt(selected.created_at) }}</div>
         </div>
         <div class="detail-body"><p>{{ selected.content }}</p></div>
-        <div class="detail-actions" v-if="!selected.is_read && !isSuperAdmin">
+
+        <div class="detail-actions" v-if="!selected.is_read">
           <button class="btn-outline" @click="markRead(selected)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
             Đánh dấu đã đọc
           </button>
         </div>
-        <div class="read-badge" v-else-if="selected.is_read && !isSuperAdmin">
+        <div class="read-badge" v-else>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
           Đã đọc
         </div>
@@ -92,51 +96,45 @@
               <textarea v-model="form.content" rows="4" placeholder="Nội dung thông báo..."></textarea>
             </div>
 
-            <!-- TENANT ADMIN -->
-            <template>
-              <div class="field">
-                <label>Gửi đến</label>
-                <select v-model="form.target_type">
-                  <option value="tenant">Toàn bộ người dùng trong tenant</option>
-                  <option value="market">Theo chợ</option>
-                  <option value="zone">Theo khu vực</option>
-                  <option value="role">Theo vai trò</option>
-                </select>
-              </div>
-              <div class="field" v-if="form.target_type === 'market'">
-                <label>Chọn chợ <span class="req">*</span></label>
-                <select v-model="form.market_id" @change="loadZones">
-                  <option :value="null">-- Chọn chợ --</option>
-                  <option v-for="m in markets" :key="m.market_id" :value="m.market_id">{{ m.tenCho }}</option>
-                </select>
-              </div>
-              <div class="field" v-if="form.target_type === 'zone'">
-                <label>Chọn chợ trước</label>
-                <select v-model="form.market_id" @change="loadZones">
-                  <option :value="null">-- Chọn chợ --</option>
-                  <option v-for="m in markets" :key="m.market_id" :value="m.market_id">{{ m.tenCho }}</option>
-                </select>
-              </div>
-              <div class="field" v-if="form.target_type === 'zone' && zones.length">
-                <label>Chọn khu vực <span class="req">*</span></label>
-                <select v-model="form.zone_id">
-                  <option :value="null">-- Chọn khu --</option>
-                  <option v-for="z in zones" :key="z.zone_id" :value="z.zone_id">{{ z.tenKhu }}</option>
-                </select>
-              </div>
-              <div class="field" v-if="form.target_type === 'role'">
-                <label>Vai trò nhận thông báo</label>
-                <select v-model="form.target_role">
-                  <option value="collector">Thu ngân (Collector)</option>
-                  <option value="merchant">Tiểu thương (Merchant)</option>
-                </select>
-              </div>
-            </template>
+            <div class="field">
+              <label>Gửi đến</label>
+              <select v-model="form.target_type" @change="onTargetTypeChange">
+                <option value="tenant">Toàn bộ (tất cả chợ)</option>
+                <option value="market">Theo chợ</option>
+                <option value="zone">Theo khu vực</option>
+                <option value="role">Theo vai trò</option>
+              </select>
+            </div>
+
+            <div class="field" v-if="form.target_type === 'market' || form.target_type === 'zone'">
+              <label>Chọn chợ <span class="req">*</span></label>
+              <select v-model="form.market_id" @change="loadZones">
+                <option :value="null">-- Chọn chợ --</option>
+                <option v-for="m in markets" :key="m.market_id" :value="m.market_id">{{ m.tenCho }}</option>
+              </select>
+            </div>
+
+            <div class="field" v-if="form.target_type === 'zone' && zones.length">
+              <label>Chọn khu vực <span class="req">*</span></label>
+              <select v-model="form.zone_id">
+                <option :value="null">-- Chọn khu --</option>
+                <option v-for="z in zones" :key="z.zone_id" :value="z.zone_id">{{ z.tenKhu }}</option>
+              </select>
+            </div>
+
+            <div class="field" v-if="form.target_type === 'role'">
+              <label>Vai trò nhận thông báo</label>
+              <select v-model="form.target_role">
+                <option value="collector">Thu ngân</option>
+                <option value="merchant">Tiểu thương</option>
+              </select>
+            </div>
 
             <div class="field">
-              <label>Hết hạn (tuỳ chọn)</label>
+              <label>Hết hạn <span style="color:#94a894;font-weight:400">(tuỳ chọn)</span></label>
               <input v-model="form.expires_at" type="datetime-local" />
             </div>
+
             <div class="error-banner" v-if="formError">{{ formError }}</div>
           </div>
           <div class="modal-foot">
@@ -153,76 +151,80 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { ref, reactive, onMounted } from 'vue'
 import api from '@/api/axios'
 
-const authStore = useAuthStore()
-const isSuperAdmin = computed(() => authStore.user?.role === 'super_admin')
-
-const loading = ref(true)
-const saving = ref(false)
+const loading   = ref(true)
+const saving    = ref(false)
 const showCreate = ref(false)
 const formError = ref('')
 const notifications = ref<any[]>([])
-const selected = ref<any>(null)
-const page = ref(1)
-const meta = ref({ total: 0, totalPages: 1 })
-const tenants = ref<any[]>([])
-const markets = ref<any[]>([])
-const zones = ref<any[]>([])
+const selected  = ref<any>(null)
+const page      = ref(1)
+const meta      = ref({ total: 0, totalPages: 1 })
+const unreadCount = ref(0)
+const markets   = ref<any[]>([])
+const zones     = ref<any[]>([])
 
 const form = reactive({
-  title: '',
-  content: '',
-  target_type: 'all' as string,
-  tenant_id: null as number | null,
-  market_id: null as number | null,
-  zone_id: null as number | null,
+  title:       '',
+  content:     '',
+  target_type: 'tenant' as string,
+  market_id:   null as number | null,
+  zone_id:     null as number | null,
   target_role: 'collector' as string,
-  expires_at: '',
+  expires_at:  '',
 })
 
-const unreadCount = computed(() => notifications.value.filter(n => !n.is_read).length)
-
 onMounted(async () => {
-  await fetchNotifs()
-  if (isSuperAdmin.value) {
-    const res = await api.get('/tenant').catch(() => ({ data: [] }))
-    tenants.value = Array.isArray(res.data) ? res.data : (res.data.data || [])
-  } else {
-    const res = await api.get('/market').catch(() => ({ data: [] }))
-    markets.value = Array.isArray(res.data) ? res.data : (res.data.data || [])
-    form.target_type = 'tenant'
-  }
+  await Promise.all([
+    fetchNotifs(),
+    fetchUnreadCount(),
+    api.get('/market', { params: { limit: 200 } })
+      .then(r => markets.value = r.data.data || [])
+      .catch(() => {}),
+  ])
 })
 
 async function fetchNotifs() {
   loading.value = true
   try {
-    const res = await api.get(`/notifications?page=${page.value}&limit=15`)
+    const res = await api.get('/notifications', { params: { page: page.value, limit: 15 } })
     notifications.value = res.data.data || []
     meta.value = res.data.meta || { total: 0, totalPages: 1 }
   } catch {}
   finally { loading.value = false }
 }
 
-async function loadZones() {
-  if (!form.market_id) { zones.value = []; return }
+async function fetchUnreadCount() {
   try {
-    const res = await api.get(`/zone?market_id=${form.market_id}`)
-    zones.value = Array.isArray(res.data) ? res.data : (res.data.data || [])
-  } catch { zones.value = [] }
+    const res = await api.get('/notifications/unread_count')
+    unreadCount.value = res.data.unread_count || 0
+  } catch {}
+}
+
+async function loadZones() {
+  form.zone_id = null
+  zones.value = []
+  if (!form.market_id) return
+  try {
+    const res = await api.get('/zone', { params: { market_id: form.market_id, limit: 200 } })
+    zones.value = res.data.data || []
+  } catch {}
+}
+
+function onTargetTypeChange() {
+  form.market_id = null
+  form.zone_id   = null
+  zones.value    = []
 }
 
 function openCreate() {
   Object.assign(form, {
-    title: '', content: '',
-    target_type: isSuperAdmin.value ? 'all' : 'tenant',
-    tenant_id: null, market_id: null, zone_id: null,
-    target_role: 'collector', expires_at: ''
+    title: '', content: '', target_type: 'tenant',
+    market_id: null, zone_id: null, target_role: 'collector', expires_at: '',
   })
-  zones.value = []
+  zones.value  = []
   formError.value = ''
   showCreate.value = true
 }
@@ -232,6 +234,12 @@ async function openNotif(n: any) {
   try {
     const res = await api.get(`/notifications/${n.notification_id}`)
     selected.value = { ...n, ...res.data }
+    // Cập nhật is_read trong list
+    const item = notifications.value.find(x => x.notification_id === n.notification_id)
+    if (item && !item.is_read) {
+      item.is_read = 1
+      unreadCount.value = Math.max(0, unreadCount.value - 1)
+    }
   } catch {}
 }
 
@@ -240,73 +248,80 @@ async function markRead(n: any) {
     await api.post(`/notifications/${n.notification_id}/read`)
     n.is_read = 1
     if (selected.value?.notification_id === n.notification_id) selected.value.is_read = 1
+    const item = notifications.value.find(x => x.notification_id === n.notification_id)
+    if (item) item.is_read = 1
+    unreadCount.value = Math.max(0, unreadCount.value - 1)
   } catch {}
 }
 
 async function createNotif() {
-  if (!form.title || !form.content) { formError.value = 'Vui lòng điền tiêu đề và nội dung'; return }
-  if (isSuperAdmin.value && form.target_type === 'tenant' && !form.tenant_id) {
-    formError.value = 'Vui lòng chọn Tenant'; return
+  if (!form.title.trim() || !form.content.trim()) {
+    formError.value = 'Vui lòng điền tiêu đề và nội dung'; return
   }
-  if (!isSuperAdmin.value && form.target_type === 'market' && !form.market_id) {
+  if (form.target_type === 'market' && !form.market_id) {
     formError.value = 'Vui lòng chọn chợ'; return
   }
-  if (!isSuperAdmin.value && form.target_type === 'zone' && !form.zone_id) {
+  if (form.target_type === 'zone' && !form.zone_id) {
     formError.value = 'Vui lòng chọn khu vực'; return
   }
 
   saving.value = true; formError.value = ''
   try {
     const payload: any = {
-      title: form.title,
-      content: form.content,
-      target_type: form.target_type,
+      title:    form.title.trim(),
+      content:  form.content.trim(),
       expires_at: form.expires_at || null,
     }
-    if (form.target_type === 'tenant' && form.tenant_id) payload.tenant_id = form.tenant_id
-    if (form.target_type === 'market' && form.market_id) payload.market_id = form.market_id
-    if (form.target_type === 'zone' && form.zone_id) payload.zone_id = form.zone_id
-    if (form.target_type === 'role') payload.target_role = form.target_role
+
+    if (form.target_type === 'market' && form.market_id) {
+      payload.market_id = form.market_id
+    } else if (form.target_type === 'zone' && form.zone_id) {
+      payload.market_id = form.market_id
+      payload.zone_id   = form.zone_id
+    } else if (form.target_type === 'role') {
+      payload.target_role = form.target_role
+    }
 
     await api.post('/notifications', payload)
     showCreate.value = false
+    page.value = 1
     fetchNotifs()
   } catch (e: any) {
     formError.value = e.response?.data?.message || 'Lỗi tạo thông báo'
   } finally { saving.value = false }
 }
 
-function targetLabel(n: any) {
-  const map: Record<string, string> = {
-    all: 'Toàn hệ thống',
-    tenant: 'Tenant',
-    market: 'Chợ',
-    zone: 'Khu vực',
-    role: n.target_role ? roleLabel(n.target_role) : 'Vai trò',
-  }
-  return map[n.target_type] || n.target_type
+function targetChipClass(n: any) {
+  if (n.zone_id)        return 'target-zone'
+  if (n.market_id)      return 'target-market'
+  if (n.target_role)    return 'target-role'
+  if (n.type === 'system') return 'target-all'
+  return 'target-tenant'
 }
 
-function roleLabel(role: string) {
-  const map: Record<string, string> = {
-    tenant_admin: 'Quản lý chợ',
-    collector: 'Thu ngân',
-    merchant: 'Tiểu thương',
-  }
-  return map[role] || role
+function targetLabel(n: any) {
+  if (n.zone_id)        return 'Khu vực'
+  if (n.market_id)      return 'Chợ'
+  if (n.target_role)    return n.target_role === 'collector' ? 'Thu ngân' : 'Tiểu thương'
+  if (n.type === 'system') return 'Toàn hệ thống'
+  return 'Toàn bộ'
 }
 
 const truncate = (s: string) => s?.length > 80 ? s.slice(0, 80) + '...' : (s || '')
-const dt = (d: string) => d ? new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
+const dt = (d: string) => d ? new Date(d).toLocaleString('vi-VN', {
+  hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
+}) : '—'
 </script>
 
 <style scoped>
-.notif-page { display: flex; flex-direction: column; gap: 20px; }
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600&display=swap');
+*, *::before, *::after { box-sizing: border-box; }
+.notif-page { display: flex; flex-direction: column; gap: 20px; font-family: 'Be Vietnam Pro', sans-serif; }
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; }
-.page-title { font-size: 22px; font-weight: 600; color: #1a2e1a; margin: 0 0 4px; letter-spacing: -.3px; }
+.page-title { font-size: 22px; font-weight: 600; color: #1a2e1a; margin: 0 0 4px; }
 .page-sub { font-size: 13px; color: #6b836b; margin: 0; }
 
-.notif-layout { display: grid; grid-template-columns: 380px 1fr; gap: 16px; min-height: 500px; }
+.notif-layout { display: grid; grid-template-columns: 360px 1fr; gap: 16px; min-height: 500px; }
 
 .notif-list-panel { background: white; border: 1px solid #e2ede2; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #f0f5f0; }
@@ -314,8 +329,8 @@ const dt = (d: string) => d ? new Date(d).toLocaleString('vi-VN', { hour: '2-dig
 .unread-chip { font-size: 11.5px; font-weight: 600; background: #eef7ee; color: #2d6e2d; padding: 3px 8px; border-radius: 20px; }
 
 .sk-list { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.sk-notif { height: 64px; background: #f0f5f0; border-radius: 10px; animation: p 1.2s infinite; }
-@keyframes p { 0%,100%{opacity:1} 50%{opacity:.45} }
+.sk-notif { height: 64px; background: #f0f5f0; border-radius: 10px; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
 
 .notif-items { flex: 1; overflow-y: auto; }
 .notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #f7faf7; cursor: pointer; transition: background 0.15s; }
@@ -323,7 +338,7 @@ const dt = (d: string) => d ? new Date(d).toLocaleString('vi-VN', { hour: '2-dig
 .notif-item:hover { background: #fafcfa; }
 .notif-item--active { background: #f0f7f0 !important; }
 .notif-item--unread { background: #fafef9; }
-.notif-item-dot { width: 7px; height: 7px; background: #3d8c3d; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.notif-item-dot { width: 7px; height: 7px; background: #3d8c3d; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
 .notif-item-body { flex: 1; min-width: 0; }
 .notif-item-header { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
 .notif-item-title { font-size: 13px; font-weight: 500; color: #1a2e1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
@@ -331,36 +346,37 @@ const dt = (d: string) => d ? new Date(d).toLocaleString('vi-VN', { hour: '2-dig
 .notif-item-time { font-size: 11px; color: #b0c4b0; }
 
 .target-chip { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
-.target-all { background: #fef3c7; color: #92400e; }
+.target-all    { background: #fef3c7; color: #92400e; }
 .target-tenant { background: #eff6ff; color: #1d4ed8; }
 .target-market { background: #f0fdf4; color: #166534; }
-.target-zone { background: #f5f3ff; color: #6d28d9; }
-.target-role { background: #fff1f2; color: #be123c; }
+.target-zone   { background: #f5f3ff; color: #6d28d9; }
+.target-role   { background: #fff1f2; color: #be123c; }
 
-.empty { text-align: center; padding: 40px; color: #94a894; font-size: 13px; }
+.empty { text-align: center; padding: 48px 16px; color: #94a894; font-size: 13px; }
 .pagination-sm { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px; border-top: 1px solid #f0f5f0; }
 .pagination-sm button { width: 28px; height: 28px; background: none; border: 1px solid #e2ede2; border-radius: 7px; cursor: pointer; font-size: 12px; }
 .pagination-sm button:disabled { opacity: 0.4; cursor: not-allowed; }
 .pagination-sm span { font-size: 12px; color: #6b836b; }
 
-.notif-detail-panel { background: white; border: 1px solid #e2ede2; border-radius: 14px; padding: 24px; }
-.notif-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #94a894; font-size: 13.5px; }
+.notif-detail-panel { background: white; border: 1px solid #e2ede2; border-radius: 14px; padding: 24px; display: flex; flex-direction: column; }
+.notif-detail-empty { align-items: center; justify-content: center; gap: 12px; color: #94a894; font-size: 13.5px; }
 .detail-head { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #f0f5f0; }
 .detail-head-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
 .detail-title { font-size: 18px; font-weight: 600; color: #1a2e1a; margin: 0; flex: 1; }
 .detail-meta { font-size: 12.5px; color: #94a894; }
-.detail-body p { font-size: 14px; color: #2d4a2d; line-height: 1.7; margin: 0; }
+.detail-body p { font-size: 14px; color: #2d4a2d; line-height: 1.7; margin: 0; white-space: pre-wrap; }
 .detail-actions { margin-top: 20px; }
 .read-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 20px; font-size: 12.5px; color: #3d8c3d; background: #eef7ee; padding: 5px 12px; border-radius: 20px; }
-.read-stats { margin-top: 20px; padding: 14px; background: #f7faf7; border-radius: 10px; border: 1px solid #e2ede2; display: flex; flex-direction: column; gap: 8px; }
+
+.read-stats { margin-top: 16px; padding: 14px; background: #f7faf7; border-radius: 10px; border: 1px solid #e2ede2; display: flex; flex-direction: column; gap: 8px; }
 .stat-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #4a654a; }
 .stat-item--read { color: #2d6e2d; }
 .stat-item strong { color: #1a2e1a; }
 .stat-bar { height: 6px; background: #e2ede2; border-radius: 3px; overflow: hidden; }
-.stat-bar-fill { height: 100%; background: #3d8c3d; border-radius: 3px; transition: width 0.4s ease; }
+.stat-bar-fill { height: 100%; background: #3d8c3d; border-radius: 3px; transition: width 0.4s; }
 .stat-pct { font-size: 12px; color: #6b836b; text-align: right; }
 
-.btn-primary { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 18px; background: #3d8c3d; border: none; border-radius: 10px; color: white; font-size: 13.5px; font-weight: 500; font-family: 'Be Vietnam Pro', sans-serif; cursor: pointer; transition: background 0.15s; }
+.btn-primary { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 18px; background: #3d8c3d; border: none; border-radius: 10px; color: white; font-size: 13.5px; font-weight: 500; font-family: 'Be Vietnam Pro', sans-serif; cursor: pointer; transition: background .15s; }
 .btn-primary:hover:not(:disabled) { background: #2d6e2d; }
 .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn-outline { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 16px; background: white; border: 1.5px solid #d4e4d4; border-radius: 9px; color: #2d4a2d; font-size: 13px; font-family: 'Be Vietnam Pro', sans-serif; cursor: pointer; }
@@ -380,10 +396,10 @@ const dt = (d: string) => d ? new Date(d).toLocaleString('vi-VN', { hour: '2-dig
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field label { font-size: 12.5px; font-weight: 500; color: #3a4f3a; }
 .req { color: #dc2626; }
-.field input, .field textarea, .field select { width: 100%; padding: 9px 12px; border: 1.5px solid #d4e4d4; border-radius: 10px; font-size: 13.5px; font-family: 'Be Vietnam Pro', sans-serif; color: #1a2e1a; background: #fbfdfb; outline: none; transition: border 0.2s; resize: vertical; box-sizing: border-box; }
+.field input, .field textarea, .field select { width: 100%; padding: 9px 12px; border: 1.5px solid #d4e4d4; border-radius: 10px; font-size: 13.5px; font-family: 'Be Vietnam Pro', sans-serif; color: #1a2e1a; background: #fbfdfb; outline: none; resize: vertical; }
 .field input:focus, .field textarea:focus, .field select:focus { border-color: #3d8c3d; background: white; }
 .error-banner { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; color: #b91c1c; font-size: 13px; }
-.spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.35); border-top-color: white; border-radius: 50%; animation: spin 0.65s linear infinite; display: inline-block; }
+.spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35); border-top-color: white; border-radius: 50%; animation: spin .65s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 768px) { .notif-layout { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .notif-layout { grid-template-columns: 1fr; } }
 </style>

@@ -48,26 +48,18 @@ exports.getUserById = async (req, res, next) => {
 
 //Lấy user theo Tenant
 exports.getUsersByTenant = async (req, res, next) => {
-  try {
-    const filters = {
-      tenant_id: req.user.tenant_id,
-      keyword: req.query.keyword,
-      role_id: req.query.role_id,
-      trangThai: req.query.trangThai,
-      page: Number(req.query.page) || 1,
-      limit: Number(req.query.limit) || 10,
-      sortBy: req.query.sortBy || "created_at",
-      sortOrder: req.query.sortOrder || "DESC"
-    };
-    
-    const users = await userService.getUsersByTenant(req.user);
-
-    res.json(users);
-
-  } catch (error) {
-    next(error);
+  const filters = {
+    tenant_id: req.user.tenant_id,
+    keyword:   req.query.keyword,
+    role_id:   req.query.role_id,
+    trangThai: req.query.trangThai,
+    page:      Number(req.query.page)  || 1,
+    limit:     Number(req.query.limit) || 10,
+    sortBy:    req.query.sortBy    || "created_at",
+    sortOrder: req.query.sortOrder || "DESC",
   }
-};
+  res.json(await userService.getUsersByTenant(filters)) 
+}
 
 //Đổi mật khẩu
 exports.changePassword = async (req, res, next) => {

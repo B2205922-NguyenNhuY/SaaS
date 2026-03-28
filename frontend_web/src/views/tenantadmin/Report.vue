@@ -3,7 +3,6 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Báo cáo doanh thu</h1>
-        <p class="page-sub">Thống kê doanh thu theo chợ, khu vực, nhân viên và phương thức thanh toán</p>
       </div>
       <button class="btn-outline" @click="exportExcel" :disabled="exporting">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

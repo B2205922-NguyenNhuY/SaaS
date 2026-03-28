@@ -4,7 +4,6 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Gói cước</h1>
-        <p class="page-sub">Quản lý gói dịch vụ và nâng cấp hạn mức sử dụng</p>
       </div>
     </div>
 
@@ -396,7 +395,7 @@ function planTier(plan: any): string {
 
 .current-plan-banner {
   background: white;
-  border: 2px solid #CCFF66;
+  border: 2px solid #3d8c3d;
   border-radius: 14px;
   padding: 20px 22px;
   display: flex;
@@ -434,7 +433,7 @@ function planTier(plan: any): string {
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 .plan-card:hover { box-shadow: 0 4px 20px rgba(61,140,61,0.1); }
-.plan-card--current { border: 2px solid #CCFF66; background: #fafff0; }
+.plan-card--current { border: 2px solid #3d8c3d; background: #fafff0; }
 .plan-card--upgrade { border-color: #3d8c3d; }
 .plan-card--inactive { opacity: 0.6; }
 

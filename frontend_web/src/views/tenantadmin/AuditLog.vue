@@ -3,7 +3,6 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Audit Log</h1>
-        <p class="page-sub">Lịch sử mọi thao tác trong tenant của bạn</p>
       </div>
       <button class="btn-outline" @click="fetchLogs">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
