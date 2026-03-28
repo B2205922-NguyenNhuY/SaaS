@@ -66,7 +66,6 @@ const formatCurrency = (value) => {
 }
 
 onMounted(async () => {
-  // TODO: Call API to get data
   stats.value = {
     totalMarkets: 3,
     totalKiosks: 350,

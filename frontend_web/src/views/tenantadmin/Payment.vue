@@ -17,6 +17,7 @@
 </template>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600&display=swap');
 .success-page {
   min-height: 100vh;
   display: flex;
@@ -57,8 +58,10 @@ p { font-size: 14px; color: #6b836b; margin: 0; line-height: 1.6; }
   color: white;
   font-size: 14px;
   font-weight: 500;
+  font-family: 'Be Vietnam Pro', sans-serif;
   text-decoration: none;
   margin-top: 8px;
+  transition: background 0.15s;
 }
 .btn-primary:hover { background: #2d6e2d; }
 </style>

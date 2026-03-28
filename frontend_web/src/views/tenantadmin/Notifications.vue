@@ -11,7 +11,7 @@
     </div>
 
     <div class="notif-layout">
-      <!-- Danh sách -->
+
       <div class="notif-list-panel">
         <div class="panel-head">
           <span class="panel-title">Danh sách</span>
@@ -234,7 +234,6 @@ async function openNotif(n: any) {
   try {
     const res = await api.get(`/notifications/${n.notification_id}`)
     selected.value = { ...n, ...res.data }
-    // Cập nhật is_read trong list
     const item = notifications.value.find(x => x.notification_id === n.notification_id)
     if (item && !item.is_read) {
       item.is_read = 1

@@ -252,7 +252,6 @@ async function fetchData() {
     items.value = res.data.data || []
     meta.value  = res.data.pagination || { total: 0, totalPages: 1 }
 
-    // Quota: tổng collector + merchant
     try {
       const countRes = await api.get('/users/account-count')
       quota.value.used = countRes.data.total || 0

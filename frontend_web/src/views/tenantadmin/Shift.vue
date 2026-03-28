@@ -23,7 +23,6 @@
       <button class="btn-outline" @click="resetFilters">Reset</button>
     </div>
 
-    <!-- Tổng quan nhanh -->
     <div class="stat-cards">
       <div class="stat-card">
         <div class="stat-icon stat-icon--green">
@@ -123,7 +122,6 @@
       </div>
     </div>
 
-    <!-- Detail drawer -->
     <div v-if="detailDrawer" class="drawer-overlay" @click.self="detailDrawer = false">
       <div class="drawer">
         <div class="drawer-header">
@@ -213,7 +211,6 @@ async function fetchData() {
     items.value = res.data.data || []
     meta.value  = res.data.meta || { total: 0, totalPages: 1 }
 
-    // Tính summary từ data hiện tại
     summary.tienMat     = items.value.reduce((s, x) => s + Number(x.tongTienMatThuDuoc || 0), 0)
     summary.chuyenKhoan = items.value.reduce((s, x) => s + Number(x.tongChuyenKhoanThuDuoc || 0), 0)
     summary.caAngMo     = items.value.filter(x => !x.thoiGianKetThucCa).length

@@ -34,7 +34,6 @@
       </table>
     </div>
 
-    <!-- Create/Edit Fee Modal -->
     <div v-if="showModal" class="modal-overlay" @click="closeModal">
       <div class="modal" @click.stop>
         <h3>{{ editingFee ? 'Chỉnh sửa biểu phí' : 'Thêm biểu phí mới' }}</h3>

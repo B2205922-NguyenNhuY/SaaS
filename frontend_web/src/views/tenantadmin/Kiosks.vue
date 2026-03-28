@@ -10,7 +10,6 @@
       </button>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
       <button class="tab" :class="{ 'tab--active': activeTab === 'kiosks' }" @click="activeTab = 'kiosks'">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
@@ -570,7 +569,6 @@ async function fetchTypes() {
     const res = await api.get('/kioskType', { params: p })
     kioskTypes.value = res.data.data || []
     tMeta.value = res.data.meta || { total: 0, totalPages: 1 }
-    // Cập nhật allTypes để kiosk form dùng
     if (!tFilters.q) allTypes.value = kioskTypes.value
   } catch { kioskTypes.value = [] }
   finally { tLoading.value = false }
