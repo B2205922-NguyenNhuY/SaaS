@@ -2,8 +2,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
   static const _tokenKey = 'jwt_token';
-  static const _roleKey  = 'user_role';
-  static const _nameKey  = 'user_name';
+  static const _roleKey = 'user_role';
+  static const _nameKey = 'user_name';
 
   Future<void> saveSession({
     required String token,
@@ -12,8 +12,8 @@ class StorageService {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
-    await prefs.setString(_roleKey,  role);
-    await prefs.setString(_nameKey,  name);
+    await prefs.setString(_roleKey, role);
+    await prefs.setString(_nameKey, name);
   }
 
   Future<String?> getToken() async {
@@ -26,8 +26,15 @@ class StorageService {
     return prefs.getString(_roleKey);
   }
 
+  Future<String?> getName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_nameKey);
+  }
+
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_roleKey);
+    await prefs.remove(_nameKey);
   }
 }

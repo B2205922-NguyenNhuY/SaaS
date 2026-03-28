@@ -6,13 +6,12 @@ async function getUserMarketIds(user_id, tenant_id) {
   const [rows] = await db.execute(
     `SELECT DISTINCT m.market_id
      FROM market m
-     JOIN kiosk k ON k.market_id = m.market_id AND k.tenant_id = m.tenant_id
-     JOIN kiosk_assignment ka ON ka.kiosk_id = k.kiosk_id AND ka.tenant_id = k.tenant_id AND ka.trangThai = 'active'
-     JOIN merchant mc ON mc.merchant_id = ka.merchant_id AND mc.tenant_id = ka.tenant_id
+     JOIN zone z ON z.market_id = m.market_id AND z.tenant_id = m.tenant_id
+     JOIN kiosk k ON k.zone_id = z.zone_id AND k.tenant_id = z.tenant_id
      WHERE m.tenant_id = ?`,
-    [tenant_id]
+    [tenant_id],
   );
-  return rows.map(r => r.market_id);
+  return rows.map((r) => r.market_id);
 }
 
 exports.createNotification = async (data, user) => {
@@ -32,7 +31,9 @@ exports.createNotification = async (data, user) => {
   };
 
   if (!payload.title || !payload.content) {
-    throw Object.assign(new Error("Tiêu đề và nội dung không được để trống"), { statusCode: 400 });
+    throw Object.assign(new Error("Tiêu đề và nội dung không được để trống"), {
+      statusCode: 400,
+    });
   }
 
   if (isSuperAdmin) {
@@ -64,7 +65,10 @@ exports.getNotifications = async (user, pagination) => {
   const isSuperAdmin = user.role === "super_admin";
 
   if (isSuperAdmin) {
-    return await notificationModel.getAllNotifications(pagination.page, pagination.limit);
+    return await notificationModel.getAllNotifications(
+      pagination.page,
+      pagination.limit,
+    );
   }
   let market_ids = [];
   if (user.role === "merchant" || user.role === "collector") {
@@ -89,7 +93,7 @@ exports.getUnreadCount = async (user) => {
 
   if (isSuperAdmin) {
     const [[row]] = await db.execute(
-      `SELECT COUNT(*) as unread_count FROM notification`
+      `SELECT COUNT(*) as unread_count FROM notification`,
     );
     return row;
   }
@@ -111,7 +115,9 @@ exports.markAsRead = async (notification_id, user) => {
   if (user.role === "super_admin") return { message: "ok" };
 
   const result = await notificationModel.markAsRead(
-    notification_id, user.id, user.tenant_id
+    notification_id,
+    user.id,
+    user.tenant_id,
   );
 
   await auditLogModel.createAuditLog({
@@ -126,14 +132,21 @@ exports.markAsRead = async (notification_id, user) => {
 };
 
 exports.getNotificationDetail = async (notification_id, user) => {
-  const notification = await notificationModel.getNotificationById(notification_id);
+  const notification =
+    await notificationModel.getNotificationById(notification_id);
 
   if (!notification) {
-    throw Object.assign(new Error("Notification not found"), { statusCode: 404 });
+    throw Object.assign(new Error("Notification not found"), {
+      statusCode: 404,
+    });
   }
 
   if (user.role !== "super_admin" && !notification.is_read) {
-    await notificationModel.markAsRead(notification_id, user.id, user.tenant_id);
+    await notificationModel.markAsRead(
+      notification_id,
+      user.id,
+      user.tenant_id,
+    );
     notification.is_read = 1;
   }
 

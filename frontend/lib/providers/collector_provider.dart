@@ -7,15 +7,18 @@ import '../models/charge_item.dart';
 import '../models/market_item.dart';
 import '../models/shift_info.dart';
 import '../models/zone_item.dart';
+import '../services/collector_cache_service.dart';
 import '../services/collector_service.dart';
 
 class CollectorProvider extends ChangeNotifier {
-  CollectorProvider({CollectorService? service})
-      : _service = service ?? CollectorService();
+  CollectorProvider({CollectorService? service, CollectorCacheService? cache})
+      : _service = service ?? CollectorService(),
+        _cache = cache ?? CollectorCacheService();
 
   static const String _pendingReceiptsKey = 'collector_pending_receipts';
 
   final CollectorService _service;
+  final CollectorCacheService _cache;
 
   bool loading = false;
   bool syncing = false;
@@ -114,7 +117,31 @@ class CollectorProvider extends ChangeNotifier {
   }
 
   Future<void> loadMarkets() async {
-    markets = await _service.getMarkets();
+    try {
+      final remote = await _service.getMarkets();
+      markets = remote;
+      await _cache.saveMarkets(
+        remote
+            .map(
+              (e) => {
+                'market_id': e.marketId,
+                'tenCho': e.name,
+                'diaChi': e.address,
+                'dienTich': e.area,
+                'trangThai': e.status,
+              },
+            )
+            .toList(),
+      );
+    } catch (e) {
+      final cached = await _cache.getMarkets();
+      if (cached.isNotEmpty) {
+        markets = cached.map(MarketItem.fromJson).toList();
+        errorMessage = 'Đang dùng dữ liệu chợ đã cache do mất kết nối.';
+        return;
+      }
+      rethrow;
+    }
   }
 
   Future<void> selectMarket(MarketItem market) async {
@@ -143,7 +170,33 @@ class CollectorProvider extends ChangeNotifier {
       return;
     }
 
-    zones = await _service.getZones(selectedMarket!.marketId);
+    try {
+      final remote = await _service.getZones(selectedMarket!.marketId);
+      zones = remote;
+      await _cache.saveZones(
+        selectedMarket!.marketId,
+        remote
+            .map(
+              (e) => {
+                'zone_id': e.zoneId,
+                'market_id': e.marketId,
+                'tenKhu': e.name,
+                'tenCho': e.marketName,
+                'trangThai': e.status,
+              },
+            )
+            .toList(),
+      );
+    } catch (e) {
+      final cached = await _cache.getZones(selectedMarket!.marketId);
+      if (cached.isNotEmpty) {
+        zones = cached.map(ZoneItem.fromJson).toList();
+        errorMessage = 'Đang dùng dữ liệu khu vực đã cache do mất kết nối.';
+      } else {
+        rethrow;
+      }
+    }
+
     if (notify) notifyListeners();
   }
 
@@ -166,6 +219,9 @@ class CollectorProvider extends ChangeNotifier {
     }
   }
 
+  String get _chargeCacheKey =>
+      '${selectedMarket?.marketId ?? 0}_${selectedZone?.zoneId ?? 0}_${searchQuery}_${statusFilter}';
+
   Future<void> loadCharges({bool notify = true}) async {
     if (selectedZone == null) {
       charges = <ChargeItem>[];
@@ -173,13 +229,46 @@ class CollectorProvider extends ChangeNotifier {
       return;
     }
 
-    charges = await _service.getCharges(
-      query: searchQuery,
-      status: statusFilter,
-      marketId: selectedMarket?.marketId,
-      zoneId: selectedZone?.zoneId,
-      onlyUnpaid: statusFilter.isEmpty,
-    );
+    try {
+      final remote = await _service.getCharges(
+        query: searchQuery,
+        status: statusFilter,
+        marketId: selectedMarket?.marketId,
+        zoneId: selectedZone?.zoneId,
+        onlyUnpaid: statusFilter.isEmpty,
+      );
+      charges = remote;
+      await _cache.saveCharges(
+        _chargeCacheKey,
+        remote
+            .map(
+              (e) => {
+                'charge_id': e.chargeId,
+                'kiosk_id': e.kioskId,
+                'merchant_id': e.merchantId,
+                'period_id': e.periodId,
+                'zone_id': e.zoneId,
+                'market_id': e.marketId,
+                'soTienPhaiThu': e.amountDue,
+                'soTienDaThu': e.amountPaid,
+                'trangThai': e.status,
+                'maKiosk': e.kioskCode,
+                'merchantName': e.merchantName,
+                'tenKyThu': e.periodName,
+                'tenKhu': e.zoneName,
+              },
+            )
+            .toList(),
+      );
+    } catch (e) {
+      final cached = await _cache.getCharges(_chargeCacheKey);
+      if (cached.isNotEmpty) {
+        charges = cached.map(ChargeItem.fromJson).toList();
+        errorMessage = 'Đang dùng dữ liệu khoản thu đã cache do mất kết nối.';
+      } else {
+        rethrow;
+      }
+    }
 
     if (notify) notifyListeners();
   }

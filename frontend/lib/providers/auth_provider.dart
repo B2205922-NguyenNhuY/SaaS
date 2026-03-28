@@ -25,6 +25,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isSuperAdmin => role == AppRoles.superAdmin;
   bool get isTenantAdmin => role == AppRoles.tenantAdmin;
   bool get isCollector => role == AppRoles.collector;
+  bool get isReady => status != AuthStatus.initial;
 
   String get homeRoute {
     switch (role) {
@@ -35,8 +36,28 @@ class AuthProvider extends ChangeNotifier {
       case AppRoles.collector:
         return '/collector';
       default:
-        return '/';
+        return '/login';
     }
+  }
+
+  Future<void> bootstrap() async {
+    try {
+      final savedToken = await _storageService.getToken();
+      final savedRole = await _storageService.getRole();
+      final savedName = await _storageService.getName();
+
+      if ((savedToken ?? '').isNotEmpty && (savedRole ?? '').isNotEmpty) {
+        token = savedToken;
+        role = savedRole;
+        userName = savedName ?? '';
+        status = AuthStatus.authenticated;
+      } else {
+        status = AuthStatus.unauthenticated;
+      }
+    } catch (_) {
+      status = AuthStatus.unauthenticated;
+    }
+    notifyListeners();
   }
 
   Future<void> login(String email, String password) async {

@@ -96,15 +96,41 @@ class _CollectorScreenState extends State<CollectorScreen> {
         actions: [
           _buildSyncButton(provider),
           _buildActionButton(
-            icon: Icons.refresh_rounded,
-            onPressed: provider.loading
-                ? null
-                : () => provider.refreshAll(showLoading: true),
+            icon: Icons.receipt_long_rounded,
+            onPressed: () =>
+                Navigator.pushNamed(context, '/collector/receipts'),
           ),
-          _buildActionButton(
-            icon: Icons.logout_rounded,
-            color: AppColors.error,
-            onPressed: () => _showLogoutDialog(context),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (value) {
+              switch (value) {
+                case 'debts':
+                  Navigator.pushNamed(context, '/collector/debts');
+                  break;
+                case 'shifts':
+                  Navigator.pushNamed(context, '/collector/shifts');
+                  break;
+                case 'notifications':
+                  Navigator.pushNamed(context, '/collector/notifications');
+                  break;
+                case 'refresh':
+                  provider.refreshAll(showLoading: true);
+                  break;
+                case 'logout':
+                  _showLogoutDialog(context);
+                  break;
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'debts', child: Text('Công nợ tổng hợp')),
+              PopupMenuItem(
+                  value: 'shifts', child: Text('Lịch sử ca / đối soát')),
+              PopupMenuItem(
+                  value: 'notifications', child: Text('Thông báo hệ thống')),
+              PopupMenuDivider(),
+              PopupMenuItem(value: 'refresh', child: Text('Tải lại dữ liệu')),
+              PopupMenuItem(value: 'logout', child: Text('Đăng xuất')),
+            ],
           ),
           const SizedBox(width: 8),
         ],
@@ -224,7 +250,7 @@ class _CollectorScreenState extends State<CollectorScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               await context.read<AuthProvider>().logout();
-              if (mounted) Navigator.pushReplacementNamed(context, '/');
+              if (mounted) Navigator.pushReplacementNamed(context, '/login');
             },
             child: const Text(
               'Đăng xuất',
@@ -798,27 +824,55 @@ class _ChargeCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: OutlinedButton.icon(
-              onPressed:
-                  isPaid ? null : () => _showCollectSheet(context, provider),
-              icon: Icon(
-                isPaid ? Icons.check_circle_rounded : Icons.add_card_rounded,
-                size: 18,
-              ),
-              label: Text(isPaid ? 'ĐÃ THU XONG' : 'THU PHÍ NGAY'),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                  color: isPaid ? AppColors.success : AppColors.primary,
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: charge.merchantId == null
+                      ? null
+                      : () => Navigator.pushNamed(
+                            context,
+                            '/collector/merchant-detail',
+                            arguments: charge.merchantId,
+                          ),
+                  icon: const Icon(Icons.info_outline_rounded, size: 18),
+                  label: const Text('CHI TIẾT'),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
-                foregroundColor: isPaid ? AppColors.success : AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton.icon(
+                    onPressed: isPaid
+                        ? null
+                        : () => _showCollectSheet(context, provider),
+                    icon: Icon(
+                      isPaid
+                          ? Icons.check_circle_rounded
+                          : Icons.add_card_rounded,
+                      size: 18,
+                    ),
+                    label: Text(isPaid ? 'ĐÃ THU XONG' : 'THU PHÍ NGAY'),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: isPaid ? AppColors.success : AppColors.primary,
+                      ),
+                      foregroundColor:
+                          isPaid ? AppColors.success : AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -1007,9 +1061,35 @@ class _CollectChargeSheetState extends State<_CollectChargeSheet> {
     });
   }
 
-  Future<void> _pickTransferImage() async {
+  Future<void> _pickTransferImage([ImageSource? source]) async {
+    ImageSource? finalSource = source;
+    if (finalSource == null) {
+      finalSource = await showModalBottomSheet<ImageSource>(
+        context: context,
+        builder: (_) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_rounded),
+                title: const Text('Chụp bằng camera'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Chọn từ thư viện'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (finalSource == null) return;
+
     final XFile? file = await _picker.pickImage(
-      source: ImageSource.gallery,
+      source: finalSource,
       imageQuality: 85,
     );
 
@@ -1180,10 +1260,10 @@ class _CollectChargeSheetState extends State<_CollectChargeSheet> {
             child: _imagePath == null
                 ? Row(
                     children: const [
-                      Icon(Icons.photo_library_rounded),
+                      Icon(Icons.add_a_photo_rounded),
                       SizedBox(width: 10),
                       Expanded(
-                        child: Text('Chọn ảnh từ thư viện'),
+                        child: Text('Chụp ảnh hoặc chọn từ thư viện'),
                       ),
                     ],
                   )

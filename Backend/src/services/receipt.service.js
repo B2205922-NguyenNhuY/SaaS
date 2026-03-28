@@ -168,20 +168,71 @@ exports.getReceipts = async (user, pagination, query = {}) => {
   const where = ["r.tenant_id = ?"];
   const params = [user.tenant_id];
 
+  if (user.role === "collector") {
+    where.push("r.user_id = ?");
+    params.push(user.id);
+  }
+
   if (query.hinhThucThanhToan) {
     where.push("r.hinhThucThanhToan = ?");
     params.push(query.hinhThucThanhToan);
   }
 
+  if (query.shift_id) {
+    where.push("r.shift_id = ?");
+    params.push(Number(query.shift_id));
+  }
+
+  if (query.charge_id) {
+    where.push(
+      "EXISTS (SELECT 1 FROM receipt_charge rc WHERE rc.receipt_id = r.receipt_id AND rc.tenant_id = r.tenant_id AND rc.charge_id = ?)",
+    );
+    params.push(Number(query.charge_id));
+  }
+
+  if (query.from_date) {
+    where.push("DATE(r.thoiGianThu) >= ?");
+    params.push(query.from_date);
+  }
+
+  if (query.to_date) {
+    where.push("DATE(r.thoiGianThu) <= ?");
+    params.push(query.to_date);
+  }
+
+  if (query.q) {
+    where.push(`(
+      r.ghiChu LIKE ?
+      OR CAST(r.receipt_id AS CHAR) LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM receipt_charge rc
+        JOIN charge c ON c.charge_id = rc.charge_id AND c.tenant_id = rc.tenant_id
+        JOIN merchant m ON m.merchant_id = c.merchant_id AND m.tenant_id = c.tenant_id
+        JOIN kiosk k ON k.kiosk_id = c.kiosk_id AND k.tenant_id = c.tenant_id
+        WHERE rc.receipt_id = r.receipt_id
+          AND rc.tenant_id = r.tenant_id
+          AND (m.hoTen LIKE ? OR k.maKiosk LIKE ?)
+      )
+    )`);
+    params.push(`%${query.q}%`, `%${query.q}%`, `%${query.q}%`, `%${query.q}%`);
+  }
+
+  const baseJoin = `
+    FROM receipt r
+    LEFT JOIN users u ON u.user_id = r.user_id AND u.tenant_id = r.tenant_id
+  `;
+
   const [[{ total }]] = await db.query(
-    `SELECT COUNT(*) total FROM receipt r WHERE ${where.join(" AND ")}`,
+    `SELECT COUNT(*) total ${baseJoin} WHERE ${where.join(" AND ")}`,
     params,
   );
 
   const [rows] = await db.query(
-    `SELECT r.* FROM receipt r 
-     WHERE ${where.join(" AND ")} 
-     ORDER BY r.thoiGianThu DESC 
+    `SELECT r.*, u.hoTen AS nhanVienThu
+     ${baseJoin}
+     WHERE ${where.join(" AND ")}
+     ORDER BY r.thoiGianThu DESC
      LIMIT ? OFFSET ?`,
     [...params, pagination.limit, pagination.offset],
   );
