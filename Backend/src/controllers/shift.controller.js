@@ -81,3 +81,32 @@ exports.getActiveShift = async (req, res, next) => {
     next(err);
   }
 };
+
+
+exports.reconcileShift = async (req, res, next) => {
+  try {
+    const shift_id = Number(req.params.id)
+    const { trangThaiDoiSoat } = req.body
+ 
+    if (!['completed', 'discrepancy'].includes(trangThaiDoiSoat)) {
+      return res.status(400).json({ message: 'Trạng thái không hợp lệ' })
+    }
+ 
+    const [result] = await db.execute(
+      `UPDATE shift
+          SET trangThaiDoiSoat = ?, updated_at = NOW()
+        WHERE shift_id = ?
+          AND tenant_id = ?
+          AND thoiGianKetThucCa IS NOT NULL`,
+      [trangThaiDoiSoat, shift_id, req.user.tenant_id]
+    )
+ 
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy ca hoặc ca chưa đóng' })
+    }
+ 
+    res.json({ message: 'Đối soát thành công', trangThaiDoiSoat })
+  } catch (err) {
+    next(err)
+  }
+}

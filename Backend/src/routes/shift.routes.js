@@ -66,4 +66,14 @@ router.get(
   checkSubscriptionStatus,
   controller.getActiveShift,
 );
+
+router.patch(
+  '/:id/reconcile',
+  verifyToken,
+  authorizeRoles(ROLES.TENANT_ADMIN),
+  checkUserActive,
+  checkTenantActive,
+  checkSubscriptionStatus,
+  controller.reconcileShift,
+)
 module.exports = router;

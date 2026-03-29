@@ -18,9 +18,12 @@
         <option value="completed">Đã đối soát</option>
         <option value="discrepancy">Lệch số</option>
       </select>
-      <input class="date-input" v-model="filters.dateFrom" type="date" @change="fetchData" title="Từ ngày" />
-      <input class="date-input" v-model="filters.dateTo" type="date" @change="fetchData" title="Đến ngày" />
-      <button class="btn-outline" @click="resetFilters">Reset</button>
+      <input class="date-input" v-model="filters.from_date" type="date" @change="fetchData" title="Từ ngày" />
+      <input class="date-input" v-model="filters.to_date" type="date" @change="fetchData" title="Đến ngày" />
+      <button class="btn-outline" @click="resetFilters">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+        Reset
+      </button>
     </div>
 
     <div class="stat-cards">
@@ -38,17 +41,17 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         </div>
         <div>
-          <div class="stat-label">Tiền mặt thu được</div>
+          <div class="stat-label">Tiền mặt</div>
           <div class="stat-value">{{ fmtMoney(summary.tienMat) }}</div>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon stat-icon--purple">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
         </div>
         <div>
-          <div class="stat-label">Chuyển khoản</div>
-          <div class="stat-value">{{ fmtMoney(summary.chuyenKhoan) }}</div>
+          <div class="stat-label">Chờ đối soát</div>
+          <div class="stat-value">{{ summary.choPending }}</div>
         </div>
       </div>
       <div class="stat-card">
@@ -70,16 +73,15 @@
               <th>Thu ngân</th>
               <th>Bắt đầu ca</th>
               <th>Kết thúc ca</th>
-              <th>Tiền mặt</th>
-              <th>Chuyển khoản</th>
+              <th>Tiền mặt thu được</th>
               <th>Đối soát</th>
               <th>Trạng thái</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading"><td colspan="7"><div class="loading-bar"></div></td></tr>
+            <tr v-if="loading"><td colspan="6"><div class="loading-bar"></div></td></tr>
             <template v-else>
-              <tr v-for="s in items" :key="s.shift_id" class="row-clickable" @click="openDetail(s)">
+              <tr v-for="s in filteredItems" :key="s.shift_id" class="row-clickable" @click="openDetail(s)">
                 <td>
                   <div class="cell-with-avatar">
                     <div class="c-avatar">{{ initials(s.hoTen) }}</div>
@@ -89,7 +91,6 @@
                 <td class="cell-date">{{ fmtDt(s.thoiGianBatDauCa) }}</td>
                 <td class="cell-date">{{ s.thoiGianKetThucCa ? fmtDt(s.thoiGianKetThucCa) : '—' }}</td>
                 <td class="cell-money">{{ fmtMoney(s.tongTienMatThuDuoc) }}</td>
-                <td class="cell-money">{{ fmtMoney(s.tongChuyenKhoanThuDuoc) }}</td>
                 <td>
                   <span class="badge" :class="doiSoatClass(s.trangThaiDoiSoat)">
                     {{ doiSoatLabel(s.trangThaiDoiSoat) }}
@@ -102,8 +103,8 @@
                   <span v-else class="badge badge--gray">Đã đóng</span>
                 </td>
               </tr>
-              <tr v-if="!items.length">
-                <td colspan="7" class="empty-row">
+              <tr v-if="!filteredItems.length">
+                <td colspan="6" class="empty-row">
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#b0c4b0" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   <p>Chưa có ca làm việc nào</p>
                 </td>
@@ -150,7 +151,7 @@
                 <span class="detail-val">{{ duration(selected.thoiGianBatDauCa, selected.thoiGianKetThucCa) }}</span>
               </div>
               <div class="detail-item">
-                <span class="detail-label">Trạng thái đối soát</span>
+                <span class="detail-label">Đối soát</span>
                 <span class="badge" :class="doiSoatClass(selected.trangThaiDoiSoat)">{{ doiSoatLabel(selected.trangThaiDoiSoat) }}</span>
               </div>
             </div>
@@ -160,18 +161,46 @@
             <div class="detail-section-title">Tổng kết thu tiền</div>
             <div class="money-cards">
               <div class="money-card money-card--cash">
-                <div class="money-card-label">Tiền mặt</div>
-                <div class="money-card-value">{{ fmtMoney(selected.tongTienMatThuDuoc) }}</div>
-              </div>
-              <div class="money-card money-card--transfer">
-                <div class="money-card-label">Chuyển khoản</div>
-                <div class="money-card-value">{{ fmtMoney(selected.tongChuyenKhoanThuDuoc) }}</div>
-              </div>
-              <div class="money-card money-card--total">
-                <div class="money-card-label">Tổng cộng</div>
-                <div class="money-card-value">{{ fmtMoney((selected.tongTienMatThuDuoc || 0) + (selected.tongChuyenKhoanThuDuoc || 0)) }}</div>
+                <div class="money-card-label">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
+                  Tiền mặt thu được
+                </div>
+                <div class="money-card-value money-card-value--total">{{ fmtMoney(selected.tongTienMatThuDuoc) }}</div>
               </div>
             </div>
+          </div>
+
+          <div class="detail-section" v-if="selected.thoiGianKetThucCa">
+            <div class="detail-section-title">Đối soát</div>
+
+            <div v-if="selected.trangThaiDoiSoat !== 'pending'" class="reconcile-done">
+              <span class="badge" :class="doiSoatClass(selected.trangThaiDoiSoat)">
+                {{ doiSoatLabel(selected.trangThaiDoiSoat) }}
+              </span>
+              <span class="reconcile-done-text">Ca này đã được đối soát</span>
+            </div>
+
+            <template v-else>
+              <p class="reconcile-desc">
+                Xác nhận số tiền mặt thu ngân nộp về có khớp với <strong>{{ fmtMoney(selected.tongTienMatThuDuoc) }}</strong> hệ thống ghi nhận không?
+              </p>
+              <div class="reconcile-actions">
+                <button class="btn-reconcile btn-reconcile--ok" @click="reconcile('completed')" :disabled="reconciling">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  Khớp số — Xác nhận
+                </button>
+                <button class="btn-reconcile btn-reconcile--err" @click="reconcile('discrepancy')" :disabled="reconciling">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Lệch số — Ghi nhận
+                </button>
+              </div>
+              <div class="reconcile-error" v-if="reconcileError">{{ reconcileError }}</div>
+            </template>
+          </div>
+
+          <div class="reconcile-note" v-else>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Ca chưa đóng — chưa thể đối soát
           </div>
         </div>
       </div>
@@ -189,12 +218,22 @@ const selected     = ref<any>(null)
 const items        = ref<any[]>([])
 const meta         = ref({ total: 0, totalPages: 1 })
 const pg           = reactive({ page: 1, limit: 10 })
-const filters      = reactive({ keyword: '', trangThaiDoiSoat: '', dateFrom: '', dateTo: '' })
 
-const summary = reactive({ tienMat: 0, chuyenKhoan: 0, caAngMo: 0 })
+const filters = reactive({ keyword: '', trangThaiDoiSoat: '', from_date: '', to_date: '' })
+
+const summary = reactive({ tienMat: 0, caAngMo: 0, choPending: 0 })
+
+const filteredItems = computed(() => {
+  if (!filters.keyword.trim()) return items.value
+  const q = filters.keyword.toLowerCase()
+  return items.value.filter(s => s.hoTen?.toLowerCase().includes(q))
+})
 
 let debounceTimer: any
-function debouncedFetch() { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => { pg.page = 1; fetchData() }, 400) }
+function debouncedFetch() {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => { pg.page = 1; fetchData() }, 400)
+}
 
 onMounted(() => fetchData())
 
@@ -202,31 +241,46 @@ async function fetchData() {
   loading.value = true
   try {
     const params: any = { page: pg.page, limit: pg.limit }
-    if (filters.keyword)          params.keyword          = filters.keyword
-    if (filters.trangThaiDoiSoat) params.trangThaiDoiSoat = filters.trangThaiDoiSoat
-    if (filters.dateFrom)         params.dateFrom          = filters.dateFrom
-    if (filters.dateTo)           params.dateTo            = filters.dateTo
+    if (filters.from_date) params.from_date = filters.from_date
+    if (filters.to_date)   params.to_date   = filters.to_date
 
     const res = await api.get('/shifts', { params })
     items.value = res.data.data || []
     meta.value  = res.data.meta || { total: 0, totalPages: 1 }
 
-    summary.tienMat     = items.value.reduce((s, x) => s + Number(x.tongTienMatThuDuoc || 0), 0)
-    summary.chuyenKhoan = items.value.reduce((s, x) => s + Number(x.tongChuyenKhoanThuDuoc || 0), 0)
-    summary.caAngMo     = items.value.filter(x => !x.thoiGianKetThucCa).length
+    summary.tienMat    = items.value.reduce((s, x) => s + Number(x.tongTienMatThuDuoc || 0), 0)
+    summary.caAngMo    = items.value.filter(x => !x.thoiGianKetThucCa).length
+    summary.choPending = items.value.filter(x => x.trangThaiDoiSoat === 'pending' && x.thoiGianKetThucCa).length
   } catch { items.value = [] }
   finally { loading.value = false }
 }
 
 function resetFilters() {
   filters.keyword = ''; filters.trangThaiDoiSoat = ''
-  filters.dateFrom = ''; filters.dateTo = ''
+  filters.from_date = ''; filters.to_date = ''
   pg.page = 1; fetchData()
 }
 
 function changePage(p: number) { pg.page = p; fetchData() }
 
-function openDetail(s: any) { selected.value = s; detailDrawer.value = true }
+const reconciling   = ref(false)
+const reconcileError = ref('')
+
+function openDetail(s: any) { selected.value = s; detailDrawer.value = true; reconcileError.value = '' }
+
+async function reconcile(trangThai: 'completed' | 'discrepancy') {
+  if (!selected.value) return
+  reconciling.value = true; reconcileError.value = ''
+  try {
+    await api.patch(`/shifts/${selected.value.shift_id}/reconcile`, { trangThaiDoiSoat: trangThai })
+    selected.value.trangThaiDoiSoat = trangThai
+    const item = items.value.find(x => x.shift_id === selected.value.shift_id)
+    if (item) item.trangThaiDoiSoat = trangThai
+    summary.choPending = items.value.filter(x => x.trangThaiDoiSoat === 'pending' && x.thoiGianKetThucCa).length
+  } catch (e: any) {
+    reconcileError.value = e.response?.data?.message || 'Lỗi khi đối soát'
+  } finally { reconciling.value = false }
+}
 
 function doiSoatClass(s: string) {
   return { pending: 'badge--amber', completed: 'badge--green', discrepancy: 'badge--red' }[s] || 'badge--gray'
@@ -234,7 +288,6 @@ function doiSoatClass(s: string) {
 function doiSoatLabel(s: string) {
   return { pending: 'Chờ đối soát', completed: 'Đã đối soát', discrepancy: 'Lệch số' }[s] || s
 }
-
 function duration(start: string, end: string) {
   if (!start) return '—'
   const s = new Date(start)
@@ -244,14 +297,17 @@ function duration(start: string, end: string) {
   const m = Math.floor((diff % 3600) / 60)
   return `${h}g ${m}p${!end ? ' (đang mở)' : ''}`
 }
-
 function fmtDt(d: string) {
-  return d ? new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
+  return d ? new Date(d).toLocaleString('vi-VN', {
+    hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
+  }) : '—'
 }
 function fmtMoney(n: any) {
   return Number(n || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
 }
-function initials(n: string) { return (n || '?').split(' ').map((w: string) => w[0]).slice(-2).join('').toUpperCase() }
+function initials(n: string) {
+  return (n || '?').split(' ').map((w: string) => w[0]).slice(-2).join('').toUpperCase()
+}
 </script>
 
 <style scoped>
@@ -315,7 +371,6 @@ select { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4; border-radi
 .pagination button:hover:not(:disabled) { background: #f0f7f0; }
 .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
 .pagination span { font-size: 12.5px; color: #6b836b; }
-
 .btn-outline { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; background: white; border: 1.5px solid #d4e4d4; border-radius: 10px; color: #4a654a; font-size: 13px; font-family: 'Be Vietnam Pro', sans-serif; cursor: pointer; }
 .btn-outline:hover { background: #f0f7f0; }
 
@@ -328,19 +383,35 @@ select { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4; border-radi
 .modal-close { background: none; border: none; color: #94a894; cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 6px; }
 .modal-close:hover { background: #f0f5f0; }
 
+.detail-section { display: flex; flex-direction: column; gap: 0; }
 .detail-section-title { font-size: 11px; font-weight: 600; color: #94a894; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 12px; }
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .detail-item { display: flex; flex-direction: column; gap: 3px; }
 .detail-label { font-size: 11.5px; color: #94a894; }
 .detail-val { font-size: 13.5px; color: #1a2e1a; font-weight: 500; }
 
 .money-cards { display: flex; flex-direction: column; gap: 8px; }
-.money-card { border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+.money-card { border-radius: 10px; padding: 13px 16px; display: flex; justify-content: space-between; align-items: center; }
 .money-card--cash     { background: #f0fdf4; border: 1px solid #bbf7d0; }
 .money-card--transfer { background: #eff6ff; border: 1px solid #bfdbfe; }
 .money-card--total    { background: #f7faf7; border: 1px solid #e2ede2; }
-.money-card-label { font-size: 13px; color: #4a654a; }
+.money-card-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #4a654a; }
 .money-card-value { font-size: 15px; font-weight: 600; color: #1a2e1a; }
+.money-card-value--total { font-size: 16px; color: #2d6e2d; }
 
 @media (max-width: 900px) { .stat-cards { grid-template-columns: repeat(2, 1fr); } }
+
+.reconcile-desc { font-size: 13px; color: #4a654a; line-height: 1.6; margin: 0 0 12px; }
+.reconcile-desc strong { color: #1a2e1a; }
+.reconcile-actions { display: flex; flex-direction: column; gap: 8px; }
+.btn-reconcile { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 40px; border-radius: 10px; font-size: 13.5px; font-weight: 500; font-family: 'Be Vietnam Pro', sans-serif; cursor: pointer; border: none; transition: all .15s; }
+.btn-reconcile:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-reconcile--ok  { background: #3d8c3d; color: white; }
+.btn-reconcile--ok:hover:not(:disabled)  { background: #2d6e2d; }
+.btn-reconcile--err { background: white; border: 1.5px solid #fecaca; color: #dc2626; }
+.btn-reconcile--err:hover:not(:disabled) { background: #fef2f2; }
+.reconcile-done { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+.reconcile-done-text { font-size: 13px; color: #6b836b; }
+.reconcile-error { margin-top: 8px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 9px 12px; color: #b91c1c; font-size: 13px; }
+.reconcile-note { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #94a894; background: #f7faf7; border-radius: 10px; padding: 12px 14px; border: 1px solid #e2ede2; }
 </style>
