@@ -24,6 +24,6 @@ router.get(
   C.list,
 );
 
-router.get("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.getById);
+router.get("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN, ROLES.MERCHANT), C.getById);
 
 module.exports = router;

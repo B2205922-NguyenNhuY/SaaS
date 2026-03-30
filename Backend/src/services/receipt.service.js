@@ -1,6 +1,7 @@
 const receiptModel = require("../models/receipt.model");
 const chargeModel = require("../models/charge.model");
 const auditLogModel = require("../models/auditLog.model");
+const userModel = require("../models/users.model");
 const db = require("../config/db");
 
 /**
@@ -8,8 +9,13 @@ const db = require("../config/db");
  * Bao gồm: Tạo Receipt -> Tạo liên kết Receipt_Charge -> Cập nhật trạng thái Charge
  */
 exports.createReceipt = async (data, user) => {
+  console.log(data);
+  if (!user) {
+  throw Object.assign(new Error("User không tồn tại"), {
+    statusCode: 404,
+  });
+}
   const connection = await db.getConnection();
-
   try {
     const tenant_id = user.tenant_id;
     await connection.beginTransaction();
@@ -33,21 +39,22 @@ exports.createReceipt = async (data, user) => {
     }
 
     // 2. KIỂM TRA SHIFT (CA LÀM VIỆC) - Tránh lỗi Foreign Key
-    if (data.shift_id) {
-      const [shiftExists] = await connection.execute(
-        "SELECT shift_id FROM shift WHERE shift_id = ? AND tenant_id = ?",
-        [data.shift_id, tenant_id],
-      );
-      if (shiftExists.length === 0) {
-        throw Object.assign(
-          new Error(
-            "Ca làm việc không tồn tại hoặc không thuộc quyền quản lý của bạn",
-          ),
-          { statusCode: 400 },
+    if(user.role === 'collector') {
+      if (data.shift_id) {
+        const [shiftExists] = await connection.execute(
+          "SELECT shift_id FROM shift WHERE shift_id = ? AND tenant_id = ?",
+          [data.shift_id, tenant_id],
         );
+        if (shiftExists.length === 0) {
+          throw Object.assign(
+            new Error(
+              "Ca làm việc không tồn tại hoặc không thuộc quyền quản lý của bạn",
+            ),
+            { statusCode: 400 },
+          );
+        }
       }
     }
-
 
     // 3. TẠO BIÊN LAI (RECEIPT) TRONG DB
     const receipt = await receiptModel.createReceipt(connection, {
@@ -56,7 +63,7 @@ exports.createReceipt = async (data, user) => {
       hinhThucThanhToan: data.hinhThucThanhToan,
       ghiChu: data.ghiChu || null,
       anhChupThanhToan: data.anhChupThanhToan || null,
-      thoiGianThu: data.thoiGianThu || new Date(),
+      thoiGianThu: new Date(),
       user_id: user.id,
       shift_id: data.shift_id || null,
     });
@@ -65,14 +72,14 @@ exports.createReceipt = async (data, user) => {
 
     // 4. XỬ LÝ CHI TIẾT TỪNG KHOẢN PHÍ THANH TOÁN
     for (const item of data.charges) {
-      if (!item.charge_id || !item.soTien || item.soTien <= 0) {
+      if (!item.charge_id || !item.amount || item.amount <= 0) {
         throw new Error(
           `Dữ liệu thanh toán cho charge ${item.charge_id} không hợp lệ`,
         );
       }
 
       // Lấy thông tin nợ hiện tại của Charge
-      const currentCharge = await chargeModel.getChargeById(
+      const currentCharge = await chargeModel.getChargesById(
         tenant_id,
         item.charge_id,
       );
@@ -85,19 +92,19 @@ exports.createReceipt = async (data, user) => {
   receipt_id,
   charge_id: item.charge_id,
   tenant_id,
-  soTienDaTra: item.soTien
+  soTienDaTra: item.amount
 });
       // A. Tạo bản ghi liên kết (Bắt buộc để getDetail không bị NULL)
       await receiptModel.createReceiptCharge(connection, {
         receipt_id,
         charge_id: item.charge_id,
         tenant_id: tenant_id,
-        soTienDaTra: item.soTien, // Số tiền thực tế trả trong lần này
+        soTienDaTra: item.amount, // Số tiền thực tế trả trong lần này
       });
 
       // B. Tính toán cộng dồn nợ trên bảng Charge
       const tongDaThuMoi =
-        Number(currentCharge.soTienDaThu) + Number(item.soTien);
+        Number(currentCharge.soTienDaThu) + Number(item.amount);
       const soTienPhaiThu = Number(currentCharge.soTienPhaiThu);
 
       // Xác định trạng thái mới (da_thu nếu đã trả đủ, ngược lại là no)
@@ -126,14 +133,15 @@ console.log("auditLog", {
     // 5. GHI LOG HỆ THỐNG
     await auditLogModel.createAuditLog(connection, {
       tenant_id: tenant_id,
-      user_id: user.id,
-      hanhDong: "CREATE_RECEIPT",
+      merchant_id: user.id,
+      hanhDong: "THANH_TOAN_THANH_CONG",
       entity_type: "receipt",
       entity_id: receipt_id,
       giaTriMoi: {
         receipt_id,
         total: data.soTienThu,
         charges: data.charges,
+        transId: data.transId || null,
       },
     });
 
@@ -164,6 +172,39 @@ console.log("auditLog", {
 exports.getReceipts = async (user, pagination, query = {}) => {
   const where = ["r.tenant_id = ?"];
   const params = [user.tenant_id];
+
+  if (query.hinhThucThanhToan) {
+    where.push("r.hinhThucThanhToan = ?");
+    params.push(query.hinhThucThanhToan);
+  }
+
+  const [[{ total }]] = await db.query(
+    `SELECT COUNT(*) total FROM receipt r WHERE ${where.join(" AND ")}`,
+    params,
+  );
+
+  const [rows] = await db.query(
+    `SELECT r.* FROM receipt r 
+     WHERE ${where.join(" AND ")} 
+     ORDER BY r.thoiGianThu DESC 
+     LIMIT ? OFFSET ?`,
+    [...params, pagination.limit, pagination.offset],
+  );
+
+  return {
+    data: rows,
+    meta: {
+      page: pagination.page,
+      limit: pagination.limit,
+      total,
+      totalPages: Math.ceil(total / pagination.limit) || 0,
+    },
+  };
+};
+
+exports.getMyReceipts = async (user, pagination, query = {}) => {
+  const where = ["r.tenant_id = ? AND r.merchant_id = ?"];
+  const params = [user.tenant_id, user.id];
 
   if (query.hinhThucThanhToan) {
     where.push("r.hinhThucThanhToan = ?");

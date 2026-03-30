@@ -27,6 +27,36 @@ exports.getDebts = async (tenant_id, limit, offset) => {
   return rows;
 };
 
+exports.getDebtsByCharge = async (tenant_id, charge_id) => {
+  const [rows] = await db.execute(
+    `SELECT 
+            c.charge_id,
+            c.soTienPhaiThu,
+            c.soTienDaThu,
+            (c.soTienPhaiThu - c.soTienDaThu) AS amount,
+            k.kiosk_id,
+            k.maKiosk,
+            z.zone_id,
+            z.tenKhu,
+            p.period_id,
+            p.tenKyThu
+        FROM charge c
+        JOIN kiosk k 
+            ON c.kiosk_id = k.kiosk_id
+            AND k.tenant_id = c.tenant_id
+        JOIN zone z
+            ON k.zone_id = z.zone_id
+            AND z.tenant_id = c.tenant_id
+        JOIN collection_period p 
+            ON c.period_id = p.period_id
+            AND p.tenant_id = c.tenant_id
+        WHERE c.tenant_id = ?
+            AND c.charge_id = ?`,
+    [tenant_id, charge_id],
+  );
+  return rows;
+};
+
 // Công nợ theo merchant
 exports.getDebtsByMerchant = async (tenant_id, merchant_id) => {
   const [rows] = await db.execute(
@@ -34,6 +64,8 @@ exports.getDebtsByMerchant = async (tenant_id, merchant_id) => {
             c.charge_id,
             c.soTienPhaiThu,
             c.soTienDaThu,
+            c.donGiaApDung,
+            c.discountApDung,
             (c.soTienPhaiThu - c.soTienDaThu) AS soTienNo,
             k.kiosk_id,
             k.maKiosk,

@@ -12,6 +12,16 @@ exports.getDebts = async (req, res, next) => {
     next(err);
   }
 };
+exports.getMyDebts = async (req, res) => {
+  try {
+    res.json(
+      await debtService.getDebtsByMerchant(req.user.id, req.user),
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getDebtsByMerchant = async (req, res, next) => {
   try {
     res.json(

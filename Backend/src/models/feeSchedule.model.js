@@ -83,3 +83,17 @@ exports.checkDuplicate = async (tenant_id, tenBieuPhi, excludeId = null) => {
   const [rows] = await db.execute(sql, params);
   return rows;
 };
+
+exports.checkTenantHasBillingType = async (tenant_id, hinhThuc) => {
+    const sql = `
+        SELECT fs.* FROM fee_schedule fs
+        JOIN tenant t
+        ON t.tenant_id = fs.tenant_id
+        WHERE fs.tenant_id = ? 
+        AND fs.hinhThuc = ? 
+        AND t.trangThai = 'active' 
+        LIMIT 1
+    `;
+    const [rows] = await db.query(sql, [tenant_id, hinhThuc]);
+    return rows.length > 0;
+};

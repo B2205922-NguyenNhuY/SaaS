@@ -1,0 +1,12 @@
+class ChargeProvider extends ChangeNotifier {
+  final ApiService api = ApiService();
+
+  List charges = [];
+
+  Future<void> fetchCharges() async {
+    final res = await api.get("/charges");
+
+    charges = res.data["data"];
+    notifyListeners();
+  }
+}

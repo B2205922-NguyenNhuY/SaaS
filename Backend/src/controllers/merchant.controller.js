@@ -38,6 +38,26 @@ exports.update = async (req, res, next) => {
   }
 };
 
+exports.updateMyProfile = async (req, res, next) => {
+  try {
+    const id = Number(req.user.id);
+    const old = await S.detail(req.user.tenant_id, id);
+    const out = await S.update(req.user.tenant_id, id, req.body);
+
+    await logAudit(req, {
+      action: "UPDATE_MERCHANT",
+      entity_type: "merchant",
+      entity_id: id,
+      oldValue: old,
+      newValue: { ...old, ...req.body },
+    });
+
+    res.json(out);
+  } catch (e) {
+    next(e);
+  }
+};
+
 exports.list = async (req, res, next) => {
   try {
     const filters = {
@@ -58,6 +78,14 @@ exports.list = async (req, res, next) => {
 exports.detail = async (req, res, next) => {
   try {
     res.json(await S.detail(req.user.tenant_id, Number(req.params.id)));
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.getMyProfile = async (req, res, next) => {
+  try {
+    res.json(await S.detail(req.user.tenant_id, Number(req.user.id)));
   } catch (e) {
     next(e);
   }

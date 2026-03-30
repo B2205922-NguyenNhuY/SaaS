@@ -14,6 +14,20 @@ exports.createReceipt = async (req, res, next) => {
   }
 };
 
+exports.getMyReceipts = async (req, res, next) => {
+  try {
+    const data = await receiptService.getMyReceipts(
+      req.user,
+      req.pagination,
+      req.query,
+    );
+
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Lấy danh sách receipt
 exports.getReceipts = async (req, res, next) => {
   try {

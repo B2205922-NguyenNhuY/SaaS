@@ -62,6 +62,7 @@ exports.login = async (body) => {
                 {
                     id: superAdmin.admin_id,
                     role: "super_admin",
+                    name: superAdmin.hoTen,
                     tenant_id: null,
                     trangThai: superAdmin.trangThai
                 },
@@ -75,6 +76,7 @@ exports.login = async (body) => {
                 user: {
                     id: superAdmin.admin_id,
                     email: superAdmin.email,
+                    name: superAdmin.hoTen,
                     tenant_id: null,
                     role: "super_admin",
                     trangThai: superAdmin.trangThai
@@ -99,6 +101,7 @@ exports.login = async (body) => {
             {
                 id: user.user_id,
                 role: user.tenVaiTro,
+                name: user.hoTen,
                 tenant_id: user.tenant_id,
                 trangThai: user.trangThai
             },
@@ -112,6 +115,7 @@ exports.login = async (body) => {
             user: {
                 id: user.user_id,
                 email: user.email,
+                name: user.hoTen,
                 tenant_id: user.tenant_id,
                 role: user.tenVaiTro,
                 trangThai: user.trangThai
@@ -136,6 +140,7 @@ exports.login = async (body) => {
                 {
                     id: merchant.merchant_id,
                     role: "merchant",
+                    name: merchant.hoTen,
                     tenant_id: merchant.tenant_id,
                     trangThai: merchant.trangThai,
                 },
@@ -148,7 +153,7 @@ exports.login = async (body) => {
                 token,
                 user: {
                     id: merchant.merchant_id,
-                    hoTen: merchant.hoTen,
+                    name: merchant.hoTen,
                     tenant_id: merchant.tenant_id,
                     role: "merchant",
                     trangThai: merchant.trangThai,

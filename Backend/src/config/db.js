@@ -5,6 +5,11 @@ const pool = mysql.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,      // Giới hạn số kết nối đồng thời
+    queueLimit: 0,
+    enableKeepAlive: true,    // Giữ kết nối sống
+    keepAliveInitialDelay: 0
 });
 
 module.exports = pool.promise();

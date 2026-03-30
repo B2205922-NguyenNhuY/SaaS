@@ -16,6 +16,7 @@ router.post(
   checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus,
   notificationController.createNotification,
 );
+router.get("/me", verifyToken, checkUserActive, checkTenantActive, checkSubscriptionStatus, paginate, notificationController.getMyNotifications);
 router.get("/", verifyToken, checkUserActive, checkTenantActive, checkSubscriptionStatus, paginate, notificationController.getNotifications);
 router.get("/unread_count", verifyToken,checkUserActive, checkTenantActive, checkSubscriptionStatus, notificationController.getUnreadCount);
 router.post("/:id/read", verifyToken, checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus, notificationController.markAsRead);

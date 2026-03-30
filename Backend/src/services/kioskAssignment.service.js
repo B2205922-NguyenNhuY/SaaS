@@ -276,6 +276,8 @@ exports.list = async (tenant_id, filters, pg) => {
     JOIN market mk
       ON mk.market_id = z.market_id
      AND mk.tenant_id = z.tenant_id
+    JOIN kiosk_type kt
+      ON kt.type_id = k.type_id
   `;
 
   const [[{ total }]] = await db.query(
@@ -288,7 +290,7 @@ exports.list = async (tenant_id, filters, pg) => {
   const [rows] = await db.query(
     `SELECT ka.*, m.hoTen AS merchantName, m.soDienThoai, m.CCCD,
             k.maKiosk, k.viTri, k.trangThai AS kioskTrangThai,
-            z.zone_id, z.tenKhu, mk.market_id, mk.tenCho
+            z.zone_id, z.tenKhu, mk.market_id, mk.tenCho, kt.tenLoai
      ${fromJoin}
      WHERE ${where.join(" AND ")}
      ORDER BY ka.${sort} ${order}

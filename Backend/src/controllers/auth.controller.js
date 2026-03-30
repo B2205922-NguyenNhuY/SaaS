@@ -55,7 +55,7 @@ exports.login = async (req, res, next) => {
 };
 
 
-exports.googleLogin = async (req, res) => {
+exports.googleLogin = async (req, res, next) => {
   try {
     const result = await authService.googleLogin(req.body);
 

@@ -3,10 +3,11 @@ const db = require("../config/db");
 // Lấy charge trong receipt
 exports.getChargesByReceipt = async (receipt_id, tenant_id) => {
   const [rows] = await db.execute(
-    `SELECT rc.*, c.kiosk_id, c.merchant_id, c.soTienPhaiThu
+    `SELECT rc.*, c.*, k.maKiosk, cp.tenKyThu
         FROM receipt_charge rc
-        JOIN charge c 
-        ON rc.charge_id = c.charge_id
+        JOIN charge c ON rc.charge_id = c.charge_id
+        JOIN kiosk k ON c.kiosk_id = k.kiosk_id
+        JOIN collection_period cp ON c.period_id = cp.period_id
         AND c.tenant_id = rc.tenant_id
         WHERE rc.receipt_id = ?
         AND rc.tenant_id = ?`,

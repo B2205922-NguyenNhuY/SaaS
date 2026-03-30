@@ -15,7 +15,15 @@ router.post(
   authorizeRoles(ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus,
   chargeController.createCharge,
 );
+router.post('/generate',verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus, chargeController.generateCharges);
 router.get("/", verifyToken, paginate, checkUserActive, checkTenantActive, checkSubscriptionStatus, chargeController.listCharges);
+router.get(
+  "/me",
+  verifyToken, paginate,
+  authorizeRoles(ROLES.MERCHANT),
+  checkUserActive, checkTenantActive, checkSubscriptionStatus,
+  chargeController.getMyCharges,
+);
 router.get(
   "/period/:period_id",
   verifyToken,
@@ -48,6 +56,12 @@ router.patch(
   authorizeRoles(ROLES.TENANT_ADMIN),
   checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus,
   chargeController.updateDebtStatus,
+);
+router.get(
+  "/:id",
+  verifyToken,
+  checkUserActive, checkTenantActive, checkSubscriptionStatus,
+  chargeController.getChargesById,
 );
 router.get(
   "/:id/history",

@@ -43,6 +43,21 @@ exports.list = async (req, res, next) => {
   }
 };
 
+exports.getByTenant = async (req, res, next) => {
+  try {
+    const filters = {
+      trangThai: req.query.trangThai,
+      q: req.query.q,
+      diaChi: req.query.diaChi,
+      min_dienTich: req.query.min_dienTich,
+      max_dienTich: req.query.max_dienTich,
+    };
+    res.json(await S.list(req.user.tenant_id, filters, req.pagination));
+  } catch (e) {
+    next(e);
+  }
+};
+
 exports.getById = async (req, res, next) => {
   try {
     res.json(await S.getById(req.user.tenant_id, Number(req.params.id)));

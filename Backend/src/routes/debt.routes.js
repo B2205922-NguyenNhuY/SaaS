@@ -18,12 +18,20 @@ router.get(
   controller.getDebts,
 );
 router.get(
+  "/merchant/me",
+  verifyToken,
+  authorizeRoles(ROLES.MERCHANT),
+  checkUserActive, checkTenantActive, checkSubscriptionStatus,
+  controller.getMyDebts
+);
+router.get(
   "/merchant/:merchant_id",
   verifyToken,
-  authorizeRoles(ROLES.TENANT_ADMIN),
+  authorizeRoles(ROLES.TENANT_ADMIN, ROLES.MERCHANT),
   checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus,
   controller.getDebtsByMerchant,
 );
+
 router.get(
   "/total",
   verifyToken,

@@ -12,11 +12,11 @@ exports.createReceipt = async (connection, data) => {
     user_id,
     shift_id,
   } = data;
-
+console.log(data);
   const [result] = await connection.execute(
     `INSERT INTO receipt
         (tenant_id, soTienThu, hinhThucThanhToan, ghiChu,
-        anhChupThanhToan, thoiGianThu, user_id, shift_id)
+        anhChupThanhToan, thoiGianThu, merchant_id, shift_id)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       tenant_id,

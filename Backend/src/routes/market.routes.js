@@ -20,6 +20,13 @@ router.get(
   paginate,
   C.list,
 );
+router.get(
+  "/tenant",
+  verifyToken,
+  authorizeRoles(ROLES.COLLECTOR),
+  C.list,
+);
+
 router.get("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.getById);
 
 module.exports = router;

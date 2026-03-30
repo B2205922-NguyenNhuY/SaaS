@@ -15,6 +15,14 @@ router.get(
   C.list,
 );
 
+router.get(
+  "/me",
+  verifyToken,
+  authorizeRoles(ROLES.MERCHANT),
+  paginate,
+  C.mylist,
+);
+
 router.get("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.getById);
 
 router.patch(

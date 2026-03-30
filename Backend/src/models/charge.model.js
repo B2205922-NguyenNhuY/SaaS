@@ -89,24 +89,27 @@ exports.getChargesByMerchant = async (tenant_id, merchant_id) => {
 };
 
 // Lấy charge theo id
-exports.getChargeById = async (tenant_id, charge_id) => {
+exports.getChargesById = async (tenant_id, charge_id) => {
   const [rows] = await db.execute(
     `SELECT 
-            charge_id,
-            tenant_id,
-            period_id,
-            kiosk_id,
-            merchant_id,
-            fee_id,
-            CAST(donGiaApDung AS DECIMAL(12,2)) as donGiaApDung,
-            hinhThucApDung,
-            CAST(discountApDung AS DECIMAL(5,2)) as discountApDung,
-            CAST(soTienPhaiThu AS DECIMAL(12,2)) as soTienPhaiThu,
-            CAST(soTienDaThu AS DECIMAL(12,2)) as soTienDaThu,
-            trangThai,
-            version
-        FROM charge
-        WHERE tenant_id = ? AND charge_id = ?`,
+            c.charge_id,
+            c.tenant_id,
+            c.period_id,
+            c.kiosk_id,
+            c.merchant_id,
+            c.fee_id,
+            CAST(c.donGiaApDung AS DECIMAL(12,2)) as donGiaApDung,
+            c.hinhThucApDung,
+            CAST(c.discountApDung AS DECIMAL(5,2)) as discountApDung,
+            CAST(c.soTienPhaiThu AS DECIMAL(12,2)) as soTienPhaiThu,
+            CAST(c.soTienDaThu AS DECIMAL(12,2)) as soTienDaThu,
+            c.trangThai,
+            k.maKiosk,
+            cp.tenKyThu
+        FROM charge c
+        JOIN kiosk k ON c.kiosk_id = k.kiosk_id
+        JOIN collection_period cp ON c.period_id = cp.period_id
+        WHERE c.tenant_id = ? AND c.charge_id = ?`,
     [tenant_id, charge_id],
   );
 
@@ -237,3 +240,88 @@ exports.getChargeByKioskAndPeriod = async (tenant_id, kiosk_id, period_id) => {
   );
   return rows[0];
 };
+
+// SQL sinh phí hàng loạt
+exports.insertAutoCharges = async (tenant_id, period_id, loaiKy) => {
+    const sql = `
+        INSERT INTO charge (
+            tenant_id, period_id, kiosk_id, merchant_id, fee_id, 
+            donGiaApDung, hinhThucApDung, discountApDung, soTienPhaiThu, trangThai
+        )
+        SELECT 
+            t.tenant_id, ?, t.kiosk_id, t.merchant_id, t.fee_id,
+            t.donGia, t.hinhThuc, t.mucMienGiam,
+            (t.donGia) * (1 - (t.mucMienGiam / 100)),
+            'chua_thu'
+        FROM (
+            SELECT 
+                k.tenant_id, k.kiosk_id, k.dienTich, ka.merchant_id, 
+                fs.fee_id, fs.donGia, fs.hinhThuc, fa.mucMienGiam,
+                -- Gán điểm ưu tiên: Kiosk (1), Zone (2), Type (3)
+                ROW_NUMBER() OVER (
+                    PARTITION BY k.kiosk_id 
+                    ORDER BY CASE fa.target_type 
+                                WHEN 'kiosk' THEN 1 
+                                WHEN 'zone' THEN 2 
+                                WHEN 'kiosk_type' THEN 3 
+                             END ASC
+                ) as priority_rank
+            FROM kiosk k
+            JOIN kiosk_assignment ka ON k.kiosk_id = ka.kiosk_id AND ka.trangThai = 'active'
+            JOIN fee_assignment fa ON (
+                (fa.target_type = 'kiosk' AND fa.target_id = k.kiosk_id) OR
+                (fa.target_type = 'zone' AND fa.target_id = k.zone_id) OR
+                (fa.target_type = 'kiosk_type' AND fa.target_id = k.type_id)
+            )
+            JOIN fee_schedule fs ON fa.fee_id = fs.fee_id
+            WHERE k.tenant_id = ? 
+              AND k.trangThai = 'occupied'
+              AND fa.trangThai = 'active'
+              AND fs.hinhThuc = ?
+              AND (? = 'ngay' OR NOT EXISTS (
+                SELECT 1 FROM fee_assignment fa2
+                JOIN fee_schedule fs2 ON fa2.fee_id = fs2.fee_id
+                WHERE fs2.hinhThuc = 'ngay'
+                  AND fa2.trangThai = 'active'
+                  AND (
+                      (fa2.target_type = 'kiosk' AND fa2.target_id = k.kiosk_id)
+                  )
+              ) )
+              AND NOT EXISTS (
+                  SELECT 1 FROM charge c 
+                  WHERE c.kiosk_id = k.kiosk_id AND c.period_id = ?
+              )
+        ) AS t
+        WHERE t.priority_rank = 1; -- Chỉ lấy bản ghi có mức ưu tiên cao nhất cho mỗi Kiosk
+    `;
+    const [result] = await db.execute(sql, [period_id, tenant_id, loaiKy, loaiKy, period_id]);
+    console.log(result);
+    
+      const [rows] = await db.execute(
+        `SELECT DISTINCT merchant_id 
+        FROM charge 
+        WHERE tenant_id = ? AND period_id = ?`,
+        [tenant_id, period_id]
+      );
+      console.log(rows);
+    return {
+      count: result.affectedRows,
+      Ids: rows.map(r => r.merchant_id)
+    };
+};
+
+exports.getExpiredCharges = async () => {
+  const sql = `
+            SELECT 
+                c.tenant_id, 
+                c.merchant_id, 
+            FROM charge c
+            JOIN collection_period p ON c.period_id = p.period_id AND c.tenant_id = p.tenant_id
+            WHERE c.trangThai NOT IN ('da_thu', 'mien') 
+              AND p.ngayKetThuc < NOW()
+            GROUP BY c.tenant_id, c.merchant_id
+        `;
+
+  const [result] = await db.query(sql);
+  return result;
+}

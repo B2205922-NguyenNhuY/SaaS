@@ -2,6 +2,84 @@ const periodModel = require("../models/collectionPeriod.model");
 const auditLogModel = require("../models/auditLog.model");
 const db = require("../config/db");
 const chargeModel = require("../models/charge.model");
+const feeScheduleModel = require("../models/feeSchedule.model");
+/**
+ * Tự động tìm kỳ thu tháng hiện tại, nếu không thấy thì tạo mới
+ * @param {number} tenant_id 
+ * @returns {number} period_id
+ */
+/**
+ * Tìm hoặc tạo kỳ thu THÁNG (Chỉ tạo nếu Tenant có dùng biểu phí tháng)
+ */
+exports.getOrCreateCurrentPeriod = async (tenant_id) => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    // 1. Kiểm tra xem Tenant này có thực sự cần kỳ thu tháng không?
+    // Giả sử bạn có hàm checkConfig trong billingModel
+    const hasMonthlyConfig = await feeScheduleModel.checkTenantHasBillingType(tenant_id, 'thang');
+    if (!hasMonthlyConfig) {
+        console.log(`[SaaS] Tenant ${tenant_id} không dùng phí tháng. Bỏ qua tạo kỳ thu.`);
+        return null; 
+    }
+
+    // 2. Kiểm tra xem tháng này đã có Kỳ thu chưa
+    let period = await periodModel.findPeriodByMonth(tenant_id, currentMonth, currentYear);
+    if (period) return period.period_id;
+
+    // 3. Nếu chưa có, tạo mới
+    const firstDay = new Date(currentYear, currentMonth - 1, 1, 0, 0, 0);
+    const lastDay = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+
+    const periodData = {
+        tenant_id,
+        tenKyThu: `Kỳ thu tháng ${currentMonth}/${currentYear}`,
+        ngayBatDau: firstDay,
+        ngayKetThuc: lastDay,
+        loaiKy: 'thang'
+    };
+
+    const newPeriodId = await periodModel.createPeriod(periodData);
+    return newPeriodId;
+};
+
+/**
+ * Tìm hoặc tạo kỳ thu NGÀY (Chỉ tạo nếu Tenant có dùng biểu phí ngày)
+ */
+exports.getOrCreateDailyPeriod = async (tenant_id) => {
+    const now = new Date();
+    // Dùng toLocaleDateString để tránh lệch múi giờ khi split T
+    const dateString = now.toLocaleDateString('sv-SE'); // Định dạng YYYY-MM-DD
+
+    // 1. Kiểm tra xem Tenant này có dùng biểu phí NGÀY không?
+    const hasDailyConfig = await feeScheduleModel.checkTenantHasBillingType(tenant_id, 'ngay');
+    if (!hasDailyConfig) {
+        return null; 
+    }
+
+    // 2. Kiểm tra tồn tại
+    let period = await periodModel.findPeriodByDate(tenant_id, dateString, 'ngay');
+    if (period) return period.period_id;
+
+    // 3. Tạo mới (Dùng bản sao của date để tránh thay đổi biến gốc)
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const periodData = {
+        tenant_id,
+        tenKyThu: `Kỳ thu ngày ${dateString}`,
+        ngayBatDau: startOfDay,
+        ngayKetThuc: endOfDay,
+        loaiKy: 'ngay'
+    };
+
+    const newPeriodId = await periodModel.createPeriod(periodData);
+    return newPeriodId;
+};
 
 // 1. TẠO KỲ THU (CREATE)
 exports.createPeriod = async (data, user) => {
@@ -10,15 +88,19 @@ exports.createPeriod = async (data, user) => {
     const tenant_id = user.tenant_id;
     await connection.beginTransaction();
 
-    const { ngayBatDau, ngayKetThuc } = data;
+    const { ngayBatDau, ngayKetThuc, loaiKy } = data;
 
-    // KIỂM TRA TRÙNG LẤN (OVERLAP)
+    // KIỂM TRA TRÙNG LẤN (OVERLAP) - Đã sửa để phân biệt loại kỳ
     const [exist] = await connection.execute(
       `SELECT period_id FROM collection_period 
-             WHERE tenant_id = ? 
-             AND ((? BETWEEN ngayBatDau AND ngayKetThuc) 
-                  OR (? BETWEEN ngayBatDau AND ngayKetThuc))`,
-      [tenant_id, ngayBatDau, ngayKetThuc],
+      WHERE tenant_id = ? 
+        AND loaiKy = ?  -- THÊM DÒNG NÀY
+        AND (
+            (? BETWEEN ngayBatDau AND ngayKetThuc) 
+            OR (? BETWEEN ngayBatDau AND ngayKetThuc)
+            OR (ngayBatDau BETWEEN ? AND ?) -- Trường hợp kỳ cũ nằm lọt thỏm trong kỳ mới
+        )`,
+      [tenant_id, loaiKy, ngayBatDau, ngayKetThuc, ngayBatDau, ngayKetThuc],
     );
 
     if (exist.length > 0) {

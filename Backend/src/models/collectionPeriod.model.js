@@ -37,7 +37,6 @@ exports.getCollectionPeriodById = async (period_id, tenant_id) => {
         LIMIT 1`,
     [period_id, tenant_id],
   );
-
   return rows[0];
 };
 
@@ -81,4 +80,43 @@ exports.deleteCollectionPeriod = async (period_id, tenant_id) => {
   );
 
   return result;
+};
+
+
+// Tìm kỳ thu theo ngày cụ thể
+exports.findPeriodByDate = async (tenant_id, dateString, loaiKy = 'ngay') => {
+    const sql = `
+        SELECT * FROM collection_period 
+        WHERE tenant_id = ? 
+          AND DATE(ngayBatDau) = ? 
+          AND loaiKy = ?
+        LIMIT 1
+    `;
+    const [rows] = await db.execute(sql, [tenant_id, dateString, loaiKy]);
+    return rows[0];
+};
+
+// Tìm kỳ thu dựa trên tháng và năm
+exports.findPeriodByMonth = async (tenant_id, month, year, loaiKy = 'thang') => {
+    const sql = `
+        SELECT * FROM collection_period 
+        WHERE tenant_id = ? 
+          AND MONTH(ngayBatDau) = ? 
+          AND YEAR(ngayBatDau) = ?
+          AND loaiKy = ?
+        LIMIT 1
+    `;
+    const [rows] = await db.execute(sql, [tenant_id, month, year, loaiKy]);
+    return rows[0];
+};
+
+// Tạo mới một kỳ thu
+exports.createPeriod = async (data) => {
+    const { tenant_id, tenKyThu, ngayBatDau, ngayKetThuc, loaiKy } = data;
+    const sql = `
+        INSERT INTO collection_period (tenant_id, tenKyThu, ngayBatDau, ngayKetThuc, loaiKy)
+        VALUES (?, ?, ?, ?, ?)
+    `;
+    const [result] = await db.execute(sql, [tenant_id, tenKyThu, ngayBatDau, ngayKetThuc, loaiKy]);
+    return result.insertId;
 };

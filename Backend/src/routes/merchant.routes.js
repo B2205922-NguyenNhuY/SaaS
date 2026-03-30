@@ -4,9 +4,24 @@ const { authorizeRoles } = require("../middlewares/role.middleware");
 const { ROLES } = require("../constants/role");
 const paginate = require("../middlewares/paginate");
 const C = require("../controllers/merchant.controller");
+const { checkUserActive } = require("../middlewares/checkUserActive.middlewares");
+const { checkTenantActive } = require("../middlewares/checkTenantActive.middlewares");
+const { checkSubscriptionStatus } = require("../middlewares/checkSubscription.middlewares");
 
 router.post("/", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.create);
-
+router.get(
+  "/me",
+  verifyToken,
+  authorizeRoles(ROLES.MERCHANT),
+  C.getMyProfile,
+);
+router.put(
+  "/update",
+  verifyToken,
+  authorizeRoles(ROLES.MERCHANT),
+  checkUserActive, checkTenantActive, checkSubscriptionStatus,
+  C.updateMyProfile,
+);
 router.put("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.update);
 
 router.patch(

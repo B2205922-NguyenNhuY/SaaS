@@ -9,8 +9,8 @@ const { checkTenantActive } = require("../middlewares/checkTenantActive.middlewa
 const { checkTenantAccess } = require("../middlewares/checkTenantAccess.middleware");
 const { checkSubscriptionStatus } = require("../middlewares/checkSubscription.middlewares");
 
-router.get("/receipt/:receipt_id", verifyToken, checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus, controller.getChargesByReceipt);
+router.get("/receipt/:receipt_id", verifyToken, checkUserActive, checkTenantActive, checkSubscriptionStatus, controller.getChargesByReceipt);
 
-router.get("/charge/:charge_id", verifyToken, checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus, controller.getReceiptsByCharge);
+router.get("/charge/:charge_id", verifyToken, checkUserActive, checkTenantActive, checkSubscriptionStatus, controller.getReceiptsByCharge);
 
 module.exports = router;

@@ -18,6 +18,26 @@ exports.assign = async (req, res, next) => {
   }
 };
 
+exports.mylist = async (req, res, next) => {
+  try {
+    const filters = {
+      merchant_id: req.user.id,
+    };
+
+    res.json(await S.list(req.user.tenant_id, filters, req.pagination));
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.getById = async (req, res, next) => {
+  try {
+    res.json(await S.getById(req.user.tenant_id, Number(req.params.id)));
+  } catch (e) {
+    next(e);
+  }
+};
+
 exports.list = async (req, res, next) => {
   try {
     const filters = {

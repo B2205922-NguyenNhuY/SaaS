@@ -2,7 +2,7 @@ const db = require("../config/db");
 const shiftService = require("../services/shift.service");
 exports.startShift = async (req, res, next) => {
   try {
-    const result = await shiftService.startShift(req.user);
+    const result = await shiftService.startShift(req.user, req.body);
     res
       .status(201)
       .json({ message: "Shift started", shift_id: result.insertId });

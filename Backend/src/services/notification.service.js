@@ -1,5 +1,25 @@
 const notificationModel = require("../models/notification.model");
 const auditLogModel = require("../models/auditLog.model");
+const admin = require('firebase-admin');
+
+
+exports.sendPushToMerchantTopic = async (merchantId, title, body) => {
+    const message = {
+        notification: { title, body },
+        data: {
+            screen: 'debt_screen', // Logic GoRouter của bạn sẽ bắt chữ này
+        },
+        // Gửi tới topic thay vì token
+        topic: `merchant_${merchantId}` 
+    };
+
+    try {
+        await admin.messaging().send(message);
+        console.log(`✅ Đã gửi Push tới topic merchant_${merchantId}`);
+    } catch (error) {
+        console.error("❌ Lỗi gửi Push Topic:", error);
+    }
+};
 
 exports.createNotification = async (data, user) => {
   const isSuperAdmin = !user.tenant_id;
@@ -29,15 +49,21 @@ exports.getNotifications = async (user) => {
   return await notificationModel.getNotifications(user.tenant_id, user.id);
 };
 
+exports.getMyNotifications = async (user) => {
+  return await notificationModel.getMyNotifications(user.tenant_id, user.id);
+};
+
 exports.getUnreadCount = async (user) => {
   return await notificationModel.getUnreadCount(user.tenant_id, user.id);
 };
 
 exports.markAsRead = async (notification_id, user) => {
+  const role = user.role === "merchant" ? "merchant" : "user";
   const result = await notificationModel.markAsRead(
     notification_id,
     user.id,
     user.tenant_id,
+    role
   );
 
   await auditLogModel.createAuditLog({

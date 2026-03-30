@@ -2,13 +2,13 @@ const db = require("../config/db");
 
 // Bắt đầu ca
 exports.startShift = async (data) => {
-  const { tenant_id, user_id, thoiGianBatDauCa } = data;
+  const { tenant_id, market_id, user_id, thoiGianBatDauCa } = data;
 
   const [result] = await db.execute(
     `INSERT INTO shift
-        (tenant_id, user_id, thoiGianBatDauCa)
-        VALUES (?, ?, ?)`,
-    [tenant_id, user_id, thoiGianBatDauCa],
+        (tenant_id, market_id, user_id, thoiGianBatDauCa)
+         VALUES (?, ?, ?, ?)`,
+    [tenant_id, market_id, user_id, thoiGianBatDauCa],
   );
 
   return result;
@@ -34,6 +34,7 @@ exports.getActiveShift = async (user_id, tenant_id) => {
         FROM shift
         WHERE user_id = ?
         AND tenant_id = ?
+        AND market_id = ?
         AND thoiGianKetThucCa IS NULL
         LIMIT 1`,
     [user_id, tenant_id],

@@ -41,6 +41,18 @@ exports.getNotifications = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getMyNotifications = async (req, res, next) => {
+  try {
+    const result = await notificationService.getMyNotifications(req.user);
+    
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+
 exports.getUnreadCount = async (req, res, next) => {
   try {
     const data = await notificationService.getUnreadCount(req.user);

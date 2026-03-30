@@ -305,6 +305,7 @@ CREATE TABLE collection_period (
 CREATE TABLE shift (
   shift_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tenant_id INT UNSIGNED NOT NULL,
+  market_id INT UNSIGNED NOT NULL,
   user_id INT UNSIGNED NOT NULL,
 
   thoiGianBatDauCa DATETIME NOT NULL,
@@ -320,6 +321,7 @@ CREATE TABLE shift (
   KEY idx_shift_tenant (tenant_id),
   KEY idx_shift_user (user_id),
 
+  CONSTRAINT fk_shift_market FOREIGN KEY (market_id, tenant_id) REFERENCES market(market_id, tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_shift_user   FOREIGN KEY (user_id, tenant_id) REFERENCES users(user_id, tenant_id) ON DELETE RESTRICT,
   CONSTRAINT fk_shift_tenant FOREIGN KEY (tenant_id)          REFERENCES tenant(tenant_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -375,7 +377,7 @@ CREATE TABLE receipt (
   anhChupThanhToan VARCHAR(255) null,
   thoiGianThu DATETIME NOT NULL,
 
-  user_id INT UNSIGNED NULL,
+  merchant_id INT UNSIGNED NULL,
   shift_id INT UNSIGNED NULL,
 
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -384,7 +386,7 @@ CREATE TABLE receipt (
   UNIQUE KEY uq_receipt_id_tenant (receipt_id, tenant_id),
   KEY idx_receipt_tenant_time (tenant_id, thoiGianThu),
 
-  CONSTRAINT fk_receipt_user   FOREIGN KEY (user_id, tenant_id)   REFERENCES users(user_id, tenant_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_receipt_merchant   FOREIGN KEY (merchant_id, tenant_id)   REFERENCES merchant(user_id, merchant_id) ON DELETE RESTRICT,
   
   -- SỬA Ở ĐÂY: Đổi SET NULL thành RESTRICT
   CONSTRAINT fk_receipt_shift  FOREIGN KEY (shift_id, tenant_id)  REFERENCES shift(shift_id, tenant_id) ON DELETE RESTRICT,

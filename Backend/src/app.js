@@ -3,6 +3,7 @@ const cors = require("cors");
 const errorMiddleware = require("./middlewares/error.middleware");
 require("dotenv").config();
 require("./cron/subscriptionCron");
+require("./cron/cronJobs");
 
 const app = express();
 

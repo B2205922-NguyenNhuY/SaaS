@@ -56,7 +56,7 @@ exports.getAllUsers = async () => {
 //Lấy user theo id
 exports.getUserById = async (id) => {
     const [rows] = await db.execute(
-        "SELECT * FROM users WHERE user_id = ?",
+        "SELECT u.*, r.tenVaiTro FROM users u JOIN role r ON u.role_id=r.role_id WHERE u.user_id = ?",
         [id]
     );
 

@@ -14,6 +14,10 @@ exports.getDebts = async (page, limit, user) => {
   );
 };
 
+exports.getDebtsByCharge = async (charge_id, user) => {
+  return await debtModel.getDebtsByCharge(user.tenant_id, charge_id);
+};
+
 // Công nợ theo merchant
 exports.getDebtsByMerchant = async (merchant_id, user) => {
   return await debtModel.getDebtsByMerchant(user.tenant_id, merchant_id);

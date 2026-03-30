@@ -3,12 +3,13 @@ const auditLogModel = require("../models/auditLog.model");
 const db = require("../config/db");
 
 // Bắt đầu ca
-exports.startShift = async (user) => {
+exports.startShift = async (user, body) => {
   const connection = await db.getConnection();
-
+  console.log(body.market_id);
   try {
     const activeShift = await shiftModel.getActiveShift(
       user.id,
+      body.market_id,
       user.tenant_id,
     );
 
@@ -20,6 +21,7 @@ exports.startShift = async (user) => {
 
     const result = await shiftModel.startShift({
       tenant_id: user.tenant_id,
+      market_id: body.market_id,
       user_id: user.id,
       thoiGianBatDauCa: new Date(),
     });
@@ -27,6 +29,7 @@ exports.startShift = async (user) => {
     await auditLogModel.createAuditLog({
       tenant_id: user.tenant_id,
       user_id: user.id,
+      market_id: body.market_id,
       hanhDong: "START_SHIFT",
       entity_type: "shift",
       entity_id: result.insertId,
@@ -46,7 +49,7 @@ exports.startShift = async (user) => {
 // Kết thúc ca
 exports.endShift = async (shift_id, user) => {
   const connection = await db.getConnection();
-
+  
   try {
     if (!user) {
       throw new Error("User information is required");

@@ -16,6 +16,9 @@ router.post(
   checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus,
   controller.createReceipt,
 );
+router.get("/me", verifyToken, checkUserActive, checkTenantActive, checkSubscriptionStatus, paginate, controller.getMyReceipts);
+
 router.get("/", verifyToken, checkUserActive, checkTenantActive, checkSubscriptionStatus, paginate, controller.getReceipts);
 router.get("/:id", verifyToken, checkUserActive, checkTenantActive, checkTenantAccess, checkSubscriptionStatus, controller.getReceiptDetail);
+
 module.exports = router;
