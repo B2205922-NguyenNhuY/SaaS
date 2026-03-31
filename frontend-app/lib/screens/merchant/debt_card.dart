@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-
+import 'package:go_router/go_router.dart';
+import 'debt_select_screen.dart';
 class DebtCard extends StatelessWidget {
   final int totalDebt;
   final VoidCallback? onPay;
@@ -55,7 +56,13 @@ class DebtCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: isZero ? null : onPay,
+              onPressed: isZero ? null : () {
+                // 👉 nếu có callback cũ thì gọi trước
+                if (onPay != null) onPay!();
+
+                // 👉 điều hướng
+                context.push('/debt-select');
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: isZero ? Colors.grey : Colors.red,

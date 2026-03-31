@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -100,7 +101,21 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
-    token = session['token'];
+    final token = session['token'];
+
+    // 🔥 check hết hạn
+    final isExpired = JwtDecoder.isExpired(token);
+
+    if (isExpired) {
+      await _storageService.clearSession();
+
+      status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return;
+    }
+
+    // ✅ còn hạn → login
+    this.token = token;
     role  = session['role'];
     name  = session['name'];
     email = session['email'];
