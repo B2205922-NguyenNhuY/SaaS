@@ -9,9 +9,11 @@ const SALT_ROUNDS = 10;
 
 function normalizeRole(tenVaiTro) {
   switch (tenVaiTro) {
-    case "TenantAdmin": return "tenant_admin";
-    case "ThuNgan":     return "collector";
-    default:            return "unknown";
+    case "super_admin":  return "super_admin";
+    case "tenant_admin": return "tenant_admin";
+    case "collector":    return "collector";
+    case "merchant":     return "merchant";
+    default:             return "unknown";
   }
 }
 

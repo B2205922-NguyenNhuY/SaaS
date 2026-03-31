@@ -2,13 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authAPI, LoginCredentials } from '@/api/auth'
 import { User } from '@/types'
-import router from '@/router'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('token'))
   const user = ref<User | null>(null)
   
-  // Khởi tạo user từ localStorage
   const savedUser = localStorage.getItem('user')
   if (savedUser) {
     user.value = JSON.parse(savedUser)
@@ -21,7 +19,6 @@ export const useAuthStore = defineStore('auth', () => {
   const isCollector = computed(() => user.value?.role === 'collector')
   const isMerchant = computed(() => user.value?.role === 'merchant')
 
-  // Đăng nhập bằng email/password
   const login = async (credentials: LoginCredentials) => {
     try {
       const response = await authAPI.login(credentials)
@@ -43,7 +40,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Đăng nhập bằng Google (Firebase)
   const googleLogin = async (googleToken: string) => {
     try {
       const response = await authAPI.googleLogin({ idToken: googleToken })
@@ -65,7 +61,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Đăng xuất
   const logout = async () => {
     try {
       await authAPI.logout()
@@ -73,11 +68,8 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Logout error:', error)
     } finally {
       token.value = null
-      user.value = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      localStorage.removeItem('role')
-      router.push('/login')
+      user.value = null   
+      window.location.href = '/login'
     }
   }
 

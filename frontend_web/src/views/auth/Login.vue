@@ -70,7 +70,6 @@
           </div>
         </transition>
 
-        <!-- Đăng nhập -->
         <form @submit.prevent="handleLogin" novalidate>
           <div class="field">
             <label>Email</label>
@@ -122,7 +121,6 @@
 
         <div class="divider"><span>hoặc</span></div>
 
-        <!-- Đăng nhập với Google -->
         <button class="btn-google" @click="handleGoogleLogin" :disabled="loading || googleLoading">
           <span v-if="googleLoading" class="spin spin-dark"></span>
           <svg v-else width="18" height="18" viewBox="0 0 24 24">
@@ -200,10 +198,12 @@ const handleGoogleLogin = async () => {
 const redirectByRole = (role: string | undefined) => {
   if (role === 'super_admin') router.push('/super-admin/dashboard')
   else if (role === 'tenant_admin') router.push('/tenant-admin/dashboard')
-  else if (role === 'collector') router.push('/collector/dashboard')
-  else if (role === 'merchant') router.push('/merchant/dashboard')
-  else router.push('/login')
+  else {
+    localStorage.clear()
+    router.push('/login')
+  }
 }
+
 </script>
 
 <style scoped>

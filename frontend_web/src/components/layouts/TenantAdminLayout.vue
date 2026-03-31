@@ -155,9 +155,9 @@ const navGroups: NavGroup[] = [
     ]
   },
   {
-    label: 'Người dùng',
+    label: 'Thu ngân',
     items: [
-      { to: '/tenant-admin/users', label: 'Quản lý User', icon: iUsers() },
+      { to: '/tenant-admin/users', label: 'Thu ngân', icon: iUsers() },
     ]
   },
   {

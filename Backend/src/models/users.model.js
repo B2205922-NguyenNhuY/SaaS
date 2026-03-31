@@ -22,6 +22,12 @@ exports.createUser = async (conn, data) => {
 
 //Đếm số account hiện tại của tenant
 exports.countAccountsByTenant = async (tenant_id) => {
+  const [roleRow] = await db.query(
+    "SELECT role_id FROM role WHERE tenVaiTro = ?",
+    ['tenant_admin']
+  );
+  const tenantAdminRoleId = roleRow[0]?.role_id;
+
   const [rows] = await db.query(
     `
     SELECT 
@@ -30,7 +36,8 @@ exports.countAccountsByTenant = async (tenant_id) => {
          FROM users 
          WHERE tenant_id = ? 
            AND trangThai = 'active' 
-           AND deleted_at IS NULL)
+           AND deleted_at IS NULL
+           AND role_id != ?)
        +
         (SELECT COUNT(*) 
          FROM merchant 
@@ -38,9 +45,8 @@ exports.countAccountsByTenant = async (tenant_id) => {
             AND trangThai = 'active')
       ) AS total
     `,
-    [tenant_id, tenant_id]
+    [tenant_id, tenantAdminRoleId, tenant_id]
   );
- /**/
   return Number(rows[0].total);
 };
 

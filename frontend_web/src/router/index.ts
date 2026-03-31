@@ -186,11 +186,6 @@ const routes = [
       return '/login'
     },
   },
-
-  {
-    path: '/:pathMatch(.*)*',
-    redirect: '/login',
-  },
 ]
 
 const router = createRouter({
@@ -202,6 +197,10 @@ router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
   const requiresAuth = to.meta.requiresAuth
   const requiredRole = to.meta.role as string | undefined
+
+  console.log('authStore:', authStore)
+  console.log('isAuthenticated:', authStore?.isAuthenticated)
+  console.log('to.path:', to.path)
 
   if (requiresAuth && !authStore.isAuthenticated) {
     next('/login')

@@ -28,6 +28,27 @@ router.get(
   paginate,
   controller.getDebts,
 );
+
+router.get(
+  "/total",
+  verifyToken,
+  authorizeRoles(ROLES.TENANT_ADMIN, ROLES.COLLECTOR),
+  checkUserActive,
+  checkTenantActive,
+  checkSubscriptionStatus,
+  controller.getTotalDebt,
+);
+
+router.get(
+  "/top",
+  verifyToken,
+  authorizeRoles(ROLES.TENANT_ADMIN, ROLES.COLLECTOR),
+  checkUserActive,
+  checkTenantActive,
+  checkSubscriptionStatus,
+  controller.getTopDebtors,
+);
+
 router.get(
   "/merchant/:merchant_id",
   verifyToken,
@@ -38,22 +59,5 @@ router.get(
   checkSubscriptionStatus,
   controller.getDebtsByMerchant,
 );
-router.get(
-  "/total",
-  verifyToken,
-  authorizeRoles(ROLES.TENANT_ADMIN, ROLES.COLLECTOR),
-  checkUserActive,
-  checkTenantActive,
-  checkSubscriptionStatus,
-  controller.getTotalDebt,
-);
-router.get(
-  "/top",
-  verifyToken,
-  authorizeRoles(ROLES.TENANT_ADMIN, ROLES.COLLECTOR),
-  checkUserActive,
-  checkTenantActive,
-  checkSubscriptionStatus,
-  controller.getTopDebtors,
-);
+
 module.exports = router;

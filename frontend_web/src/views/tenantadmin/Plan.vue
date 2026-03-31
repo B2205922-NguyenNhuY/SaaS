@@ -149,7 +149,6 @@
               <th>Trạng thái</th>
               <th>Ngày bắt đầu</th>
               <th>Ngày kết thúc</th>
-              <th>Stripe</th>
             </tr>
           </thead>
           <tbody>
@@ -161,7 +160,6 @@
               </td>
               <td class="cell-date">{{ fmtDate(s.ngayBatDau) }}</td>
               <td class="cell-date">{{ fmtDate(s.ngayKetThuc) }}</td>
-              <td class="cell-sub">{{ s.stripe_subscription_id ? s.stripe_subscription_id.slice(0, 20) + '...' : '—' }}</td>
             </tr>
             <tr v-if="!loadingHistory && !history.length">
               <td colspan="5" class="empty-row">Chưa có lịch sử thanh toán</td>

@@ -284,13 +284,11 @@ onMounted(async () => {
 
 async function fetchQuotaUsed() {
   try {
-    const [userRes, merchantRes] = await Promise.all([
-      api.get('/users/account-count').catch(() => ({ data: { total: 0 } })),
-      api.get('/merchant', { params: { limit: 1 } }).catch(() => ({ data: { meta: { total: 0 } } }))
-    ])
-    const collectorCount = userRes.data?.total || 0
-    const merchantCount = merchantRes.data?.meta?.total || 0
-    quota.value.used = collectorCount + merchantCount
+    const quotaRes = await api.get('/users/account-count')
+    quota.value.used = quotaRes.data.total || 0
+    
+    const planRes = await api.get('/plan_subscription')
+    if (planRes.data?.gioiHanUser) quota.value.max = planRes.data.gioiHanUser
   } catch {}
 }
 
@@ -482,8 +480,8 @@ select { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4; border-radi
 
 /* Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
-.modal { background: white; border-radius: 16px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
-.modal--lg { max-width: 580px; }
+.modal { background: white; border-radius: 16px; width: 100%; max-width: 1000px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+.modal--lg { max-width: 1000px; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px 14px; border-bottom: 1px solid #f0f5f0; }
 .modal-header h3 { font-size: 15px; font-weight: 600; color: #1a2e1a; margin: 0; }
 .modal-close { background: none; border: none; color: #94a894; cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 6px; }

@@ -12,7 +12,7 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input v-model="filters.keyword" placeholder="Tìm thu ngân..." @input="debouncedFetch" />
       </div>
-      <select v-model="filters.trangThaiDoiSoat" @change="fetchData">
+      <select v-model="filters.trangThaiDoiSoat" @change="pg.page = 1; fetchData()">
         <option value="">Tất cả đối soát</option>
         <option value="pending">Chờ đối soát</option>
         <option value="completed">Đã đối soát</option>
@@ -76,10 +76,11 @@
               <th>Tiền mặt thu được</th>
               <th>Đối soát</th>
               <th>Trạng thái</th>
+              <th>Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading"><td colspan="6"><div class="loading-bar"></div></td></tr>
+            <tr v-if="loading"><td colspan="7"><div class="loading-bar"></div></td></tr>
             <template v-else>
               <tr v-for="s in filteredItems" :key="s.shift_id" class="row-clickable" @click="openDetail(s)">
                 <td>
@@ -102,9 +103,20 @@
                   </span>
                   <span v-else class="badge badge--gray">Đã đóng</span>
                 </td>
+                <td @click.stop>
+                  <div v-if="s.thoiGianKetThucCa && s.trangThaiDoiSoat === 'pending'" class="action-btns">
+                    <button class="icon-btn icon-btn--green" title="Khớp số" @click="quickReconcile(s, 'completed')">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                    <button class="icon-btn icon-btn--danger" title="Lệch số" @click="quickReconcile(s, 'discrepancy')">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </button>
+                  </div>
+                  <span v-else class="cell-sub">—</span>
+                </td>
               </tr>
               <tr v-if="!filteredItems.length">
-                <td colspan="6" class="empty-row">
+                <td colspan="7" class="empty-row">
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#b0c4b0" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                   <p>Chưa có ca làm việc nào</p>
                 </td>
@@ -156,7 +168,6 @@
               </div>
             </div>
           </div>
-
           <div class="detail-section">
             <div class="detail-section-title">Tổng kết thu tiền</div>
             <div class="money-cards">
@@ -169,21 +180,14 @@
               </div>
             </div>
           </div>
-
           <div class="detail-section" v-if="selected.thoiGianKetThucCa">
             <div class="detail-section-title">Đối soát</div>
-
             <div v-if="selected.trangThaiDoiSoat !== 'pending'" class="reconcile-done">
-              <span class="badge" :class="doiSoatClass(selected.trangThaiDoiSoat)">
-                {{ doiSoatLabel(selected.trangThaiDoiSoat) }}
-              </span>
+              <span class="badge" :class="doiSoatClass(selected.trangThaiDoiSoat)">{{ doiSoatLabel(selected.trangThaiDoiSoat) }}</span>
               <span class="reconcile-done-text">Ca này đã được đối soát</span>
             </div>
-
             <template v-else>
-              <p class="reconcile-desc">
-                Xác nhận số tiền mặt thu ngân nộp về có khớp với <strong>{{ fmtMoney(selected.tongTienMatThuDuoc) }}</strong> hệ thống ghi nhận không?
-              </p>
+              <p class="reconcile-desc">Xác nhận số tiền mặt thu ngân nộp về có khớp với <strong>{{ fmtMoney(selected.tongTienMatThuDuoc) }}</strong> hệ thống ghi nhận không?</p>
               <div class="reconcile-actions">
                 <button class="btn-reconcile btn-reconcile--ok" @click="reconcile('completed')" :disabled="reconciling">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -197,7 +201,6 @@
               <div class="reconcile-error" v-if="reconcileError">{{ reconcileError }}</div>
             </template>
           </div>
-
           <div class="reconcile-note" v-else>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             Ca chưa đóng — chưa thể đối soát
@@ -212,28 +215,31 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import api from '@/api/axios'
 
-const loading      = ref(true)
-const detailDrawer = ref(false)
-const selected     = ref<any>(null)
-const items        = ref<any[]>([])
-const meta         = ref({ total: 0, totalPages: 1 })
-const pg           = reactive({ page: 1, limit: 10 })
-
+const loading        = ref(true)
+const detailDrawer   = ref(false)
+const selected       = ref<any>(null)
+const reconciling    = ref(false)
+const reconcileError = ref('')
+const items = ref<any[]>([])
+const meta  = ref({ total: 0, totalPages: 1 })
+const pg    = reactive({ page: 1, limit: 10 })
 const filters = reactive({ keyword: '', trangThaiDoiSoat: '', from_date: '', to_date: '' })
-
 const summary = reactive({ tienMat: 0, caAngMo: 0, choPending: 0 })
 
 const filteredItems = computed(() => {
-  if (!filters.keyword.trim()) return items.value
-  const q = filters.keyword.toLowerCase()
-  return items.value.filter(s => s.hoTen?.toLowerCase().includes(q))
+  let list = items.value
+  if (filters.keyword.trim()) {
+    const q = filters.keyword.toLowerCase()
+    list = list.filter(s => s.hoTen?.toLowerCase().includes(q))
+  }
+  if (filters.trangThaiDoiSoat) {
+    list = list.filter(s => s.trangThaiDoiSoat === filters.trangThaiDoiSoat)
+  }
+  return list
 })
 
 let debounceTimer: any
-function debouncedFetch() {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => { pg.page = 1; fetchData() }, 400)
-}
+function debouncedFetch() { clearTimeout(debounceTimer); debounceTimer = setTimeout(() => { pg.page = 1; fetchData() }, 400) }
 
 onMounted(() => fetchData())
 
@@ -243,14 +249,12 @@ async function fetchData() {
     const params: any = { page: pg.page, limit: pg.limit }
     if (filters.from_date) params.from_date = filters.from_date
     if (filters.to_date)   params.to_date   = filters.to_date
-
     const res = await api.get('/shifts', { params })
     items.value = res.data.data || []
     meta.value  = res.data.meta || { total: 0, totalPages: 1 }
-
     summary.tienMat    = items.value.reduce((s, x) => s + Number(x.tongTienMatThuDuoc || 0), 0)
     summary.caAngMo    = items.value.filter(x => !x.thoiGianKetThucCa).length
-    summary.choPending = items.value.filter(x => x.trangThaiDoiSoat === 'pending' && x.thoiGianKetThucCa).length
+    summary.choPending = items.value.filter(x => x.thoiGianKetThucCa && x.trangThaiDoiSoat === 'pending').length
   } catch { items.value = [] }
   finally { loading.value = false }
 }
@@ -260,13 +264,8 @@ function resetFilters() {
   filters.from_date = ''; filters.to_date = ''
   pg.page = 1; fetchData()
 }
-
 function changePage(p: number) { pg.page = p; fetchData() }
-
-const reconciling   = ref(false)
-const reconcileError = ref('')
-
-function openDetail(s: any) { selected.value = s; detailDrawer.value = true; reconcileError.value = '' }
+function openDetail(s: any) { selected.value = { ...s }; detailDrawer.value = true; reconcileError.value = '' }
 
 async function reconcile(trangThai: 'completed' | 'discrepancy') {
   if (!selected.value) return
@@ -276,10 +275,19 @@ async function reconcile(trangThai: 'completed' | 'discrepancy') {
     selected.value.trangThaiDoiSoat = trangThai
     const item = items.value.find(x => x.shift_id === selected.value.shift_id)
     if (item) item.trangThaiDoiSoat = trangThai
-    summary.choPending = items.value.filter(x => x.trangThaiDoiSoat === 'pending' && x.thoiGianKetThucCa).length
+    summary.choPending = items.value.filter(x => x.thoiGianKetThucCa && x.trangThaiDoiSoat === 'pending').length
   } catch (e: any) {
     reconcileError.value = e.response?.data?.message || 'Lỗi khi đối soát'
   } finally { reconciling.value = false }
+}
+
+async function quickReconcile(s: any, trangThai: 'completed' | 'discrepancy') {
+  try {
+    await api.patch(`/shifts/${s.shift_id}/reconcile`, { trangThaiDoiSoat: trangThai })
+    s.trangThaiDoiSoat = trangThai
+    if (selected.value?.shift_id === s.shift_id) selected.value.trangThaiDoiSoat = trangThai
+    summary.choPending = items.value.filter(x => x.thoiGianKetThucCa && x.trangThaiDoiSoat === 'pending').length
+  } catch (e: any) { alert(e.response?.data?.message || 'Lỗi khi đối soát') }
 }
 
 function doiSoatClass(s: string) {
@@ -290,24 +298,15 @@ function doiSoatLabel(s: string) {
 }
 function duration(start: string, end: string) {
   if (!start) return '—'
-  const s = new Date(start)
-  const e = end ? new Date(end) : new Date()
+  const s = new Date(start), e = end ? new Date(end) : new Date()
   const diff = Math.floor((e.getTime() - s.getTime()) / 1000)
-  const h = Math.floor(diff / 3600)
-  const m = Math.floor((diff % 3600) / 60)
-  return `${h}g ${m}p${!end ? ' (đang mở)' : ''}`
+  return `${Math.floor(diff / 3600)}g ${Math.floor((diff % 3600) / 60)}p${!end ? ' (đang mở)' : ''}`
 }
 function fmtDt(d: string) {
-  return d ? new Date(d).toLocaleString('vi-VN', {
-    hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
-  }) : '—'
+  return d ? new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
 }
-function fmtMoney(n: any) {
-  return Number(n || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
-}
-function initials(n: string) {
-  return (n || '?').split(' ').map((w: string) => w[0]).slice(-2).join('').toUpperCase()
-}
+function fmtMoney(n: any) { return Number(n || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) }
+function initials(n: string) { return (n || '?').split(' ').map((w: string) => w[0]).slice(-2).join('').toUpperCase() }
 </script>
 
 <style scoped>
@@ -317,7 +316,6 @@ function initials(n: string) {
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; }
 .page-title { font-size: 22px; font-weight: 600; color: #1a2e1a; margin: 0 0 4px; }
 .page-sub { font-size: 13px; color: #6b836b; margin: 0; }
-
 .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .search-wrap { flex: 1; min-width: 180px; max-width: 260px; position: relative; display: flex; align-items: center; }
 .search-wrap svg { position: absolute; left: 11px; color: #94a894; pointer-events: none; }
@@ -326,7 +324,6 @@ function initials(n: string) {
 select { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4; border-radius: 10px; font-size: 13px; font-family: 'Be Vietnam Pro', sans-serif; color: #1a2e1a; background: white; outline: none; }
 .date-input { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4; border-radius: 10px; font-size: 13px; font-family: 'Be Vietnam Pro', sans-serif; color: #1a2e1a; background: white; outline: none; }
 .date-input:focus { border-color: #3d8c3d; }
-
 .stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .stat-card { background: white; border: 1px solid #e2ede2; border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 14px; }
 .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -336,7 +333,6 @@ select { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4; border-radi
 .stat-icon--amber  { background: #fffbeb; color: #b45309; }
 .stat-label { font-size: 11.5px; color: #6b836b; margin-bottom: 3px; }
 .stat-value { font-size: 18px; font-weight: 600; color: #1a2e1a; }
-
 .table-panel { background: white; border: 1px solid #e2ede2; border-radius: 14px; overflow: hidden; }
 .table-wrap { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; }
@@ -348,9 +344,9 @@ select { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4; border-radi
 .cell-with-avatar { display: flex; align-items: center; gap: 9px; }
 .c-avatar { width: 32px; height: 32px; background: #0f766e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; flex-shrink: 0; }
 .cell-main { font-size: 13.5px; font-weight: 500; color: #1a2e1a; }
+.cell-sub { font-size: 12.5px; color: #6b836b; }
 .cell-date { font-size: 12.5px; color: #6b836b; white-space: nowrap; }
 .cell-money { font-size: 13px; font-weight: 500; color: #1a2e1a; white-space: nowrap; }
-
 .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
 .badge--green  { background: #eef7ee; color: #2d6e2d; }
 .badge--amber  { background: #fffbeb; color: #b45309; }
@@ -359,7 +355,13 @@ select { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4; border-radi
 .badge--active { background: #eff6ff; color: #1d4ed8; }
 .dot-live { width: 6px; height: 6px; background: #1d4ed8; border-radius: 50%; animation: blink 1.2s infinite; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-
+.action-btns { display: flex; gap: 5px; }
+.icon-btn { width: 30px; height: 30px; background: none; border: 1px solid #e2ede2; border-radius: 7px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #4a654a; transition: all .15s; }
+.icon-btn:hover { background: #f0f7f0; }
+.icon-btn--green { color: #2d6e2d; border-color: #d4e4d4; }
+.icon-btn--green:hover { background: #eef7ee; }
+.icon-btn--danger { color: #dc2626; border-color: #fecaca; }
+.icon-btn--danger:hover { background: #fef2f2; }
 .empty-row { text-align: center; padding: 48px 16px !important; color: #94a894; }
 .empty-row p { margin: 8px 0 0; font-size: 13px; }
 .loading-bar { height: 3px; background: linear-gradient(90deg,#eef7ee,#3d8c3d,#eef7ee); background-size: 200%; animation: shimmer 1.5s infinite; }
@@ -373,7 +375,6 @@ select { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4; border-radi
 .pagination span { font-size: 12.5px; color: #6b836b; }
 .btn-outline { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; background: white; border: 1.5px solid #d4e4d4; border-radius: 10px; color: #4a654a; font-size: 13px; font-family: 'Be Vietnam Pro', sans-serif; cursor: pointer; }
 .btn-outline:hover { background: #f0f7f0; }
-
 .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200; display: flex; justify-content: flex-end; }
 .drawer { width: 420px; max-width: 95vw; background: white; height: 100%; display: flex; flex-direction: column; box-shadow: -4px 0 32px rgba(0,0,0,0.12); }
 .drawer-header { padding: 20px 22px 14px; border-bottom: 1px solid #f0f5f0; display: flex; justify-content: space-between; align-items: flex-start; }
@@ -382,36 +383,30 @@ select { height: 38px; padding: 0 10px; border: 1.5px solid #d4e4d4; border-radi
 .drawer-body { flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 22px; }
 .modal-close { background: none; border: none; color: #94a894; cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 6px; }
 .modal-close:hover { background: #f0f5f0; }
-
 .detail-section { display: flex; flex-direction: column; gap: 0; }
 .detail-section-title { font-size: 11px; font-weight: 600; color: #94a894; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 12px; }
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .detail-item { display: flex; flex-direction: column; gap: 3px; }
 .detail-label { font-size: 11.5px; color: #94a894; }
 .detail-val { font-size: 13.5px; color: #1a2e1a; font-weight: 500; }
-
 .money-cards { display: flex; flex-direction: column; gap: 8px; }
 .money-card { border-radius: 10px; padding: 13px 16px; display: flex; justify-content: space-between; align-items: center; }
-.money-card--cash     { background: #f0fdf4; border: 1px solid #bbf7d0; }
-.money-card--transfer { background: #eff6ff; border: 1px solid #bfdbfe; }
-.money-card--total    { background: #f7faf7; border: 1px solid #e2ede2; }
+.money-card--cash { background: #f0fdf4; border: 1px solid #bbf7d0; }
 .money-card-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #4a654a; }
 .money-card-value { font-size: 15px; font-weight: 600; color: #1a2e1a; }
 .money-card-value--total { font-size: 16px; color: #2d6e2d; }
-
-@media (max-width: 900px) { .stat-cards { grid-template-columns: repeat(2, 1fr); } }
-
 .reconcile-desc { font-size: 13px; color: #4a654a; line-height: 1.6; margin: 0 0 12px; }
 .reconcile-desc strong { color: #1a2e1a; }
 .reconcile-actions { display: flex; flex-direction: column; gap: 8px; }
 .btn-reconcile { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 40px; border-radius: 10px; font-size: 13.5px; font-weight: 500; font-family: 'Be Vietnam Pro', sans-serif; cursor: pointer; border: none; transition: all .15s; }
 .btn-reconcile:disabled { opacity: 0.55; cursor: not-allowed; }
-.btn-reconcile--ok  { background: #3d8c3d; color: white; }
-.btn-reconcile--ok:hover:not(:disabled)  { background: #2d6e2d; }
+.btn-reconcile--ok { background: #3d8c3d; color: white; }
+.btn-reconcile--ok:hover:not(:disabled) { background: #2d6e2d; }
 .btn-reconcile--err { background: white; border: 1.5px solid #fecaca; color: #dc2626; }
 .btn-reconcile--err:hover:not(:disabled) { background: #fef2f2; }
 .reconcile-done { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
 .reconcile-done-text { font-size: 13px; color: #6b836b; }
 .reconcile-error { margin-top: 8px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 9px 12px; color: #b91c1c; font-size: 13px; }
 .reconcile-note { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #94a894; background: #f7faf7; border-radius: 10px; padding: 12px 14px; border: 1px solid #e2ede2; }
+@media (max-width: 900px) { .stat-cards { grid-template-columns: repeat(2, 1fr); } }
 </style>

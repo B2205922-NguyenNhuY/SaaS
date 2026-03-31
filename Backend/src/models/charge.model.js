@@ -10,14 +10,13 @@ exports.createCharge = async (connection, data) => {
     fee_id,
     donGiaApDung,
     hinhThucApDung,
-    discountApDung, // THÊM TRƯỜNG NÀY
+    discountApDung, 
     soTienPhaiThu,
     soTienDaThu,
     trangThai,
     version,
   } = data;
 
-  // Đảm bảo số lượng dấu ? khớp với số lượng phần tử trong mảng (11 trường)
   const sql = `
         INSERT INTO charge
         (
@@ -45,7 +44,7 @@ exports.createCharge = async (connection, data) => {
     fee_id ?? null,
     donGiaApDung ?? 0,
     hinhThucApDung ?? "thang",
-    discountApDung ?? 0, // Giá trị mặc định là 0
+    discountApDung ?? 0,
     soTienPhaiThu ?? 0,
     soTienDaThu ?? 0,
     trangThai ?? "chua_thu",
