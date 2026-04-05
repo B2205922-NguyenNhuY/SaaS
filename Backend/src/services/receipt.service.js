@@ -1,13 +1,10 @@
 const receiptModel = require("../models/receipt.model");
 const chargeModel = require("../models/charge.model");
+const shiftModel = require("../models/shift.model");
 const auditLogModel = require("../models/auditLog.model");
 const userModel = require("../models/users.model");
 const db = require("../config/db");
 
-/**
- * TẠO BIÊN LAI THU PHÍ (RECEIPT)
- * Bao gồm: Tạo Receipt -> Tạo liên kết Receipt_Charge -> Cập nhật trạng thái Charge
- */
 exports.createReceipt = async (data, user) => {
   console.log(data);
   if (!user) {
@@ -20,9 +17,22 @@ exports.createReceipt = async (data, user) => {
     const tenant_id = user.tenant_id;
     await connection.beginTransaction();
 
-    // 1. VALIDATION ĐẦU VÀO
     if (!data.soTienThu || data.soTienThu <= 0) {
       throw Object.assign(new Error("Số tiền thu không hợp lệ"), {
+        statusCode: 400,
+      });
+    }
+    if (data.hinhThucThanhToan === "chuyen_khoan" && !data.anhChupThanhToan) {
+      throw Object.assign(new Error("Chuyển khoản phải có ảnh xác nhận"), {
+        statusCode: 400,
+      });
+    }
+
+    if (
+      data.hinhThucThanhToan !== "tien_mat" &&
+      data.hinhThucThanhToan !== "chuyen_khoan"
+    ) {
+      throw Object.assign(new Error("Hình thức thanh toán không hợp lệ"), {
         statusCode: 400,
       });
     }
@@ -38,25 +48,30 @@ exports.createReceipt = async (data, user) => {
       );
     }
 
+    let merchantId = user.id;
+
     // 2. KIỂM TRA SHIFT (CA LÀM VIỆC) - Tránh lỗi Foreign Key
     if(user.role === 'collector') {
-      if (data.shift_id) {
-        const [shiftExists] = await connection.execute(
-          "SELECT shift_id FROM shift WHERE shift_id = ? AND tenant_id = ?",
-          [data.shift_id, tenant_id],
-        );
-        if (shiftExists.length === 0) {
-          throw Object.assign(
-            new Error(
-              "Ca làm việc không tồn tại hoặc không thuộc quyền quản lý của bạn",
-            ),
-            { statusCode: 400 },
-          );
-        }
+       merchantId = await receiptModel.getMerchantByCharge(tenant_id, data.charges[0].charge_id);
+      const activeShift = await shiftModel.getActiveShift(user.id, tenant_id);
+      if (!activeShift) {
+        throw Object.assign(new Error("Bạn phải mở ca trước khi thu phí"), {
+          statusCode: 400,
+        });
+      }
+
+      if (
+        !data.shift_id ||
+        Number(data.shift_id) !== Number(activeShift.shift_id)
+      ) {
+        throw Object.assign(new Error("Ca thu không hợp lệ"), {
+          statusCode: 400,
+        });
       }
     }
 
     // 3. TẠO BIÊN LAI (RECEIPT) TRONG DB
+
     const receipt = await receiptModel.createReceipt(connection, {
       tenant_id: tenant_id,
       soTienThu: data.soTienThu,
@@ -64,13 +79,12 @@ exports.createReceipt = async (data, user) => {
       ghiChu: data.ghiChu || null,
       anhChupThanhToan: data.anhChupThanhToan || null,
       thoiGianThu: new Date(),
-      user_id: user.id,
-      shift_id: data.shift_id || null,
+      user_id: merchantId,
+      shift_id: data.shift_id,
     });
 
     const receipt_id = receipt.insertId;
-
-    // 4. XỬ LÝ CHI TIẾT TỪNG KHOẢN PHÍ THANH TOÁN
+    console.log("data: ", data);
     for (const item of data.charges) {
       if (!item.charge_id || !item.amount || item.amount <= 0) {
         throw new Error(
@@ -102,35 +116,23 @@ exports.createReceipt = async (data, user) => {
         soTienDaTra: item.amount, // Số tiền thực tế trả trong lần này
       });
 
-      // B. Tính toán cộng dồn nợ trên bảng Charge
       const tongDaThuMoi =
         Number(currentCharge.soTienDaThu) + Number(item.amount);
       const soTienPhaiThu = Number(currentCharge.soTienPhaiThu);
-
-      // Xác định trạng thái mới (da_thu nếu đã trả đủ, ngược lại là no)
       const trangThaiMoi =
         tongDaThuMoi >= soTienPhaiThu - 0.01 ? "da_thu" : "no";
-console.log("updateCharge", {
-  soTienDaThu: Math.min(tongDaThuMoi, soTienPhaiThu),
-  trangThai: trangThaiMoi
-});
-      // C. Cập nhật bảng Charge (Truyền connection để chạy trong Transaction)
+
       await chargeModel.updateDebtStatus(
         item.charge_id,
         tenant_id,
         {
-          soTienDaThu: Math.min(tongDaThuMoi, soTienPhaiThu), // Không cho phép thu vượt quá số phải thu
+          soTienDaThu: Math.min(tongDaThuMoi, soTienPhaiThu),
           trangThai: trangThaiMoi,
         },
         connection,
       );
     }
-console.log("auditLog", {
-  tenant_id,
-  user_id: user.id,
-  entity_id: receipt_id
-});
-    // 5. GHI LOG HỆ THỐNG
+
     await auditLogModel.createAuditLog(connection, {
       tenant_id: tenant_id,
       merchant_id: user.id,
@@ -144,7 +146,24 @@ console.log("auditLog", {
         transId: data.transId || null,
       },
     });
+    if (data.shift_id) {
+      const [[totals]] = await connection.query(
+        `SELECT
+       COALESCE(SUM(CASE WHEN hinhThucThanhToan = 'tien_mat' THEN soTienThu ELSE 0 END), 0) AS tienMat,
+       COALESCE(SUM(CASE WHEN hinhThucThanhToan = 'chuyen_khoan' THEN soTienThu ELSE 0 END), 0) AS chuyenKhoan
+     FROM receipt
+     WHERE shift_id = ? AND tenant_id = ?`,
+        [data.shift_id, tenant_id],
+      );
 
+      await connection.query(
+        `UPDATE shift
+        SET tongTienMatThuDuoc = ?,
+            tongChuyenKhoanThuDuoc = ?
+      WHERE shift_id = ? AND tenant_id = ?`,
+        [totals.tienMat, totals.chuyenKhoan, data.shift_id, tenant_id],
+      );
+    }
     await connection.commit();
     return {
       success: true,
@@ -153,12 +172,13 @@ console.log("auditLog", {
     };
   } catch (err) {
     await connection.rollback();
-    // Bắt lỗi MySQL Foreign Key để trả về thông báo dễ hiểu
     if (err.code === "ER_NO_REFERENCED_ROW_2") {
-      if (err.message.includes("fk_receipt_shift"))
+      if (err.message.includes("fk_receipt_shift")) {
         err.message = "Ca làm việc không hợp lệ";
-      if (err.message.includes("fk_rc_charge"))
+      }
+      if (err.message.includes("fk_rc_charge")) {
         err.message = "Khoản phí không tồn tại";
+      }
     }
     throw err;
   } finally {
@@ -166,27 +186,76 @@ console.log("auditLog", {
   }
 };
 
-/**
- * LẤY DANH SÁCH BIÊN LAI (CÓ PHÂN TRANG)
- */
 exports.getReceipts = async (user, pagination, query = {}) => {
   const where = ["r.tenant_id = ?"];
   const params = [user.tenant_id];
+
+  if (user.role === "collector") {
+    where.push("s.user_id = ?");
+    params.push(user.id);
+  }
 
   if (query.hinhThucThanhToan) {
     where.push("r.hinhThucThanhToan = ?");
     params.push(query.hinhThucThanhToan);
   }
 
+  if (query.shift_id) {
+    where.push("r.shift_id = ?");
+    params.push(Number(query.shift_id));
+  }
+
+  if (query.charge_id) {
+    where.push(
+      "EXISTS (SELECT 1 FROM receipt_charge rc WHERE rc.receipt_id = r.receipt_id AND rc.tenant_id = r.tenant_id AND rc.charge_id = ?)",
+    );
+    params.push(Number(query.charge_id));
+  }
+
+  if (query.from_date) {
+    where.push("DATE(r.thoiGianThu) >= ?");
+    params.push(query.from_date);
+  }
+
+  if (query.to_date) {
+    where.push("DATE(r.thoiGianThu) <= ?");
+    params.push(query.to_date);
+  }
+
+  if (query.q) {
+    where.push(`(
+      r.ghiChu LIKE ?
+      OR CAST(r.receipt_id AS CHAR) LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM receipt_charge rc
+        JOIN charge c ON c.charge_id = rc.charge_id AND c.tenant_id = rc.tenant_id
+        JOIN merchant m ON m.merchant_id = c.merchant_id AND m.tenant_id = c.tenant_id
+        JOIN kiosk k ON k.kiosk_id = c.kiosk_id AND k.tenant_id = c.tenant_id
+        WHERE rc.receipt_id = r.receipt_id
+          AND rc.tenant_id = r.tenant_id
+          AND (m.hoTen LIKE ? OR k.maKiosk LIKE ?)
+      )
+    )`);
+    params.push(`%${query.q}%`, `%${query.q}%`, `%${query.q}%`, `%${query.q}%`);
+  }
+
+  const baseJoin = `
+    FROM receipt r
+    JOIN shift s ON s.shift_id = r.shift_id AND s.tenant_id = r.tenant_id
+    LEFT JOIN users u ON u.user_id = s.user_id AND u.tenant_id = r.tenant_id
+  `;
+
   const [[{ total }]] = await db.query(
-    `SELECT COUNT(*) total FROM receipt r WHERE ${where.join(" AND ")}`,
+    `SELECT COUNT(*) total ${baseJoin} WHERE ${where.join(" AND ")}`,
     params,
   );
 
   const [rows] = await db.query(
-    `SELECT r.* FROM receipt r 
-     WHERE ${where.join(" AND ")} 
-     ORDER BY r.thoiGianThu DESC 
+    `SELECT r.*, u.hoTen AS nhanVienThu
+     ${baseJoin}
+     WHERE ${where.join(" AND ")}
+     ORDER BY r.thoiGianThu DESC
      LIMIT ? OFFSET ?`,
     [...params, pagination.limit, pagination.offset],
   );
@@ -257,7 +326,6 @@ exports.getReceiptDetail = async (receipt_id, user) => {
     nhanVienThu: rows[0].nhanVienThu,
   };
 
-  // Map danh sách charges, loại bỏ các dòng null do JOIN nếu có
   const charges = rows
     .filter((r) => r.charge_id !== null)
     .map((r) => ({
@@ -267,7 +335,7 @@ exports.getReceiptDetail = async (receipt_id, user) => {
       kyThu: r.tenKyThu,
       bieuPhi: r.tenBieuPhi,
       soTienPhaiThu: r.soTienPhaiThu,
-      soTienDaTra: r.soTienDaTra, // Số tiền của riêng lần thanh toán này
+      soTienDaTra: r.soTienDaTra,
     }));
 
   return {

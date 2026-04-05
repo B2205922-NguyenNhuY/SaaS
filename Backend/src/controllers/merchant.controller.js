@@ -20,7 +20,7 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
+    const id  = Number(req.params.id);
     const old = await S.detail(req.user.tenant_id, id);
     const out = await S.update(req.user.tenant_id, id, req.body);
 
@@ -61,14 +61,13 @@ exports.updateMyProfile = async (req, res, next) => {
 exports.list = async (req, res, next) => {
   try {
     const filters = {
-      trangThai: req.query.trangThai,
-      soDienThoai: req.query.soDienThoai,
-      CCCD: req.query.CCCD,
-      maSoThue: req.query.maSoThue,
+      trangThai:             req.query.trangThai,
+      soDienThoai:           req.query.soDienThoai,
+      CCCD:                  req.query.CCCD,
+      maSoThue:              req.query.maSoThue,
       has_active_assignment: req.query.has_active_assignment,
-      q: req.query.q,
+      q:                     req.query.q,
     };
-
     res.json(await S.list(req.user.tenant_id, filters, req.pagination));
   } catch (e) {
     next(e);
@@ -93,9 +92,10 @@ exports.getMyProfile = async (req, res, next) => {
 
 exports.updateStatus = async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
-    const old = await S.detail(req.user.tenant_id, id);
-    const data = await S.updateStatus(id, req.body, req.user);
+    const id        = Number(req.params.id);
+    const { trangThai } = req.body;
+    const old  = await S.getById(req.user.tenant_id, id);
+    const data = await S.updateStatus(req.user.tenant_id, id, trangThai);
 
     await logAudit(req, {
       action: "UPDATE_MERCHANT_STATUS",
@@ -105,11 +105,25 @@ exports.updateStatus = async (req, res, next) => {
       newValue: data,
     });
 
-    return res.status(200).json({
-      message: "Cập nhật trạng thái tiểu thương thành công",
-      data,
+    res.json({ message: "Cập nhật trạng thái tiểu thương thành công", data });
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.updatePassword = async (req, res, next) => {
+  try {
+    const id  = Number(req.params.id);
+    const out = await S.updatePassword(req.user.tenant_id, id, req.body.newPassword);
+
+    await logAudit(req, {
+      action: "UPDATE_MERCHANT_PASSWORD",
+      entity_type: "merchant",
+      entity_id: id,
     });
-  } catch (error) {
-    next(error);
+
+    res.json(out);
+  } catch (e) {
+    next(e);
   }
 };

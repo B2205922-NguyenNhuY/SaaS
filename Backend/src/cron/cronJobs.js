@@ -18,8 +18,13 @@ cron.schedule('26 1 * * *', async () => {
     await processAutoCharges('day');
 });
 
+cron.schedule("40 20 * * *", async () => {
+    console.log("⏰ Running charge overdue cron...");
+    await updateOverdueCharges();
+  });
+
 // JOB 3: QUÉT NỢ QUÁ HẠN (07:00 sáng hàng ngày)
-cron.schedule('0 7 * * *', async () => {
+cron.schedule('11 20 * * *', async () => {
     console.log(`[${new Date().toISOString()}] --- QUÉT NỢ QUÁ HẠN (DỰA TRÊN NGÀY KẾT THÚC KỲ) ---`);
 
     try {
@@ -42,14 +47,13 @@ cron.schedule('0 7 * * *', async () => {
                 'tenant'
             );
 
-            await sendToMerchant(
-                merchant_id,
-                notificationTitle,
-                notificationContent,
-                {
-                    type: "notification",
-                }
-            );
+            await admin.messaging().send({
+                topic: "Thông báo",
+                notification: {
+                    title: "⚠️ Cảnh báo",
+                    body: "Bạn có khoản nợ quá hạn",
+                },
+            });
 
             console.log(`[Overdue] Đã báo nợ cho Merchant ${merchant_id} - Số tiền: `);
         }
@@ -57,6 +61,17 @@ cron.schedule('0 7 * * *', async () => {
         console.error("Lỗi Cron quét nợ quá hạn:", err);
     }
 });
+
+async function updateOverdueCharges() {
+  try {
+    
+    const result = await chargeService.updatePendingCharges();
+
+    console.log(`✅ Updated overdue charges: ${result.affectedRows}`);
+  } catch (err) {
+    console.error("❌ Cron error:", err.message);
+  }
+};
 
 // Hàm dùng chung để tránh lặp code
 async function processAutoCharges(type) {

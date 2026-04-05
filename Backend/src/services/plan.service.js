@@ -2,9 +2,9 @@ const planModel = require("../models/plan.model");
 
 //Tạo plan
 exports.createPlan = async (body) => {
-        const {tenGoi, giaTien, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho} = body;
+        const {tenGoi, giaTien,  moTa, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho} = body;
 
-        if(!tenGoi || !giaTien || !gioiHanSoKiosk || !gioiHanUser || !gioiHanSoCho) {
+        if(!tenGoi || !giaTien || !moTa || !gioiHanSoKiosk || !gioiHanUser || !gioiHanSoCho) {
             throw Object.assign(
                 new Error("Missing required fields"),
                 { statusCode: 400 }
@@ -20,7 +20,14 @@ exports.createPlan = async (body) => {
             );
         }
 
-        const result = await planModel.createPlan(body);
+        const result = await planModel.createPlan({
+            tenGoi,
+            giaTien,
+            moTa,
+            gioiHanSoKiosk,
+            gioiHanUser,
+            gioiHanSoCho
+        });
 
         return {
             plan_id: result.insertId
@@ -69,27 +76,23 @@ exports.listPlans = async (filters) => {
 
 //Update Plan
 exports.updatePlan = async (id, body) => {
-        const {tenGoi} = body;
+  const { tenGoi, giaTien, moTa, gioiHanSoKiosk, gioiHanUser, gioiHanSoCho, stripe_price_id } = body;
 
-        const existing = await planModel.getPlanById(id);
+  const existing = await planModel.getPlanById(id);
+  if (!existing) {
+    throw Object.assign(new Error("Gói không tồn tại"), { statusCode: 404 });
+  }
 
-        if(!existing){
-           throw Object.assign(
-            new Error("Gói không tồn tại"),
-            { statusCode: 404 }
-           );
-        }
+  const duplicate = await planModel.checkDuplicateForUpdate(id, tenGoi);
+  if (duplicate.length > 0) {
+    throw Object.assign(new Error("Gói đã tồn tại"), { statusCode: 409 });
+  }
 
-        const duplicate = await planModel.checkDuplicateForUpdate(id, tenGoi);
-
-        if(duplicate.length>0){
-            throw Object.assign(
-                new Error("Gói đã tồn tại"),
-                { statusCode: 409 }
-            );
-        }
-
-        await planModel.updatePlan(id, body);
+  await planModel.updatePlan(id, {
+    tenGoi, giaTien, moTa,
+    gioiHanSoKiosk, gioiHanUser, gioiHanSoCho,
+    stripe_price_id: stripe_price_id || null,
+  });
 };
 
 exports.inactivePlan = async (plan_id) => {

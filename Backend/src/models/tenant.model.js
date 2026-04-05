@@ -2,39 +2,78 @@ const db = require("../config/db");
 
 //Tạo Tenant
 exports.createTenant = async (connection, tenantData) => {
-    
-    const { tenBanQuanLy, diaChi, soDienThoai, email, trangThai } = tenantData;
+  const {
+    tenBanQuanLy,
+    diaChi,
+    soDienThoai,
+    email,
+    maSoThue,
+    tenCongTy,
+    nguoiDaiDien,
+    chucVu,
+    giayPhepKinhDoanh,
+    ngayCapPhep,
+    noiCapPhep,
+    trangThai,
+  } = tenantData;
 
-    const [result] = await connection.execute(
-        "INSERT INTO tenant (tenBanQuanLy, diaChi, soDienThoai, email, trangThai) VALUES (?, ?, ?, ?, ?)",
-        [tenBanQuanLy, diaChi, soDienThoai, email, trangThai || 'active',]
-    );
+  const [result] = await connection.execute(
+    `INSERT INTO tenant (
+            tenBanQuanLy, diaChi, soDienThoai, email, 
+            maSoThue, tenCongTy, nguoiDaiDien, chucVu,
+            giayPhepKinhDoanh, ngayCapPhep, noiCapPhep, trangThai
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      tenBanQuanLy,
+      diaChi,
+      soDienThoai,
+      email,
+      maSoThue,
+      tenCongTy,
+      nguoiDaiDien,
+      chucVu,
+      giayPhepKinhDoanh,
+      ngayCapPhep,
+      noiCapPhep,
+      trangThai || "active",
+    ],
+  );
 
-    return result;
+  return result;
 };
 
 //Lấy tất cả Tenant
 exports.getAllTenants = async () => {
-    const [rows] = await db.execute(
-        "SELECT * FROM tenant"
-    );
-    
-    return rows;
+  const [rows] = await db.execute(
+    `SELECT tenant_id, tenBanQuanLy, diaChi, soDienThoai, email, 
+                maSoThue, tenCongTy, nguoiDaiDien, chucVu,
+                giayPhepKinhDoanh, ngayCapPhep, noiCapPhep, trangThai, created_at 
+         FROM tenant`,
+  );
+  return rows;
 };
 
 //Lấy tenant theo id
 exports.getTenantById = async (id) => {
-    const [rows] = await db.execute(
-        "SELECT * FROM tenant WHERE tenant_id = ?",
-        [id]
-    );
-
-    return rows[0];
+  const [rows] = await db.execute(
+    `SELECT 
+        tenant_id,
+        tenBanQuanLy,
+        diaChi,
+        soDienThoai,
+        email,
+        trangThai,
+        created_at,
+        updated_at
+     FROM tenant
+     WHERE tenant_id = ?`,
+    [id],
+  );
+  return rows[0];
 };
 
 //lọc
 exports.listTenants = async (filters, offset, limit) => {
-
   let sql = `
     SELECT *
     FROM tenant
@@ -47,7 +86,7 @@ exports.listTenants = async (filters, offset, limit) => {
     sql += ` AND (tenBanQuanLy LIKE ? OR email LIKE ?)`;
     params.push(`%${filters.keyword}%`, `%${filters.keyword}%`);
   }
-  
+
   if (filters.trangThai) {
     sql += ` AND trangThai = ?`;
     params.push(filters.trangThai);
@@ -66,7 +105,7 @@ exports.listTenants = async (filters, offset, limit) => {
   sql += ` ORDER BY ${filters.sortBy} ${filters.sortOrder}`;
 
   sql += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
-  
+
   const [rows] = await db.execute(sql, params);
 
   return rows;
@@ -74,7 +113,6 @@ exports.listTenants = async (filters, offset, limit) => {
 
 //đếm
 exports.countTenants = async (filters) => {
-
   let sql = `
     SELECT COUNT(*) as total
     FROM tenant
@@ -110,47 +148,96 @@ exports.countTenants = async (filters) => {
 
 //Cập nhật thông tin Tenant
 exports.updateTenantInfo = async (id, data) => {
-    const {
-        tenBanQuanLy,
-        diachi,
-        soDienThoai,
-        email
-    } = data;
+  const {
+    tenBanQuanLy,
+    diachi,
+    soDienThoai,
+    email,
+    maSoThue,
+    tenCongTy,
+    nguoiDaiDien,
+    chucVu,
+    giayPhepKinhDoanh,
+    ngayCapPhep,
+    noiCapPhep,
+  } = data;
 
-    const [result] = await db.execute(
-        "UPDATE tenant SET tenBanQuanLy = ?, diachi = ?, soDienThoai = ?, email = ? WHERE tenant_id = ?",
-        [tenBanQuanLy, diachi, soDienThoai, email, id]
-    );
+  const params = [
+    tenBanQuanLy !== undefined ? tenBanQuanLy : null,
+    diachi !== undefined ? diachi : null,
+    soDienThoai !== undefined ? soDienThoai : null,
+    email !== undefined ? email : null,
+    maSoThue !== undefined ? maSoThue : null,
+    tenCongTy !== undefined ? tenCongTy : null,
+    nguoiDaiDien !== undefined ? nguoiDaiDien : null,
+    chucVu !== undefined ? chucVu : null,
+    giayPhepKinhDoanh !== undefined ? giayPhepKinhDoanh : null,
+    ngayCapPhep !== undefined ? ngayCapPhep : null,
+    noiCapPhep !== undefined ? noiCapPhep : null,
+    id,
+  ];
 
-    return result;
+  const [result] = await db.execute(
+    `UPDATE tenant SET 
+            tenBanQuanLy = ?, 
+            diachi = ?, 
+            soDienThoai = ?, 
+            email = ?, 
+            maSoThue = ?,
+            tenCongTy = ?,
+            nguoiDaiDien = ?,
+            chucVu = ?,
+            giayPhepKinhDoanh = ?,
+            ngayCapPhep = ?,
+            noiCapPhep = ?
+        WHERE tenant_id = ?`,
+    params,
+  );
+
+  return result;
+};
+
+//Kiểm tra trùng mã số thuế
+exports.checkDuplicateMST = async (maSoThue) => {
+  const [rows] = await db.execute(
+    "SELECT tenant_id FROM tenant WHERE maSoThue = ?",
+    [maSoThue],
+  );
+  return rows;
 };
 
 //Cập nhật trạng thái Tenant
-exports.updateTenantStatus = async(id, trangThai) => {
-    const [result] = await db.execute(
-        "UPDATE tenant SET trangThai = ? WHERE tenant_id = ?",
-        [trangThai, id]
-    );
+exports.updateTenantStatus = async (id, trangThai) => {
+  const [result] = await db.execute(
+    "UPDATE tenant SET trangThai = ? WHERE tenant_id = ?",
+    [trangThai, id],
+  );
 
-    return result;
+  return result;
 };
 
 //Kiểm tra trùng
 exports.checkDuplicate = async (email, soDienThoai) => {
   const [rows] = await db.execute(
-        "SELECT tenant_id FROM tenant WHERE email = ? OR soDienThoai = ?",
-        [email, soDienThoai]
-    );
+    "SELECT tenant_id FROM tenant WHERE email = ? OR soDienThoai = ?",
+    [email, soDienThoai],
+  );
 
-    return rows;
-}
+  return rows;
+};
 
 //Kiểm tra trùng khi update
-exports.checkDuplicateForUpdate = async (id, email, soDienThoai) => {
-    const [rows] = await db.execute(
-        "SELECT tenant_id FROM tenant WHERE (email = ? OR soDienThoai = ?) AND tenant_id!=?",
-        [email, soDienThoai, id]
-    );
+exports.checkDuplicateForUpdate = async (id, email, soDienThoai, maSoThue) => {
+  const [rows] = await db.execute(
+    "SELECT tenant_id FROM tenant WHERE (email = ? OR soDienThoai = ? OR maSoThue = ?) AND tenant_id != ?",
+    [email, soDienThoai, maSoThue, id],
+  );
+  return rows;
+};
 
-    return rows;
-}
+exports.deleteTenant = async (tenant_id) => {
+  const [result] = await db.execute("DELETE FROM tenant WHERE tenant_id = ?", [
+    tenant_id,
+  ]);
+  return result;
+};

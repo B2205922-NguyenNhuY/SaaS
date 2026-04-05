@@ -16,7 +16,7 @@ router.patch(
 router.get(
   "/",
   verifyToken,
-  authorizeRoles(ROLES.TENANT_ADMIN),
+  authorizeRoles(ROLES.TENANT_ADMIN, ROLES.COLLECTOR),
   paginate,
   C.list,
 );
@@ -27,6 +27,11 @@ router.get(
   C.list,
 );
 
-router.get("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.getById);
+router.get(
+  "/:id",
+  verifyToken,
+  authorizeRoles(ROLES.TENANT_ADMIN, ROLES.COLLECTOR),
+  C.getById,
+);
 
 module.exports = router;

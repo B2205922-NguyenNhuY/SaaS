@@ -98,7 +98,6 @@ exports.inactivePlan = async (req, res, next) => {
 
         const result = await planService.inactivePlan(plan_id);
 
-        // ✅ Ghi log (optional)
         await logAudit(req, {
             action: "INACTIVE_PLAN",
             entity_type: "plan",

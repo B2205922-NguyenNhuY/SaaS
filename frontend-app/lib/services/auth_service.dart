@@ -36,7 +36,7 @@ class AuthService {
         await StorageService().saveSession(
           token: token,
           role: user['role'] ?? '',
-          name: user['name'] ?? '',
+          name: user['name'] ?? user['hoTen'] ?? '',
           email: user['email'] ?? '', // ❗ backend không trả email → để rỗng
           id: user['id'].toString(),
         );

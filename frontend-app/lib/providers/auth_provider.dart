@@ -33,13 +33,14 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => token != null;
 
   String get homeRoute {
+    print("role: $role");
     switch (role) {
       case AppRoles.collector:
         return '/collector';
       case AppRoles.merchant:
         return '/merchant';
       default:
-        return '/login';
+        return '/auth';
     }
   }
 

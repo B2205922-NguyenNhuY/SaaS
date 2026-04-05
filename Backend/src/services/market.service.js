@@ -35,6 +35,18 @@ async function getMarketRaw(tenant_id, market_id) {
   return rows[0] || null;
 }
 
+async function hasPlan(tenant_id) {
+  const [[row]] = await db.query(
+    `SELECT COUNT(*) AS cnt
+     FROM plan_subscription
+     WHERE tenant_id = ?
+       AND trangThai = 'active'
+       AND ngayKetThuc > NOW()`,
+    [tenant_id],
+  );
+  return Number(row.cnt) > 0;
+}
+
 exports.create = async (tenant_id, body) => {
   const tenCho = String(body.tenCho || "").trim();
   const diaChi = body.diaChi ?? null;
@@ -50,7 +62,9 @@ exports.create = async (tenant_id, body) => {
     });
   }
 
-  await assertMarketQuota(tenant_id);
+  if (await hasPlan(tenant_id)) {
+    await assertMarketQuota(tenant_id);
+  }
 
   if (await existsName(tenant_id, tenCho)) {
     throw Object.assign(new Error("tenCho already exists in this tenant"), {

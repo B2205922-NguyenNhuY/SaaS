@@ -30,14 +30,17 @@ import 'providers/kiosk_provider.dart';
 import 'providers/payment_provider.dart';
 import 'providers/debt_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/collector_provider.dart';
 
 import 'screens/merchant/kiosk_detail_screen.dart';
 // 🚚 Collector
-import 'screens/collector/collector_home.dart';
-import 'screens/collector/shift_screen.dart';
-import 'screens/collector/open_shift_screen.dart';
-import 'screens/collector/collect_money_screen.dart';
-import 'screens/market/select_market_screen.dart';
+import 'screens/collector/collector_screen.dart';
+import 'screens/collector/debts_screen.dart';
+import 'screens/collector/merchant_detail_screen.dart';
+import 'screens/collector/notifications_screen.dart';
+import 'screens/collector/receipt_detail_screen.dart';
+import 'screens/collector/receipt_history_screen.dart';
+import 'screens/collector/shift_history_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -106,6 +109,7 @@ class _MyAppState extends State<MyApp> {
       providers: [
         ChangeNotifierProvider.value(value: authProvider),
 
+        ChangeNotifierProvider(create: (_) => CollectorProvider()),
         ChangeNotifierProvider(create: (_) => ShiftProvider()),
         ChangeNotifierProvider(create: (_) => MerchantProvider()),
         ChangeNotifierProvider(create: (_) => KioskProvider()),
@@ -221,34 +225,46 @@ class AppRouter extends StatelessWidget {
           builder: (_, __) => const DebtSelectScreen(),
         ),
 
-        GoRoute(
-          path: '/collector/select-market',
-          builder: (_, __) => const SelectMarketScreen(),
-        ),
-
-        GoRoute(
-          path: '/collector/open-shift',
-          builder: (_, __) => const OpenShiftScreen(),
-        ),
-
-        // 🚚 COLLECTOR
-        GoRoute(
+        // 🚚 COLLECTOR EXTRA (từ code trên)
+         GoRoute(
           path: '/collector',
-          builder: (context, state) => const CollectorHome(),
+          builder: (_, __) => const CollectorScreen(),
         ),
 
         GoRoute(
-          path: '/collector/charges',
-          builder: (_, __) => const ChargeListScreen(),
+          path: '/collector/receipts',
+          builder: (_, __) => const ReceiptHistoryScreen(),
         ),
+
         GoRoute(
-          path: '/collector/shift',
-          builder: (_, __) => const ShiftScreen(),
+          path: '/collector/debts',
+          builder: (_, __) => const DebtsScreen(),
         ),
+
         GoRoute(
-          path: '/collector/collect/:id',
-          builder: (context, state) =>
-              CollectMoneyScreen(id: state.pathParameters['id']!),
+          path: '/collector/shifts',
+          builder: (_, __) => const ShiftHistoryScreen(),
+        ),
+
+        GoRoute(
+          path: '/collector/notifications',
+          builder: (_, __) => const NotificationsScreen(),
+        ),
+
+        GoRoute(
+          path: '/collector/receipt-detail',
+          builder: (context, state) {
+            final id = state.extra as int;
+            return ReceiptDetailScreen(receiptId: id);
+          },
+        ),
+
+        GoRoute(
+          path: '/collector/merchant-detail',
+          builder: (context, state) {
+            final id = state.extra as int;
+            return MerchantDetailScreen(merchantId: id);
+          },
         ),
 
         GoRoute(

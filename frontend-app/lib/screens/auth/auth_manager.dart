@@ -18,15 +18,7 @@ class AuthManager {
     if (!auth.isLoggedIn) return;
 
     if (auth.isCollector) {
-      final shift = context.read<ShiftProvider>();
-
-      await shift.checkShift(); // 🔥 BẮT BUỘC
-
-      if (shift.hasShift == true) {
         context.go('/collector');
-      } else {
-        context.go('/collector/select-market'); // 👈 mở ca
-      }
     }
 
     if (auth.isMerchant) {

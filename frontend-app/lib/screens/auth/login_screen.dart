@@ -12,10 +12,10 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailCtrl    = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  bool  _obscurePass  = true;
-  bool  _rememberMe   = false;
+  bool _obscurePass = true;
+  bool _rememberMe = false;
 
   bool _redirected = false; // chống redirect nhiều lần
 
@@ -33,9 +33,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth   = context.watch<AuthProvider>();
-    final width  = MediaQuery.of(context).size.width;
-    final isWeb  = width > 800;
+    final auth = context.watch<AuthProvider>();
+    final width = MediaQuery.of(context).size.width;
+    final isWeb = width > 800;
 
     if (auth.status == AuthStatus.authenticated) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,7 +48,6 @@ class _LoginScreenState extends State<LoginScreen> {
     : LoginMobileScreen(auth: auth);
   }
 
-
   Widget _buildWebLayout(AuthProvider auth) {
     return Row(
       children: [
@@ -58,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
-                end:   Alignment.bottomRight,
+                end: Alignment.bottomRight,
                 colors: [
                   AppColors.primaryDark,
                   AppColors.primary,
@@ -85,8 +84,8 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-
   Widget _buildMobileLayout(AuthProvider auth) {
+<<<<<<< HEAD:frontend-app/lib/screens/auth/login_screen.dart
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -96,10 +95,82 @@ class _LoginScreenState extends State<LoginScreen> {
             child: _buildLoginCard(auth),
           ),
         ),
+=======
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Column(
+                children: [
+                  Container(
+                    height: 180,
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.primaryDark, AppColors.primary],
+                      ),
+                    ),
+                    child: _buildBrandingPanelMobile(),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: _buildLoginCard(auth),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+>>>>>>> fc23669b341c9ae7c142a79eafe1496938dfbbe3:frontend/lib/screens/login/login_screen.dart
       ),
     );
   }
 
+  Widget _buildBrandingPanelMobile() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Image.asset(
+          'assets/images/logo.png',
+          height: 90,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(Icons.hub_rounded, color: Colors.white, size: 36),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'MarketHub',
+          style: GoogleFonts.inter(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Admin Management System',
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            color: Colors.white70,
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildBrandingPanel() {
     return Column(
@@ -109,9 +180,10 @@ class _LoginScreenState extends State<LoginScreen> {
           'assets/images/logo.png',
           height: 400,
           fit: BoxFit.contain,
-          alignment: Alignment.bottomCenter,  
+          alignment: Alignment.bottomCenter,
           errorBuilder: (context, error, stackTrace) => Container(
-            width: 80, height: 80,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
@@ -120,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         Transform.translate(
-          offset: const Offset(0, -40), 
+          offset: const Offset(0, -40),
           child: Text(
             'Admin Management System',
             style: GoogleFonts.inter(
@@ -131,9 +203,9 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         const SizedBox(height: 48),
-        _buildFeatureItem(Icons.dashboard_rounded,  'Quản lý tập trung'),
+        _buildFeatureItem(Icons.dashboard_rounded, 'Quản lý tập trung'),
         _buildFeatureItem(Icons.people_alt_rounded, 'Phân quyền linh hoạt'),
-        _buildFeatureItem(Icons.analytics_rounded,  'Báo cáo thời gian thực'),
+        _buildFeatureItem(Icons.analytics_rounded, 'Báo cáo thời gian thực'),
       ],
     );
   }
@@ -159,14 +231,14 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
-        color:        AppColors.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color:        AppColors.cardShadow,
-            blurRadius:   40,
+            color: AppColors.cardShadow,
+            blurRadius: 40,
             spreadRadius: 0,
-            offset:       const Offset(0, 8),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -197,18 +269,20 @@ class _LoginScreenState extends State<LoginScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color:        AppColors.error.withOpacity(0.08),
+                color: AppColors.error.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
-                border:       Border.all(color: AppColors.error.withOpacity(0.3)),
+                border: Border.all(color: AppColors.error.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: AppColors.error, size: 16),
+                  const Icon(Icons.error_outline,
+                      color: AppColors.error, size: 16),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       auth.errorMessage ?? 'Lỗi không xác định',
-                      style: GoogleFonts.inter(color: AppColors.error, fontSize: 13),
+                      style: GoogleFonts.inter(
+                          color: AppColors.error, fontSize: 13),
                     ),
                   ),
                 ],
@@ -217,44 +291,45 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
           ],
 
-          // Email 
+          // Email
           _buildInputField(
             controller: _emailCtrl,
-            label:      'Email',
-            hint:       'markethub@gmail.com',
-            icon:       Icons.email_outlined,
+            label: 'Email',
+            hint: 'markethub@gmail.com',
+            icon: Icons.email_outlined,
           ),
           const SizedBox(height: 16),
 
-          // Mật khẩu 
+          // Mật khẩu
           _buildInputField(
             controller: _passwordCtrl,
-            label:      'Mật khẩu',
-            hint:       '••••••••',
-            icon:       Icons.lock_outline_rounded,
-            obscure:    _obscurePass,
-            suffix:     IconButton(
+            label: 'Mật khẩu',
+            hint: '••••••••',
+            icon: Icons.lock_outline_rounded,
+            obscure: _obscurePass,
+            suffix: IconButton(
               icon: Icon(
                 _obscurePass
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
                 color: AppColors.textSecondary,
-                size:  20,
+                size: 20,
               ),
               onPressed: () => setState(() => _obscurePass = !_obscurePass),
             ),
           ),
           const SizedBox(height: 12),
 
-          // Remember + Forgot 
+          // Remember + Forgot
           Row(
             children: [
               SizedBox(
-                width: 20, height: 20,
+                width: 20,
+                height: 20,
                 child: Checkbox(
-                  value:       _rememberMe,
+                  value: _rememberMe,
                   activeColor: AppColors.primary,
-                  onChanged:   (v) => setState(() => _rememberMe = v!),
+                  onChanged: (v) => setState(() => _rememberMe = v!),
                 ),
               ),
               const SizedBox(width: 8),
@@ -271,8 +346,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Text(
                   'Quên mật khẩu?',
                   style: GoogleFonts.inter(
-                    fontSize:   13,
-                    color:      AppColors.primary,
+                    fontSize: 13,
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -281,7 +356,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Nút Đăng nhập 
+          // Nút Đăng nhập
           SizedBox(
             height: 52,
             child: ElevatedButton(
@@ -294,22 +369,24 @@ class _LoginScreenState extends State<LoginScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                elevation:       0,
+                elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: auth.status == AuthStatus.loading
                   ? const SizedBox(
-                      height: 20, width: 20,
+                      height: 20,
+                      width: 20,
                       child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2,
+                        color: Colors.white,
+                        strokeWidth: 2,
                       ),
                     )
                   : Text(
                       'Đăng nhập',
                       style: GoogleFonts.inter(
-                        fontSize:   16,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -317,7 +394,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Divider 
+          // Divider
           Row(
             children: [
               const Expanded(child: Divider(color: AppColors.divider)),
@@ -336,25 +413,25 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Nút Google 
+          // Nút Google
           SizedBox(
             height: 52,
             child: OutlinedButton.icon(
               onPressed: auth.status == AuthStatus.loading
                   ? null
                   : () => context.read<AuthProvider>().googleLogin(),
-              icon:  const Icon(Icons.g_mobiledata_rounded,
-                      color: AppColors.primary, size: 28),
+              icon: const Icon(Icons.g_mobiledata_rounded,
+                  color: AppColors.primary, size: 28),
               label: Text(
                 'Đăng nhập với Google',
                 style: GoogleFonts.inter(
-                  fontSize:   15,
+                  fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  color:      AppColors.textPrimary,
+                  color: AppColors.textPrimary,
                 ),
               ),
               style: OutlinedButton.styleFrom(
-                side:  const BorderSide(color: AppColors.divider, width: 1.5),
+                side: const BorderSide(color: AppColors.divider, width: 1.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -369,10 +446,10 @@ class _LoginScreenState extends State<LoginScreen> {
   // Input Field helper
   Widget _buildInputField({
     required TextEditingController controller,
-    required String  label,
-    required String  hint,
+    required String label,
+    required String hint,
     required IconData icon,
-    bool    obscure = false,
+    bool obscure = false,
     Widget? suffix,
   }) {
     return Column(
@@ -381,40 +458,42 @@ class _LoginScreenState extends State<LoginScreen> {
         Text(
           label,
           style: GoogleFonts.inter(
-            fontSize:   13,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
-            color:      AppColors.textPrimary,
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
         TextField(
-          controller:  controller,
+          controller: controller,
           obscureText: obscure,
           style: GoogleFonts.inter(
             fontSize: 14,
-            color:    AppColors.textPrimary,
+            color: AppColors.textPrimary,
           ),
           decoration: InputDecoration(
-            hintText:   hint,
-            hintStyle:  GoogleFonts.inter(color: AppColors.textHint),
+            hintText: hint,
+            hintStyle: GoogleFonts.inter(color: AppColors.textHint),
             prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
             suffixIcon: suffix,
-            filled:     true,
-            fillColor:  AppColors.background,
+            filled: true,
+            fillColor: AppColors.background,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:   const BorderSide(color: AppColors.divider),
+              borderSide: const BorderSide(color: AppColors.divider),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:   const BorderSide(color: AppColors.divider),
+              borderSide: const BorderSide(color: AppColors.divider),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:   const BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide:
+                  const BorderSide(color: AppColors.primary, width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 14,
+              horizontal: 16,
+              vertical: 14,
             ),
           ),
         ),

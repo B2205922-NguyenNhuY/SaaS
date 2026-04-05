@@ -129,6 +129,8 @@ class _DebtSelectScreenState extends State<DebtSelectScreen> with WidgetsBinding
 
                                 if (await canLaunchUrl(uri)) {
                                   await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                } else {
+                                  throw 'Không mở đc URL';
                                 }
                               }
                             } catch (e) {

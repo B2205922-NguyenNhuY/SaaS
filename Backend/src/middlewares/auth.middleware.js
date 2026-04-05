@@ -13,7 +13,7 @@ exports.verifyToken = (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         req.user = {
-            id: decoded.id,
+            id: decoded.id || decoded.user_id,
             role: decoded.role,
             name: decoded.name,
             tenant_id: decoded.tenant_id || null,

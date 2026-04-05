@@ -5,11 +5,9 @@ const db = require("../config/db");
 // Bắt đầu ca
 exports.startShift = async (user, body) => {
   const connection = await db.getConnection();
-  console.log(body.market_id);
   try {
     const activeShift = await shiftModel.getActiveShift(
       user.id,
-      body.market_id,
       user.tenant_id,
     );
 
@@ -21,7 +19,6 @@ exports.startShift = async (user, body) => {
 
     const result = await shiftModel.startShift({
       tenant_id: user.tenant_id,
-      market_id: body.market_id,
       user_id: user.id,
       thoiGianBatDauCa: new Date(),
     });
@@ -29,7 +26,6 @@ exports.startShift = async (user, body) => {
     await auditLogModel.createAuditLog({
       tenant_id: user.tenant_id,
       user_id: user.id,
-      market_id: body.market_id,
       hanhDong: "START_SHIFT",
       entity_type: "shift",
       entity_id: result.insertId,
@@ -123,5 +119,18 @@ exports.getShifts = async (user) => {
 
 // Lấy shift đang mở
 exports.getActiveShift = async (user) => {
-  return await shiftModel.getActiveShift(user.id, user.tenant_id);
+  const shift = await shiftModel.getActiveShift(user.id, user.tenant_id);
+
+  if (!shift) return null;
+
+  const totals = await shiftModel.calculateShiftTotal(
+    shift.shift_id,
+    user.tenant_id,
+  );
+
+  return {
+    ...shift,
+    tongTienMatThuDuoc: Number(totals?.tienMat || 0),
+    tongChuyenKhoanThuDuoc: Number(totals?.chuyenKhoan || 0),
+  };
 };

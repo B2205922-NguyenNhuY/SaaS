@@ -129,9 +129,11 @@ exports.getReceiptDetail = async (receipt_id, tenant_id) => {
             f.tenBieuPhi
 
         FROM receipt r
+        JOIN shift s
+        ON s.shift_id = r.shift_id
 
         LEFT JOIN users u 
-        ON r.user_id = u.user_id
+        ON s.user_id = u.user_id
 
         LEFT JOIN receipt_charge rc 
         ON r.receipt_id = rc.receipt_id
@@ -162,4 +164,19 @@ exports.getReceiptDetail = async (receipt_id, tenant_id) => {
   );
 
   return rows;
+};
+
+exports.getMerchantByCharge = async (tenant_id, charge_id) => {
+  const [rows] = await db.query(
+    `SELECT merchant_id
+     FROM charge
+     WHERE charge_id = ? AND tenant_id = ?`,
+    [charge_id, tenant_id]
+  );
+
+  if (!rows.length) {
+    throw new Error("Charge không tồn tại");
+  }
+
+  return rows[0].merchant_id;
 };

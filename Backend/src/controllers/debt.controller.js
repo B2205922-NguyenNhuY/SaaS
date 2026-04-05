@@ -1,13 +1,8 @@
 const debtService = require("../services/debt.service");
+
 exports.getDebts = async (req, res, next) => {
   try {
-    res.json(
-      await debtService.getDebts(
-        req.pagination.page,
-        req.pagination.limit,
-        req.user,
-      ),
-    );
+    res.json(await debtService.getDebts(req.pagination, req.user, req.query));
   } catch (err) {
     next(err);
   }
@@ -31,6 +26,7 @@ exports.getDebtsByMerchant = async (req, res, next) => {
     next(err);
   }
 };
+
 exports.getTotalDebt = async (req, res, next) => {
   try {
     res.json(await debtService.getTotalDebt(req.user));
@@ -38,6 +34,7 @@ exports.getTotalDebt = async (req, res, next) => {
     next(err);
   }
 };
+
 exports.getTopDebtors = async (req, res, next) => {
   try {
     res.json(await debtService.getTopDebtors(req.user));

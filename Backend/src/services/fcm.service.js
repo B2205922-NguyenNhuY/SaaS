@@ -1,29 +1,20 @@
-const axios = require("axios");
-
-async function sendToMerchant(merchantId, title, body, extraData = {}) {
-  await axios.post(
-    "https://fcm.googleapis.com/fcm/send",
-    {
-      /// 🔥 gửi theo topic merchant
-      to: `/topics/merchant_${merchantId}`,
-
+exports.sendToMerchant = async (merchantId, title, body, data = {}) => {
+  try {
+    const message = {
+      topic: `merchant_${merchantId}`,
       notification: {
-        title: title,
-        body: body,
+        title,
+        body,
       },
-
       data: {
+        ...data,
         merchant_id: merchantId.toString(),
-        ...extraData,
       },
-    },
-    {
-      headers: {
-        Authorization: "key=YOUR_SERVER_KEY",
-        "Content-Type": "application/json",
-      },
-    }
-  );
-}
+    };
 
-module.exports = { sendToMerchant };
+    const response = await admin.messaging().send(message);
+    console.log("✅ FCM sent:", response);
+  } catch (err) {
+    console.error("❌ FCM error:", err.message);
+  }
+};

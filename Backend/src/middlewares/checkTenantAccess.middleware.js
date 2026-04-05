@@ -1,23 +1,26 @@
 const { ROLES } = require("../constants/role");
 
 exports.checkTenantAccess = async (req, res, next) => {
-    const paramTenantId = Number(
-        req.body?.tenant_id ||
-        req.params?.id ||
-        req.query?.id
-    );
-    const { tenant_id, role} = req.user;
-    console.log(paramTenantId);
-    if(role === ROLES.SUPER_ADMIN) {
-        return next();
+  const { tenant_id: userTenantId, role } = req.user;
+
+  if (role === ROLES.SUPER_ADMIN) {
+    return next();
+  }
+
+  if (req.body?.tenant_id != null) {
+    if (Number(req.body.tenant_id) !== Number(userTenantId)) {
+      return res.status(403).json({ message: "You can only manage your own tenant" });
     }
+    return next();
+  }
 
-        if(tenant_id != paramTenantId) {
-            return res.status(403).json({
-                message: "You can only manage your own tenant"
-            });
-        }
-        return next();
+  const isTenantIdRoute = req.baseUrl?.includes("/tenant") && req.params?.id != null;
 
-    return res.status(403).json({message: "Forbidden - Cross tenant access denied",});
+  if (isTenantIdRoute) {
+    if (Number(req.params.id) !== Number(userTenantId)) {
+      return res.status(403).json({ message: "You can only manage your own tenant" });
+    }
+  }
+
+  return next();
 };

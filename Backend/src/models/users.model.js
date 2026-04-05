@@ -22,6 +22,12 @@ exports.createUser = async (conn, data) => {
 
 //Đếm số account hiện tại của tenant
 exports.countAccountsByTenant = async (tenant_id) => {
+  const [roleRow] = await db.query(
+    "SELECT role_id FROM role WHERE tenVaiTro = ?",
+    ['tenant_admin']
+  );
+  const tenantAdminRoleId = roleRow[0]?.role_id;
+
   const [rows] = await db.query(
     `
     SELECT 
@@ -30,7 +36,8 @@ exports.countAccountsByTenant = async (tenant_id) => {
          FROM users 
          WHERE tenant_id = ? 
            AND trangThai = 'active' 
-           AND deleted_at IS NULL)
+           AND deleted_at IS NULL
+           AND role_id != ?)
        +
         (SELECT COUNT(*) 
          FROM merchant 
@@ -38,9 +45,8 @@ exports.countAccountsByTenant = async (tenant_id) => {
             AND trangThai = 'active')
       ) AS total
     `,
-    [tenant_id, tenant_id]
+    [tenant_id, tenantAdminRoleId, tenant_id]
   );
- /**/
   return Number(rows[0].total);
 };
 
@@ -317,10 +323,9 @@ exports.updateUserStatus = async(id, trangThai) => {
 //Đổi mật khẩu
 exports.updatePassword = async (user_id, password_hash) => {
   const [result] = await db.execute(
-    "UPDATE users SET password_hash = ? WHERE user_id = ?",
+    "UPDATE users SET password_hash = ?, updated_at = NOW() WHERE user_id = ?",
     [password_hash, user_id]
   );
-
   return result;
 };
 
@@ -364,3 +369,11 @@ exports.checkDuplicateForUpdate = async (id, email, soDienThoai) => {
 
     return rows;
 }
+
+exports.findByEmail = async (email) => {
+  const [rows] = await db.execute(
+    "SELECT * FROM users WHERE email = ?",
+    [email]
+  );
+  return rows[0];
+};

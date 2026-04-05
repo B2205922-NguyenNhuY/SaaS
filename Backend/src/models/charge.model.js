@@ -10,14 +10,13 @@ exports.createCharge = async (connection, data) => {
     fee_id,
     donGiaApDung,
     hinhThucApDung,
-    discountApDung, // THÊM TRƯỜNG NÀY
+    discountApDung, 
     soTienPhaiThu,
     soTienDaThu,
     trangThai,
     version,
   } = data;
 
-  // Đảm bảo số lượng dấu ? khớp với số lượng phần tử trong mảng (11 trường)
   const sql = `
         INSERT INTO charge
         (
@@ -45,7 +44,7 @@ exports.createCharge = async (connection, data) => {
     fee_id ?? null,
     donGiaApDung ?? 0,
     hinhThucApDung ?? "thang",
-    discountApDung ?? 0, // Giá trị mặc định là 0
+    discountApDung ?? 0,
     soTienPhaiThu ?? 0,
     soTienDaThu ?? 0,
     trangThai ?? "chua_thu",
@@ -314,7 +313,7 @@ exports.getExpiredCharges = async () => {
   const sql = `
             SELECT 
                 c.tenant_id, 
-                c.merchant_id, 
+                c.merchant_id
             FROM charge c
             JOIN collection_period p ON c.period_id = p.period_id AND c.tenant_id = p.tenant_id
             WHERE c.trangThai NOT IN ('da_thu', 'mien') 
@@ -323,5 +322,20 @@ exports.getExpiredCharges = async () => {
         `;
 
   const [result] = await db.query(sql);
+  return result;
+}
+
+exports.updatePendingCharges = async () => {
+  const [result] = await db.query(`
+      UPDATE charge c
+      JOIN collection_period p 
+        ON p.period_id = c.period_id 
+       AND p.tenant_id = c.tenant_id
+      SET c.trangThai = 'no'
+      WHERE 
+        p.ngayKetThuc < NOW()
+        AND c.soTienDaThu < c.soTienPhaiThu
+        AND c.trangThai NOT IN ('da_thu','mien')
+    `);
   return result;
 }

@@ -180,3 +180,7 @@ exports.generateChargesLogic = async (tenant_id, period_id) => {
 exports.getExpiredCharges = async () => {
   return await chargeModel.getExpiredCharges();
 }
+
+exports.updatePendingCharges = async () => {
+  return await chargeModel.updatePendingCharges();
+}

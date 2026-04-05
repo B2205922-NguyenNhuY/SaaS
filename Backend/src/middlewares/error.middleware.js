@@ -1,9 +1,7 @@
 module.exports = (err, req, res, next) => {
-
-  const statusCode = err.statusCode || 500;
-
-  res.status(statusCode).json({
-    message: err.message || "Internal Server Error",
-  });
-
-};
+  console.error('ERROR:', err.message, err.stack)
+  res.status(err.statusCode || 500).json({
+    message: err.message,
+    stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
+  })
+}

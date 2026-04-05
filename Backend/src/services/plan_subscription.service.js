@@ -68,19 +68,18 @@ exports.getAllSubscription = async () => {
 }
 
 exports.getSubscriptionById = async (user) => {
-        const tenant_id = user.tenant_id;
+  const tenant_id = user.tenant_id;
 
-        const subscription = await planSubscriptionModel.getSubscriptiontById(tenant_id);
-        
-        if(subscription.length === 0){
-            throw Object.assign(
-                new Error("subscription not found"),
-                { statusCode: 404 }
-            );
-        }
+  const subscriptions = await planSubscriptionModel.getSubscriptionsByTenantId(tenant_id);
 
-        return await planSubscriptionModel.getSubscriptiontById(subscription[0].subscription_id);
+  if (!subscriptions || subscriptions.length === 0) {
+    return null;
+  }
+
+  const active = subscriptions.find(s => s.trangThai === 'active');
+  return active || subscriptions[0];
 };
+
 
 exports.getSubscriptionbyStatus = async (status) => {
 
