@@ -70,7 +70,8 @@ class PaymentProvider with ChangeNotifier {
   // ===== FILTER =====
   List<Map<String, dynamic>> get filteredReceipts {
     if (filter == "all") return receipts;
-
+    print("filter: $filter");
+    print("receipts: $receipts");
     return receipts
         .where((r) => r['method'] == filter)
         .toList();

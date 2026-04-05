@@ -9,17 +9,17 @@ class AppBanner extends StatelessWidget {
       children: [
 
         // 🔥 Logo
-        Icon(
-          Icons.store,
-          size: 70,
-          color: Colors.blue,
+        Image.asset(
+          'assets/images/logoApp.png',
+          width: 70,
+          fit: BoxFit.contain,
         ),
 
         const SizedBox(height: 10),
 
         // 🧾 Tên app
         const Text(
-          "SaaS Manager",
+          "MARKET HUB",
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,

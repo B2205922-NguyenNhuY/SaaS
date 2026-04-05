@@ -129,7 +129,7 @@ exports.getReceiptDetail = async (receipt_id, tenant_id) => {
             f.tenBieuPhi
 
         FROM receipt r
-        JOIN shift s
+        LEFT JOIN shift s
         ON s.shift_id = r.shift_id
 
         LEFT JOIN users u 

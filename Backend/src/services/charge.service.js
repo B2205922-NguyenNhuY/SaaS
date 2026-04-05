@@ -130,6 +130,10 @@ exports.getChargeHistory = async (charge_id, user) => {
   return await chargeModel.getChargeHistory(user.tenant_id, charge_id);
 };
 
+exports.getPaymentHistoryByCharge = async (chargeId, user) => {
+
+  return await chargeModel.getPaymentHistoryByCharge(chargeId, user.tenant_id);
+};
 
 exports.generateChargesLogic = async (tenant_id, period_id) => {
     // 1. Kiểm tra kỳ thu tồn tại

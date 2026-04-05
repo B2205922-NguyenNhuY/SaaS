@@ -70,6 +70,16 @@ router.get(
   chargeController.getChargesByMerchant,
 );
 
+router.get(
+  '/history/:chargeId',
+  verifyToken,
+  checkUserActive,
+  checkTenantActive,
+  checkTenantAccess,
+  checkSubscriptionStatus,
+  chargeController.getPaymentHistoryByCharge,
+);
+
 router.post(
   "/:id/receipts",
   verifyToken,
@@ -113,7 +123,6 @@ router.get(
 router.get(
   "/:id/history",
   verifyToken,
-  authorizeRoles(ROLES.TENANT_ADMIN),
   checkUserActive,
   checkTenantActive,
   checkTenantAccess,

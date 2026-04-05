@@ -242,7 +242,7 @@ exports.getReceipts = async (user, pagination, query = {}) => {
 
   const baseJoin = `
     FROM receipt r
-    JOIN shift s ON s.shift_id = r.shift_id AND s.tenant_id = r.tenant_id
+    LEFT JOIN shift s ON s.shift_id = r.shift_id AND s.tenant_id = r.tenant_id
     LEFT JOIN users u ON u.user_id = s.user_id AND u.tenant_id = r.tenant_id
   `;
 
@@ -309,7 +309,8 @@ exports.getMyReceipts = async (user, pagination, query = {}) => {
  */
 exports.getReceiptDetail = async (receipt_id, user) => {
   const rows = await receiptModel.getReceiptDetail(receipt_id, user.tenant_id);
-
+  console.log("tenant:", user.tenant_id);
+  console.log("receipt:", receipt_id);
   if (!rows || rows.length === 0) {
     throw Object.assign(new Error("Không tìm thấy biên lai này"), {
       statusCode: 404,

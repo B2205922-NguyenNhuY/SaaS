@@ -147,19 +147,6 @@ class _AuthCardState extends State<AuthCard> {
               ),
             ),
 
-            const SizedBox(height: 12),
-
-            // ✅ NÚT GOOGLE RIÊNG
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  context.read<AuthProvider>().loginWithGoogle();
-                },
-                child: const Text("Login with Google"),
-              ),
-            ),
 
           const SizedBox(height: 12),
 

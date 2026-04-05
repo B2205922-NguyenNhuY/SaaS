@@ -34,8 +34,8 @@ exports.autocreateNotification = async (
 
   const [result] = await db.execute(
     `INSERT INTO notification
-        (tenant_id, target_merchant_id, title, content, type, expires_at)
-        VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))`,
+        (tenant_id, target_role, target_merchant_id, title, content, type, expires_at)
+        VALUES (?, 'merchant', ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))`,
     [
       tenant_id,
       merchant_id,
@@ -100,21 +100,24 @@ exports.getMyNotifications = async (tenant_id, user_id) => {
 
 
 exports.getAllNotifications = async (page = 1, limit = 15) => {
-  const offset = (page - 1) * limit;
+  const limitNum = Number(limit) || 15;
+  const offsetNum = (Number(page) - 1) * limitNum;
+
   const [rows] = await db.execute(
     `SELECT n.*,
-      sa.hoTen as created_by_super_name,
-      u.hoTen as created_by_tenant_name,
-      t.tenBanQuanLy as tenant_name
+        sa.hoTen as created_by_super_name,
+        u.hoTen as created_by_tenant_name,
+        t.tenBanQuanLy as tenant_name
      FROM notification n
      LEFT JOIN super_admin sa ON sa.admin_id = n.created_by_superadmin
      LEFT JOIN users u ON u.user_id = n.created_by_tenantadmin
      LEFT JOIN tenant t ON t.tenant_id = n.tenant_id
      ORDER BY n.created_at DESC
-     LIMIT ? OFFSET ?`,
-    [limit, offset]
+     LIMIT ${limitNum} OFFSET ${offsetNum}`
   );
+
   const [[{ total }]] = await db.execute(`SELECT COUNT(*) as total FROM notification`);
+
   return { rows, total };
 };
 

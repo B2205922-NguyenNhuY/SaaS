@@ -747,12 +747,13 @@ class _ChargesView extends StatelessWidget {
 class _ChargeCard extends StatelessWidget {
   const _ChargeCard({required this.charge});
   final ChargeItem charge;
+  
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CollectorProvider>();
     final bool isPaid = charge.isDone;
-
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -833,7 +834,10 @@ class _ChargeCard extends StatelessWidget {
                       ? null
                       : () => context.push(
                             '/collector/merchant-detail',
-                            extra: charge.merchantId,
+                            extra: {
+                              'merchantId': charge.merchantId,
+                              'chargeId': charge.chargeId,
+                            },
                           ),
                   icon: const Icon(Icons.info_outline_rounded, size: 18),
                   label: const Text('CHI TIẾT'),

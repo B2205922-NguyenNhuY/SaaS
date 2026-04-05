@@ -262,8 +262,14 @@ class AppRouter extends StatelessWidget {
         GoRoute(
           path: '/collector/merchant-detail',
           builder: (context, state) {
-            final id = state.extra as int;
-            return MerchantDetailScreen(merchantId: id);
+            final args = state.extra as Map<String, int?>?;
+            final merchantId = args?['merchantId'] ?? 0; // default = 0 nếu null
+            final chargeId = args?['chargeId'] ?? 0;
+
+            return MerchantDetailScreen(
+              merchantId: merchantId,
+              chargeId: chargeId,
+            );
           },
         ),
 

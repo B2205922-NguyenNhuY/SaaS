@@ -155,6 +155,17 @@ class CollectorService {
         .toList();
   }
 
+  Future<List<ReceiptItem>> getPaymentHistoryByCharge(int chargeId) async {
+    final response = await _api.get('/charges/history/$chargeId');
+    print("response: $response");
+    //final data = response.data as List<dynamic>;
+    //print("data: $data");
+    return (response as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(ReceiptItem.fromJson)
+        .toList();
+  }
+
   Future<ReceiptDetail> getReceiptDetail(int receiptId) async {
     final data = await _api.get('/receipts/$receiptId');
     return ReceiptDetail.fromJson(data as Map<String, dynamic>);

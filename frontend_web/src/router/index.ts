@@ -202,19 +202,30 @@ router.beforeEach((to, _from, next) => {
   console.log('isAuthenticated:', authStore?.isAuthenticated)
   console.log('to.path:', to.path)
 
+  // 1. Route cần login nhưng chưa login
   if (requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
-  } else if (requiresAuth && requiredRole && authStore.userRole !== requiredRole) {
-    if (authStore.isSuperAdmin) next('/super-admin/dashboard')
-    else if (authStore.isTenantAdmin) next('/tenant-admin/dashboard')
-    else next('/login')
-  } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    if (authStore.isSuperAdmin) next('/super-admin/dashboard')
-    else if (authStore.isTenantAdmin) next('/tenant-admin/dashboard')
-    else next('/login')
-  } else {
-    next()
+    if (to.path !== '/login') return next('/login') // ✅ chỉ redirect 1 lần
+    return next() // đã ở /login thì tiếp tục
   }
+
+  // 2. Route cần role nhưng user không có role
+  if (requiresAuth && requiredRole && authStore.userRole !== requiredRole) {
+    if (authStore.isSuperAdmin && to.path !== '/super-admin/dashboard') return next('/super-admin/dashboard')
+    if (authStore.isTenantAdmin && to.path !== '/tenant-admin/dashboard') return next('/tenant-admin/dashboard')
+    if (to.path !== '/login') return next('/login')
+    return next()
+  }
+
+  // 3. Route guest nhưng đã login
+  if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    if (authStore.isSuperAdmin && to.path !== '/super-admin/dashboard') return next('/super-admin/dashboard')
+    if (authStore.isTenantAdmin && to.path !== '/tenant-admin/dashboard') return next('/tenant-admin/dashboard')
+    if (to.path !== '/login') return next('/login')
+    return next()
+  }
+
+  // 4. Route bình thường
+  next()
 })
 
 export default router

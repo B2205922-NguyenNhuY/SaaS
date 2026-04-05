@@ -64,7 +64,7 @@ class _KioskDetailScreenState extends State<KioskDetailScreen> {
             UIHelpers.row("Khu", kiosk['tenKhu']),
             UIHelpers.row("Chợ", kiosk['tenCho']),
             UIHelpers.row("Loại", kiosk['tenLoai']),
-            UIHelpers.row("Trạng thái", kiosk['trangThai']),
+            UIHelpers.row("Trạng thái", getTrangThaiText(kiosk['trangThai'])),
 
             const SizedBox(height: 20),
 
@@ -84,12 +84,38 @@ class _KioskDetailScreenState extends State<KioskDetailScreen> {
                 "Đơn giá",
                 "${UIHelpers.formatMoney(fee['donGia'])} đ",
               ),
-              UIHelpers.row("Hình thức", fee['hinhThuc']),
+              UIHelpers.row("Hình thức", getHinhThucText(fee['hinhThuc'])),
               UIHelpers.row("Giảm giá", "${fee['mucMienGiam']} %"),
             ],
           ],
         ),
       ),
     );
+  }
+}
+
+String getTrangThaiText(String? status) {
+  switch (status) {
+    case 'available':
+      return 'Còn trống';
+    case 'occupied':
+      return 'Đang thuê';
+    case 'maintenance':
+      return 'Bảo trì';
+    case 'locked':
+      return 'Đã khóa';
+    default:
+      return status ?? '';
+  }
+}
+
+String getHinhThucText(String? type) {
+  switch (type) {
+    case 'thang':
+      return 'Theo tháng';
+    case 'ngay':
+      return 'Theo ngày';
+    default:
+      return type ?? '';
   }
 }

@@ -70,6 +70,16 @@ exports.getChargeHistory = async (req, res, next) => {
   }
 };
 
+exports.getPaymentHistoryByCharge = async (req, res, next) => {
+  try {
+    console.log("id", req.params.id);
+    res.json(await chargeService.getPaymentHistoryByCharge(req.params.chargeId, req.user));
+  } catch (err) {
+    next(err);
+  }
+};
+
+
 exports.listCharges = async (req, res, next) => {
   try {
     const where = ["c.tenant_id = ?"];

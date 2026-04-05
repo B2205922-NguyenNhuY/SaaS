@@ -24,10 +24,11 @@ cron.schedule("40 20 * * *", async () => {
   });
 
 // JOB 3: QUÉT NỢ QUÁ HẠN (07:00 sáng hàng ngày)
-cron.schedule('11 20 * * *', async () => {
+cron.schedule('31 21 * * *', async () => {
     console.log(`[${new Date().toISOString()}] --- QUÉT NỢ QUÁ HẠN (DỰA TRÊN NGÀY KẾT THÚC KỲ) ---`);
 
     try {
+        const admin = require('../config/firebase');
         const overdueList = await chargeService.getExpiredCharges();
         console.log(overdueList);
 
@@ -37,8 +38,8 @@ cron.schedule('11 20 * * *', async () => {
             const notificationTitle = "⚠️ Cảnh báo: Phí quá hạn thanh toán";
             const notificationContent = `Bạn có khoản nợ đã quá hạn. Vui lòng thanh toán ngay.`;
 
-            // Gọi hàm tạo thông báo
-            // Lưu ý: user_id trong bảng users của bạn thường khớp với merchant_id trong bảng merchant
+            //Gọi hàm tạo thông báo
+            //Lưu ý: user_id trong bảng users của bạn thường khớp với merchant_id trong bảng merchant
             await notificationModel.autocreateNotification(
                 tenant_id, 
                 merchant_id, 
@@ -47,14 +48,14 @@ cron.schedule('11 20 * * *', async () => {
                 'tenant'
             );
 
-            await admin.messaging().send({
-                topic: "Thông báo",
+            const res = await admin.messaging().send({
+                topic: "merchant_${merchant_id}",
                 notification: {
                     title: "⚠️ Cảnh báo",
                     body: "Bạn có khoản nợ quá hạn",
                 },
             });
-
+            console.log(res);
             console.log(`[Overdue] Đã báo nợ cho Merchant ${merchant_id} - Số tiền: `);
         }
     } catch (err) {

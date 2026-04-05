@@ -59,8 +59,8 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         isExpanded: true,
         items: const [
           DropdownMenuItem(value: "all", child: Text("Tất cả")),
-          DropdownMenuItem(value: "tien_mat", child: Text("Tiền mặt")),
-          DropdownMenuItem(value: "chuyen_khoan", child: Text("Chuyển khoản")),
+          DropdownMenuItem(value: "Tiền mặt", child: Text("Tiền mặt")),
+          DropdownMenuItem(value: "Chuyển khoản", child: Text("Chuyển khoản")),
         ],
         onChanged: (v) {
           if (v != null) provider.setFilter(v);

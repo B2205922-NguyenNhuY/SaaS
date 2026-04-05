@@ -176,6 +176,32 @@ exports.getChargeHistory = async (tenant_id, charge_id) => {
   return rows;
 };
 
+exports.getPaymentHistoryByCharge = async (chargeId, tenantId) => {
+  
+  console.log("chargeId", chargeId);
+  console.log("tenantid", tenantId);
+
+  const [rows] = await db.execute(
+    `SELECT 
+      r.receipt_id,
+      r.soTienThu,
+      rc.soTienDaTra,
+      r.hinhThucThanhToan,
+      r.thoiGianThu,
+      r.ghiChu,
+      r.anhChupThanhToan
+    FROM receipt_charge rc
+    JOIN receipt r 
+      ON rc.receipt_id = r.receipt_id 
+      AND rc.tenant_id = r.tenant_id
+    WHERE rc.charge_id = ?
+      AND rc.tenant_id = ?
+    ORDER BY r.thoiGianThu DESC`,
+    [chargeId, tenantId]
+  );
+  return rows;
+};
+
 // Recalculate charges khi có thay đổi giá hoặc discount
 exports.recalculateChargesByTarget = async (
   connection,

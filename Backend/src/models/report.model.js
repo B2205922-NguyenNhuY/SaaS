@@ -63,10 +63,11 @@ exports.getRevenueByCollector = async (tenant_id, from, to) => {
       u.user_id,
       u.hoTen,
       COALESCE(SUM(r.soTienThu), 0) AS tongThu
-    FROM users u
-    LEFT JOIN receipt r ON r.user_id = u.user_id AND r.tenant_id = u.tenant_id
+    FROM receipt r
+    LEFT JOIN shift s ON s.shift_id = r.shift_id AND s.tenant_id = r.tenant_id
+    LEFT JOIN users u ON s.user_id = u.user_id AND s.tenant_id = u.tenant_id
     WHERE u.tenant_id = ?
-    AND u.role_id = (SELECT role_id FROM role WHERE tenVaiTro = 'ThuNgan')
+    AND u.role_id = (SELECT role_id FROM role WHERE tenVaiTro = 'collector')
     AND (r.thoiGianThu IS NULL OR DATE(r.thoiGianThu) BETWEEN ? AND ?)
     GROUP BY u.user_id, u.hoTen
     ORDER BY tongThu DESC`,

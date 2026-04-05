@@ -8,9 +8,10 @@ import '../../models/receipt_item.dart';
 import '../../services/collector_service.dart';
 
 class MerchantDetailScreen extends StatefulWidget {
-  const MerchantDetailScreen({super.key, required this.merchantId});
+  const MerchantDetailScreen({super.key, required this.merchantId, required this.chargeId,});
 
   final int merchantId;
+  final int chargeId;
 
   @override
   State<MerchantDetailScreen> createState() => _MerchantDetailScreenState();
@@ -36,8 +37,8 @@ class _MerchantDetailScreenState extends State<MerchantDetailScreen> {
     });
     try {
       final merchant = await _service.getMerchantDetail(widget.merchantId);
-      final receipts = await _service.getReceipts(merchantId: widget.merchantId,);
-      
+      final receipts = await _service.getPaymentHistoryByCharge(widget.chargeId,);
+      print("receipts: $receipts");
       setState(() {
         _merchant = merchant;
         _payments = receipts;
