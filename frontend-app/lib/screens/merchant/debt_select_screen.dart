@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/debt_provider.dart';
+import '../../providers/payment_provider.dart';
 import '../../core/utils/ui_helpers.dart';
 import 'debt_charge_card.dart';
 
@@ -40,7 +41,7 @@ class _DebtSelectScreenState extends State<DebtSelectScreen> with WidgetsBinding
 
       /// reload dữ liệu
       context.read<DebtProvider>().fetchDebts();
-
+      context.read<PaymentProvider>().fetchReceipts();
     }
   }
 

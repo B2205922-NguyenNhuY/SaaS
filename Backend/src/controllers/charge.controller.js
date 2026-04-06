@@ -236,6 +236,12 @@ exports.createReceiptForCharge = async (req, res, next) => {
         charges: [{ charge_id, amount }],
       });
 
+    if (req.body.hinhThucThanhToan === "chuyen_khoan" && !uploadedImagePath) {
+      return res.status(400).json({
+        message: "Chuyển khoản phải có ảnh xác nhận",
+      });
+    }
+
     const result = await receiptService.createReceipt(
       {
         soTienThu: amount,

@@ -274,15 +274,10 @@ void _confirmLogout(BuildContext context) {
         ),
         ElevatedButton(
           onPressed: () {
-            Navigator.pop(context);
 
             context.read<AuthProvider>().logout();
 
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              '/auth',
-              (route) => false,
-            );
+            context.go('/auth');
           },
           child: const Text("Đăng xuất"),
         ),

@@ -244,15 +244,23 @@ class _CollectorScreenState extends State<CollectorScreen> {
         content: const Text('Bạn có chắc chắn muốn thoát khỏi hệ thống?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => ctx.pop(),
             child: const Text('Hủy'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(ctx);
-              await context.read<AuthProvider>().logout();
-              if (mounted) Navigator.pushReplacementNamed(context, '/login');
-            },
+                final auth = context.read<AuthProvider>(); // ✅ lấy trước
+
+                final router = GoRouter.of(context);        // lưu router
+
+                ctx.pop(); // ✅ đóng dialog đúng context
+
+                await auth.logout();
+
+                if (!mounted) return;
+
+                router.go('/auth');
+              },
             child: const Text(
               'Đăng xuất',
               style: TextStyle(color: AppColors.error),

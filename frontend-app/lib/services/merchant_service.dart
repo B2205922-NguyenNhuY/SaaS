@@ -34,6 +34,6 @@ class MerchantService {
 
   Future<void> updateProfile(Map<String, dynamic> data) async {
     final api = ApiService();
-    await api.put('/merchant/update', data);
+    await api.put('/merchant/update', data: data);
   }
 }

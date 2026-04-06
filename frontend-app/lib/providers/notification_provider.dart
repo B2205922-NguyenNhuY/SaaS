@@ -35,7 +35,7 @@ class NotificationProvider with ChangeNotifier {
   Future<void> markRead(int id, int tenant_id) async {
     try {
         print("call markRead");
-      await api.post('/notifications/$id/read', {'tenant_id': tenant_id});
+      await api.post('/notifications/$id/read', data: {'tenant_id': tenant_id});
       final index =
           notifications.indexWhere((n) => n['notification_id'] == id);
         print("index: $index");
