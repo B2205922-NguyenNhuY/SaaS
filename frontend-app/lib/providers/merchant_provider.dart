@@ -43,6 +43,9 @@ class MerchantProvider with ChangeNotifier {
       await fetchProfile(); // reload lại profile
     } catch (e) {
       rethrow;
+    } finally {
+      isLoading = false; // ✅ luôn chạy dù success hay lỗi
+      notifyListeners();
     }
 
     isLoading = false;

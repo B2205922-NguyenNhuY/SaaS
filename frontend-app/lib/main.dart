@@ -228,7 +228,7 @@ class AppRouter extends StatelessWidget {
         // 🚚 COLLECTOR EXTRA (từ code trên)
          GoRoute(
           path: '/collector',
-          builder: (_, __) => const CollectorScreen(),
+          builder: (context, state) => const CollectorScreen(),
         ),
 
         GoRoute(

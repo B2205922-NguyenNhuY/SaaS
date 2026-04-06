@@ -57,7 +57,7 @@ class DebtProvider with ChangeNotifier {
         throw Exception("Chưa chọn khoản thanh toán");
         }
 
-        final res = await api.post('/payment/create-momo', {
+        final res = await api.post('/payment/create-momo', data: {
         "chargeIds": ids,
         });
 

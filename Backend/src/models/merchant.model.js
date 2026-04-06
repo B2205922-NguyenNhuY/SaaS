@@ -191,3 +191,26 @@ exports.hasActiveAssignment = async (conn, tenant_id, merchant_id) => {
   return rows.length > 0;
 };
 
+// ✅ export function
+exports.checkDuplicatePhone = async function ({
+  soDienThoai,
+  tenant_id,
+  excludeId = null
+}) {
+  const query = `
+    SELECT merchant_id 
+    FROM merchant 
+    WHERE soDienThoai = ? 
+      AND tenant_id = ?
+      ${excludeId ? 'AND merchant_id != ?' : ''}
+    LIMIT 1
+  `;
+
+  const params = excludeId
+    ? [soDienThoai, tenant_id, excludeId]
+    : [soDienThoai, tenant_id];
+
+  const [rows] = await db.execute(query, params);
+
+  return rows.length > 0;
+};

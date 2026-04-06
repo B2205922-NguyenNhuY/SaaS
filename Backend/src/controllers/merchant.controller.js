@@ -1,5 +1,6 @@
 const S = require("../services/merchant.service");
 const { logAudit } = require("../utils/audit");
+const auditLogModel = require("../models/auditLog.model");
 
 exports.create = async (req, res, next) => {
   try {
@@ -40,17 +41,21 @@ exports.update = async (req, res, next) => {
 
 exports.updateMyProfile = async (req, res, next) => {
   try {
-    const id = Number(req.user.id);
-    const old = await S.detail(req.user.tenant_id, id);
-    const out = await S.update(req.user.tenant_id, id, req.body);
-
-    await logAudit(req, {
-      action: "UPDATE_MERCHANT",
-      entity_type: "merchant",
-      entity_id: id,
-      oldValue: old,
-      newValue: { ...old, ...req.body },
-    });
+    const user = req.user;
+    const old = await S.detail(req.user.tenant_id, user.id);
+    await S.update(req.user.tenant_id, user.id, req.body);
+    const out = await S.detail(req.user.tenant_id, user.id);
+    await auditLogModel.createAuditLog({
+                          tenant_id: user.tenant_id,
+                          user_id: null,
+                          hanhDong: "UPDATE_PROFILE",
+                          entity_type: "merchant",
+                          entity_id: user.id,
+                          giaTriCu: old,
+                          giaTriMoi: out,
+                          super_admin_id: null,
+                          merchant_id: user.id,
+                        });
 
     res.json(out);
   } catch (e) {
