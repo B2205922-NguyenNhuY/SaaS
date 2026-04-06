@@ -140,32 +140,62 @@
     <div class="payment-history-section">
       <div class="section-title">
         <h2>Lịch sử thanh toán</h2>
+        <p class="section-sub">Lịch sử các giao dịch thanh toán gói cước và phí dịch vụ</p>
       </div>
+      
       <div class="table-panel">
-        <table class="data-table">
+        <div v-if="loadingHistory" class="loading-state">
+          <div class="loading-bar"></div>
+        </div>
+        
+        <table v-else class="data-table">
           <thead>
             <tr>
-              <th>Gói cước</th>
+              <th>Mô tả</th>
+              <th>Số tiền</th>
               <th>Trạng thái</th>
-              <th>Ngày bắt đầu</th>
-              <th>Ngày kết thúc</th>
+              <th>Ngày thanh toán</th>
+              <th>Hóa đơn</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loadingHistory"><td colspan="5"><div class="loading-bar"></div></td></tr>
-            <tr v-for="s in history" :key="s.subscription_id">
-              <td class="cell-name">{{ s.tenGoi || s.plan_id }}</td>
-              <td>
-                <span class="badge" :class="subStatusClass(s.trangThai)">{{ subStatusLabel(s.trangThai) }}</span>
+            <tr v-for="payment in payments" :key="payment.payment_id">
+              <td class="cell-name">
+                <div class="payment-desc">{{ payment.description }}</div>
+                <div class="payment-plan" v-if="payment.plan_name">{{ payment.plan_name }}</div>
               </td>
-              <td class="cell-date">{{ fmtDate(s.ngayBatDau) }}</td>
-              <td class="cell-date">{{ fmtDate(s.ngayKetThuc) }}</td>
+              <td class="cell-amount">{{ payment.amount_formatted }}</td>
+              <td>
+                <span class="badge" :class="payment.status === 'succeeded' ? 'badge--green' : payment.status === 'pending' ? 'badge--amber' : 'badge--red'">
+                  {{ payment.status_label }}
+                </span>
+              </td>
+              <td class="cell-date">{{ payment.created_at_formatted }}</td>
+              <td>
+                <a v-if="payment.invoice_url" :href="payment.invoice_url" target="_blank" class="invoice-link">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  Xem
+                </a>
+                <span v-else class="no-invoice">—</span>
+              </td>
             </tr>
-            <tr v-if="!loadingHistory && !history.length">
-              <td colspan="5" class="empty-row">Chưa có lịch sử thanh toán</td>
+            <tr v-if="!loadingHistory && payments.length === 0">
+              <td colspan="5" class="empty-row">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#b0c4b0" stroke-width="1.5"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <p>Chưa có giao dịch thanh toán nào</p>
+              </td>
             </tr>
           </tbody>
         </table>
+        
+        <div v-if="paymentPagination.totalPages > 1" class="table-foot">
+          <span class="total-label">Tổng {{ paymentPagination.total }} giao dịch</span>
+          <div class="pagination">
+            <button :disabled="paymentPage <= 1" @click="changePaymentPage(paymentPage - 1)">← Trước</button>
+            <span>{{ paymentPage }} / {{ paymentPagination.totalPages }}</span>
+            <button :disabled="paymentPage >= paymentPagination.totalPages" @click="changePaymentPage(paymentPage + 1)">Tiếp →</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -247,20 +277,27 @@ const manualPriceId  = ref('')
 
 const currentSub = ref<any>(null)
 const plans      = ref<any[]>([])
-const history    = ref<any[]>([])
+const payments   = ref<any[]>([]) 
 const targetPlan = ref<any>(null)
+
+const paymentPage = ref(1)
+const paymentPagination = ref({ total: 0, totalPages: 1, limit: 10 })
 
 const tenantId = computed(() => authStore.user?.tenant_id)
 
 onMounted(async () => {
-  await Promise.all([fetchCurrentSub(), fetchPlans(), fetchHistory()])
+  await Promise.all([
+    fetchCurrentSub(), 
+    fetchPlans(), 
+    fetchPaymentHistory()
+  ])
 })
 
 async function fetchCurrentSub() {
   loadingCurrent.value = true
   try {
     const res = await api.get('/plan_subscription')
-    if (res.data && res.data.trangThai === 'active') {
+    if (res.data && (res.data.trangThai === 'active' || res.data.trangThai === 'trial')) {
       currentSub.value = res.data
     } else {
       currentSub.value = null
@@ -281,13 +318,23 @@ async function fetchPlans() {
   finally { loadingPlans.value = false }
 }
 
-async function fetchHistory() {
+async function fetchPaymentHistory() {
   loadingHistory.value = true
   try {
-    const res = await api.get('/plan_subscription/list?limit=20&sortOrder=DESC')
-    history.value = res.data.data || res.data || []
-  } catch {}
-  finally { loadingHistory.value = false }
+    const res = await api.get(`/payment/history?page=${paymentPage.value}&limit=10`)
+    payments.value = res.data.data || []
+    paymentPagination.value = res.data.pagination || { total: 0, totalPages: 1, limit: 10 }
+  } catch (error) {
+    console.error('Lỗi lấy lịch sử thanh toán:', error)
+    payments.value = []
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
+function changePaymentPage(page: number) {
+  paymentPage.value = page
+  fetchPaymentHistory()
 }
 
 function isCurrentPlan(plan: any): boolean {
@@ -355,11 +402,18 @@ function subStatusClass(s: string) {
   if (s === 'active') return 'badge--green'
   if (s === 'expired') return 'badge--red'
   if (s === 'pending') return 'badge--amber'
+  if (s === 'trial') return 'badge--blue'
   return 'badge--gray'
 }
 
 function subStatusLabel(s: string) {
-  const map: Record<string, string> = { active: 'Đang hoạt động', expired: 'Hết hạn', pending: 'Chờ thanh toán', cancelled: 'Đã hủy', trial: 'Dùng thử' }
+  const map: Record<string, string> = { 
+    active: 'Đang hoạt động', 
+    expired: 'Hết hạn', 
+    pending: 'Chờ thanh toán', 
+    cancelled: 'Đã hủy', 
+    trial: 'Dùng thử' 
+  }
   return map[s] || s
 }
 
@@ -557,4 +611,121 @@ function planTier(plan: any): string {
 
 .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35); border-top-color: white; border-radius: 50%; animation: spin .65s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.section-sub {
+  font-size: 12px;
+  color: #94a894;
+  margin-top: 2px;
+}
+
+.payment-desc {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a2e1a;
+}
+
+.payment-plan {
+  font-size: 11px;
+  color: #94a894;
+  margin-top: 2px;
+}
+
+.cell-amount {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1a2e1a;
+  white-space: nowrap;
+}
+
+.invoice-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #3d8c3d;
+  text-decoration: none;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.invoice-link:hover {
+  background: #eef7ee;
+  color: #2d6e2d;
+}
+
+.no-invoice {
+  color: #b0c4b0;
+  font-size: 12px;
+}
+
+.loading-state {
+  padding: 20px;
+}
+
+.badge--blue {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.table-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid #f0f5f0;
+}
+
+.total-label {
+  font-size: 12.5px;
+  color: #94a894;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination button {
+  height: 32px;
+  padding: 0 14px;
+  background: white;
+  border: 1px solid #e2ede2;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  color: #4a654a;
+  transition: background .15s;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #f0f7f0;
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination span {
+  font-size: 12.5px;
+  color: #6b836b;
+}
+
+.empty-row {
+  text-align: center;
+  padding: 48px 16px !important;
+  color: #94a894;
+}
+
+.empty-row p {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.empty-row svg {
+  opacity: 0.5;
+}
 </style>

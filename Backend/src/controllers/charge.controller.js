@@ -259,7 +259,7 @@ exports.generateCharges = async (req, res) => {
     try {
       console.log(req.user);
         const { period_id } = req.body;
-        const { tenant_id } = req.user; // Giả sử tenant_id từ JWT middleware
+        const { tenant_id } = req.user;
 
         if (!period_id) {
             return res.status(400).json({ message: "Thiếu period_id" });

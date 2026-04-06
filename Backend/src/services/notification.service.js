@@ -167,15 +167,6 @@ exports.getNotificationDetail = async (notification_id, user) => {
     });
   }
 
-  // if (user.role !== "super_admin" && !notification.is_read) {
-  //   await notificationModel.markAsRead(
-  //     notification_id,
-  //     user.id,
-  //     user.tenant_id,
-  //   );
-  //   notification.is_read = 1;
-  // }
-
   const stats = await notificationModel.getReadStats(notification_id);
   if (stats) {
     notification.doc_count = stats.doc_count || 0;

@@ -19,7 +19,7 @@ cron.schedule('26 1 * * *', async () => {
 });
 
 cron.schedule("40 20 * * *", async () => {
-    console.log("⏰ Running charge overdue cron...");
+    console.log("Running charge overdue cron...");
     await updateOverdueCharges();
   });
 
@@ -35,7 +35,7 @@ cron.schedule('31 21 * * *', async () => {
         for (const item of overdueList) {
             const { tenant_id, merchant_id } = item;
 
-            const notificationTitle = "⚠️ Cảnh báo: Phí quá hạn thanh toán";
+            const notificationTitle = "Cảnh báo: Phí quá hạn thanh toán";
             const notificationContent = `Bạn có khoản nợ đã quá hạn. Vui lòng thanh toán ngay.`;
 
             //Gọi hàm tạo thông báo
@@ -51,7 +51,7 @@ cron.schedule('31 21 * * *', async () => {
             const res = await admin.messaging().send({
                 topic: "merchant_${merchant_id}",
                 notification: {
-                    title: "⚠️ Cảnh báo",
+                    title: "Cảnh báo",
                     body: "Bạn có khoản nợ quá hạn",
                 },
             });
@@ -68,9 +68,9 @@ async function updateOverdueCharges() {
     
     const result = await chargeService.updatePendingCharges();
 
-    console.log(`✅ Updated overdue charges: ${result.affectedRows}`);
+    console.log(`Updated overdue charges: ${result.affectedRows}`);
   } catch (err) {
-    console.error("❌ Cron error:", err.message);
+    console.error("Cron error:", err.message);
   }
 };
 

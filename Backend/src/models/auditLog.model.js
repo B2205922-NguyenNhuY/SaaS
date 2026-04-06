@@ -7,6 +7,7 @@ exports.createAuditLog = async (...args) => {
     tenant_id,
     user_id,
     super_admin_id,
+    merchant_id, 
     hanhDong,
     entity_type,
     entity_id,
@@ -15,18 +16,18 @@ exports.createAuditLog = async (...args) => {
   } = data;
   const [result] = await connection.execute(
     `INSERT INTO audit_log
-      (tenant_id, user_id, super_admin_id, hanhDong, entity_type, entity_id, giaTriCu, giaTriMoi, ip_address)
+      (tenant_id, user_id, super_admin_id, merchant_id, hanhDong, entity_type, entity_id, giaTriCu, giaTriMoi)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       tenant_id || null,
       user_id || null,
       super_admin_id || null,
+      merchant_id || null,
       hanhDong,
       entity_type || null,
       entity_id ? Number(entity_id) : null,
       giaTriCu ? JSON.stringify(giaTriCu) : null,
       giaTriMoi ? JSON.stringify(giaTriMoi) : null,
-      data.ip_address || null,
     ],
   );
   return result;

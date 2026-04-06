@@ -114,23 +114,25 @@
             <th>Trạng thái</th>
             <th>Bắt đầu</th>
             <th>Kết thúc</th>
-            </tr>
+           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in subs" :key="s.subscription_id">
-            <td class="cell-name">{{ s.tenBanQuanLy }}  </td>
+          <tr v-for="s in activeSubs" :key="s.subscription_id">
+            <td class="cell-name">{{ s.tenBanQuanLy }}</td>
             <td><span class="plan-tag">{{ s.tenGoi }}</span></td>
             <td>
-              <span class="badge" :class="s.trangThai === 'active' ? 'badge-green' : 'badge-amber'">
-                {{ s.trangThai === 'active' ? 'Hoạt động' : s.trangThai }}
+              <span class="badge badge-green">
+                <span class="badge-dot"></span>Đang hoạt động
               </span>
             </td>
             <td class="cell-date">{{ d(s.ngayBatDau) }}</td>
-            <td class="cell-date">{{ d(s.ngayKetThuc) }}</td>
-          </tr>
-          <tr v-if="!subs.length">
-            <td colspan="6" class="empty">Chưa có dữ liệu</td>
-          </tr>
+            <td class="cell-date">
+              <span :class="{ 'expiring-soon': isExpiringSoon(s.ngayKetThuc) }">{{ d(s.ngayKetThuc) }}</span>
+            </td>
+           </tr>
+          <tr v-if="!activeSubs.length">
+            <td colspan="5" class="empty">Chưa có subscription đang hoạt động</td>
+           </tr>
         </tbody>
       </table>
     </div>
@@ -139,7 +141,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/api/axios'
@@ -159,18 +161,21 @@ const authStore = useAuthStore()
 const loading = ref(true)
 const tenants = ref<any[]>([])
 const logs = ref<any[]>([])
-const subs = ref<any[]>([])
+const allSubs = ref<any[]>([])
 const chartCanvas = ref<HTMLCanvasElement | null>(null)
 let chartInstance: Chart | null = null
 let chartLogsData: AuditLog[] = [] 
 
+const activeSubs = computed(() => {
+  return allSubs.value.filter(s => s.trangThai === 'active')
+})
 
 const today = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
 
 const stats = ref<Array<{ label: string; value: number | string; bg: string; color: string; icon: string }>>([
   { label: 'Tổng Tenant', value: '—', bg: '#eef7ee', color: '#3d8c3d', icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>` },
   { label: 'Gói cước', value: '—', bg: '#eff6ff', color: '#2563eb', icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>` },
-  { label: 'Subscription', value: '—', bg: '#fef3c7', color: '#d97706', icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>` },
+  { label: 'Subscription hoạt động', value: '—', bg: '#fef3c7', color: '#d97706', icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>` },
   { label: 'Audit Log hôm nay', value: '—', bg: '#f5f3ff', color: '#7c3aed', icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>` },
 ])
 
@@ -180,6 +185,12 @@ function formatDateVN(date: Date | string): string {
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function isExpiringSoon(date: string) {
+  if (!date) return false
+  const diff = new Date(date).getTime() - Date.now()
+  return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000
 }
 
 async function renderChart() {
@@ -277,23 +288,23 @@ onMounted(async () => {
     }
     
     const chartLogRes = await api.get('/audit_logs/superadmin?limit=100000')
-  if (chartLogRes.data && chartLogRes.data.data) {
-    chartLogsData = chartLogRes.data.data
+    if (chartLogRes.data && chartLogRes.data.data) {
+      chartLogsData = chartLogRes.data.data
+      
+      const todayStr = formatDateVN(new Date())
+      const todayLogs = chartLogsData.filter((log: AuditLog) => {
+        const logDate = formatDateVN(log.thoiGianThucHien || log.created_at || '')
+        return logDate === todayStr
+      })
+      stats.value[3].value = todayLogs.length
+    }
     
-    const todayStr = formatDateVN(new Date())
-    const todayLogs = chartLogsData.filter((log: AuditLog) => {
-      const logDate = formatDateVN(log.thoiGianThucHien || log.created_at || '')
-      return logDate === todayStr
-    })
-    stats.value[3].value = todayLogs.length
-  }
-    
-    const subRes = await api.get('/plan_subscription/list?limit=5&sortBy=created_at&sortOrder=DESC')
-    console.log('Subscription response:', subRes.data) 
+    const subRes = await api.get('/plan_subscription/list?limit=100&sortBy=created_at&sortOrder=DESC')
     
     if (subRes.data && subRes.data.data) {
-      subs.value = subRes.data.data
-      stats.value[2].value = subRes.data.pagination?.total || subs.value.length
+      allSubs.value = subRes.data.data
+      const activeCount = allSubs.value.filter(s => s.trangThai === 'active').length
+      stats.value[2].value = activeCount
     }
     
     const planRes = await api.get('/plan/list?limit=10')
@@ -330,6 +341,7 @@ async function getChartData(days: Date[]) {
 const d = (v: string) => v ? new Date(v).toLocaleDateString('vi-VN') : '—'
 const dt = (v: string) => v ? new Date(v).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—'
 
+
 const fmtAction = (a: string) => {
   if (!a) return '—'
   const actionMap: Record<string, string> = {
@@ -353,7 +365,7 @@ const dotClass = (a: string) => {
 }
 
 const getTenantPlan = (tenantId: number) => {
-  const sub = subs.value.find(s => s.tenant_id === tenantId && s.trangThai === 'active')
+  const sub = allSubs.value.find(s => s.tenant_id === tenantId && s.trangThai === 'active')
   return sub?.tenGoi || '—'
 }
 </script>
@@ -442,6 +454,127 @@ const getTenantPlan = (tenantId: number) => {
 
 
 .badge { display: inline-flex; padding: 2px 8px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
+.badge-green { background: #eef7ee; color: #2d6e2d; }
+.badge-red { background: #fef2f2; color: #dc2626; }
+.badge-amber { background: #fffbeb; color: #b45309; }
+
+.plan-tag { display: inline-flex; padding: 2px 8px; background: #eff6ff; color: #1d4ed8; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
+.empty { text-align: center; padding: 32px !important; color: #94a894; font-size: 13px; }
+
+.sk-rows { padding: 12px 16px; display: flex; flex-direction: column; gap: 9px; }
+.sk-row { height: 34px; background: #f0f5f0; border-radius: 7px; animation: p 1.2s infinite; }
+
+.activity { padding: 4px 0; }
+.act-item { display: flex; align-items: flex-start; gap: 11px; padding: 10px 18px; border-bottom: 1px solid #f7faf7; }
+.act-item:last-child { border-bottom: none; }
+.act-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+.dot-green { background: #3d8c3d; }
+.dot-red { background: #dc2626; }
+.dot-blue { background: #2563eb; }
+.dot-gray { background: #94a894; }
+.act-action { font-size: 13px; font-weight: 500; color: #1a2e1a; }
+.act-meta { font-size: 11.5px; color: #94a894; margin-top: 2px; }
+
+@media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } .grid-2 { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+.badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.expiring-soon {
+  color: #d97706;
+  font-weight: 500;
+}
+
+.chart-card {
+  margin-bottom: 8px;
+}
+
+.chart-container {
+  padding: 20px;
+  height: 350px;
+  position: relative;
+}
+
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-text {
+  font-size: 12px;
+  color: #6b836b;
+}
+
+.dashboard { display: flex; flex-direction: column; gap: 22px; }
+
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.page-title { font-size: 22px; font-weight: 600; color: #1a2e1a; margin: 0 0 4px; letter-spacing: -.3px; }
+.page-sub { font-size: 13px; color: #6b836b; margin: 0; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+.stat-card {
+  background: white;
+  border: 1px solid #e2ede2;
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.stat-icon-wrap { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.stat-val { font-size: 26px; font-weight: 600; color: #1a2e1a; line-height: 1.1; margin-bottom: 3px; }
+.stat-lbl { font-size: 12.5px; color: #6b836b; }
+.sk-num { display: inline-block; width: 48px; height: 26px; background: #f0f5f0; border-radius: 6px; animation: p 1.2s infinite; }
+@keyframes p { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.card {
+  background: white;
+  border: 1px solid #e2ede2;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 18px;
+  border-bottom: 1px solid #f0f5f0;
+}
+.card-title { font-size: 14px; font-weight: 600; color: #1a2e1a; margin: 0; }
+.see-all { font-size: 12.5px; color: #3d8c3d; text-decoration: none; font-weight: 500; }
+.see-all:hover { color: #2d6e2d; }
+
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th { padding: 9px 16px; font-size: 11px; font-weight: 600; color: #94a894; text-transform: uppercase; letter-spacing: .06em; text-align: left; background: #fafcfa; border-bottom: 1px solid #f0f5f0; }
+.tbl td { padding: 12px 16px; border-bottom: 1px solid #f7faf7; vertical-align: middle; }
+.tbl-row { cursor: pointer; }
+.tbl-row:hover td { background: #fafcfa; }
+.tbl tbody tr:last-child td { border-bottom: none; }
+
+.cell-name { font-size: 13px; font-weight: 500; color: #1a2e1a; }
+.cell-sub { font-size: 11.5px; color: #94a894; }
+.cell-date { font-size: 12px; color: #6b836b; white-space: nowrap; }
+
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 500; }
 .badge-green { background: #eef7ee; color: #2d6e2d; }
 .badge-red { background: #fef2f2; color: #dc2626; }
 .badge-amber { background: #fffbeb; color: #b45309; }

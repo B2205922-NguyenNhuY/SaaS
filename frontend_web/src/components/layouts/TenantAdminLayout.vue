@@ -6,13 +6,13 @@
         <div class="sidebar-logo">
           <img src="/logo.png" alt="MarketHub" class="logo-img" :class="{ 'logo-collapsed': sidebarCollapsed }" />
         </div>
-        <button class="collapse-btn" @click="sidebarCollapsed = !sidebarCollapsed">
+        <button class="collapse-btn" @click="toggleSidebar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
       </div>
 
       <div class="role-badge">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         <span>Tenant Admin</span>
       </div>
 
@@ -51,7 +51,7 @@
     <div class="sa-body">
       <header class="sa-topbar">
         <div class="topbar-left">
-          <button class="mobile-menu-btn" @click="sidebarCollapsed = !sidebarCollapsed">
+          <button class="mobile-menu-btn" @click="toggleSidebar">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <div class="breadcrumb">
@@ -67,7 +67,7 @@
           </div>
           <button class="topbar-icon-btn" @click="goTo('/tenant-admin/notifications')" title="Thông báo">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            <span v-if="unreadCount > 0" class="notif-dot">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+            <span v-if="unreadCount > 0" class="notif-dot">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
           </button>
           <div class="topbar-avatar" @click="goTo('/tenant-admin/profile')">{{ userInitials }}</div>
         </div>
@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/api/axios'
@@ -109,13 +109,28 @@ interface NavGroup {
 
 const userInitials = computed(() => {
   const name = authStore.user?.hoTen || ''
-  return name.split(' ').map((w: string) => w[0]).slice(-2).join('').toUpperCase() || 'TA'
+  if (!name) return 'TA'
+  const parts = name.trim().split(' ')
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 })
 
 const currentPageTitle = computed(() => {
   const matched = route.matched
   return matched[matched.length - 1]?.meta?.title as string || 'Dashboard'
 })
+
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  localStorage.setItem('tenantSidebarCollapsed', sidebarCollapsed.value.toString())
+}
+
+const loadSidebarState = () => {
+  const saved = localStorage.getItem('tenantSidebarCollapsed')
+  if (saved !== null) {
+    sidebarCollapsed.value = saved === 'true'
+  }
+}
 
 const navGroups: NavGroup[] = [
   {
@@ -185,22 +200,48 @@ const navGroups: NavGroup[] = [
 function goTo(path: string) { router.push(path) }
 
 async function handleLogout() {
-  await api.post('/auth/logout').catch(() => {})
+  try {
+    await api.post('/auth/logout')
+  } catch (error) {
+    console.error('Logout error:', error)
+  }
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   localStorage.removeItem('role')
+  localStorage.removeItem('tenantSidebarCollapsed')
   authStore.token = null
   authStore.user = null
   await router.replace('/login')
 }
 
-onMounted(async () => {
-  const [notifRes, subRes] = await Promise.allSettled([
-    api.get('/notifications/unread_count'),
-    api.get('/plan_subscription'),
-  ])
-  if (notifRes.status === 'fulfilled') unreadCount.value = notifRes.value.data.count || 0
-  if (subRes.status === 'fulfilled') currentPlan.value = subRes.value.data?.planName || subRes.value.data?.tenGoi || ''
+async function fetchUnreadCount() {
+  try {
+    const res = await api.get('/notifications/unread_count')
+    unreadCount.value = res.data.unread_count || res.data.count || 0
+  } catch (error) {
+    console.error('Fetch unread count error:', error)
+  }
+}
+
+async function fetchSubscription() {
+  try {
+    const subRes = await api.get('/plan_subscription')
+    currentPlan.value = subRes.data?.planName || subRes.data?.tenGoi || ''
+  } catch (error) {
+    console.error('Fetch subscription error:', error)
+  }
+}
+
+onMounted(() => {
+  loadSidebarState()
+  fetchUnreadCount()
+  fetchSubscription()
+})
+
+watch(() => route.path, (newPath, oldPath) => {
+  if (oldPath?.includes('/notifications')) {
+    fetchUnreadCount()
+  }
 })
 
 function iGrid() { return svg(`<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>`) }

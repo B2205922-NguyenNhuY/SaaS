@@ -7,58 +7,47 @@ const stripe = require("../config/stripe");
 
 //Tạo Subscription
 exports.createSubscription = async (user, body) => {
-        const { tenant_id, plan_id } = body;
+    const { tenant_id, plan_id } = body;
+    const connection = await db.getConnection();
 
-        if (!plan_id || !tenant_id) {
+    try {
+        await connection.beginTransaction();
+
+        const existing = await planSubscriptionModel.checkDuplicate(tenant_id);
+        
+        let subscription_id;
+        let checkout_url = null;
+        
+        if (existing && existing.length > 0) {
             throw Object.assign(
-                new Error("Missing required fields"),
+                new Error("Tenant already has an active subscription. Please renew instead."),
                 { statusCode: 400 }
             );
-        }
-
-        const plan = await planModel.getPlanById(plan_id);
-
-        if (!plan || plan.length === 0) {
-            throw Object.assign(
-                new Error("Plan not found"),
-                { statusCode: 404 }
+        } else {
+            const trialDays = 7;
+            subscription_id = await planSubscriptionModel.createTrialSubscription(
+                connection, 
+                tenant_id, 
+                plan_id, 
+                trialDays
             );
         }
 
-        // nếu đã inactive rồi
-        if (!await planModel.isPlanActive(plan_id)) {
-            throw Object.assign(
-                new Error("Plan already inactive"),
-                { statusCode: 400 }
-            );
-        }
-
-        await planSubscriptionModel.expireActiveByTenant(
-                  db,
-                  tenant_id
-                );
-
-        // Tính thời gian thủ công
-        const ngayBatDau = new Date();
-        const ngayKetThuc = new Date(ngayBatDau);
-        ngayKetThuc.setFullYear(ngayKetThuc.getFullYear() + 1);
-
-        // Gọi model với đúng field DB
-        const result = await planSubscriptionModel.createSubscription(
-            db,
-            {
-                tenant_id: tenant_id ?? null,
-                plan_id: plan_id ?? null,
-                stripe_subscription_id: null, // chưa có thì set null
-                trangThai: "active",
-                ngayBatDau,
-                ngayKetThuc
-            }
-        );
+        await connection.commit();
 
         return {
-            subscription_id: result.insertId
+            subscription_id,
+            status: existing ? null : 'trial',
+            trial_days: existing ? null : 7,
+            checkout_url
         };
+
+    } catch (error) {
+        await connection.rollback();
+        throw error;
+    } finally {
+        connection.release();
+    }
 };
 
 //Lấy tất cả Subscription

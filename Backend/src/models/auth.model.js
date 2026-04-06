@@ -10,7 +10,7 @@ exports.findUserByEmail = async (email) => {
     return rows[0];
 };
 
-//
+
 exports.findSuperAdminByEmail = async (email) => {
     const [rows] = await db.execute(
         "SELECT * FROM super_admin WHERE email = ? AND trangThai != 'inactive' LIMIT 1",
@@ -20,7 +20,7 @@ exports.findSuperAdminByEmail = async (email) => {
     return rows[0];
 };
 
-//
+
 exports.findMerchantByPhone = async (soDienThoai) => {
     const [rows] = await db.query(
         `SELECT * FROM merchant WHERE soDienThoai = ? LIMIT 1`,

@@ -532,3 +532,49 @@ CREATE TABLE audit_log (
 -- SET k.trangThai = 'occupied',
 --     k.updated_at = NOW()
 -- WHERE ka.trangThai = 'active';
+
+ALTER TABLE audit_log
+ADD COLUMN merchant_id INT UNSIGNED DEFAULT NULL;
+CREATE INDEX idx_audit_merchant 
+ON audit_log (merchant_id, tenant_id);
+ALTER TABLE audit_log
+ADD CONSTRAINT fk_audit_merchant
+FOREIGN KEY (merchant_id, tenant_id)
+REFERENCES merchant (merchant_id, tenant_id)
+ON DELETE SET NULL;
+
+ALTER TABLE notification
+ADD COLUMN target_merchant_id INT UNSIGNED DEFAULT NULL;
+CREATE INDEX fk_notification_merchant
+ON notification (target_merchant_id, tenant_id);
+ALTER TABLE notification
+ADD CONSTRAINT fk_notification_merchant
+FOREIGN KEY (target_merchant_id, tenant_id)
+REFERENCES merchant (merchant_id, tenant_id)
+ON DELETE SET NULL;
+
+ALTER TABLE notification_read DROP FOREIGN KEY fk_nr_user;
+ALTER TABLE notification_read
+ADD COLUMN type ENUM('user','merchant') 
+COLLATE utf8mb4_unicode_ci 
+DEFAULT 'user';
+
+ALTER TABLE receipt DROP FOREIGN KEY fk_receipt_user;
+ALTER TABLE receipt DROP INDEX fk_receipt_user;
+ALTER TABLE receipt DROP COLUMN user_id;
+
+ALTER TABLE receipt ADD COLUMN merchant_id INT UNSIGNED DEFAULT NULL;
+
+CREATE INDEX fk_receipt_merchant 
+ON receipt (merchant_id, tenant_id);
+
+ALTER TABLE receipt
+ADD CONSTRAINT fk_receipt_merchant
+FOREIGN KEY (merchant_id, tenant_id)
+REFERENCES merchant (merchant_id, tenant_id)
+ON DELETE RESTRICT;
+
+ALTER TABLE plan_subscription
+ADD COLUMN trial_end_date DATETIME NULL AFTER ngayKetThuc,
+ADD COLUMN grace_period_end DATETIME NULL AFTER trial_end_date,
+ADD COLUMN payment_status ENUM('unpaid', 'paid', 'overdue') DEFAULT 'unpaid' AFTER trangThai;

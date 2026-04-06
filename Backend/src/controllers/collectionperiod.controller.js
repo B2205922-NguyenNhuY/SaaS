@@ -68,7 +68,6 @@ exports.deletePeriod = async (req, res, next) => {
 exports.generateCharges = async (req, res, next) => {
   try {
     const period_id = Number(req.params.period_id);
-    // best-effort: just acknowledge availability if charges were created at period creation; otherwise create missing from active assignments using first active fee on kiosk
     const [[{ total }]] = await db.query(
       "SELECT COUNT(*) total FROM charge WHERE tenant_id = ? AND period_id = ?",
       [req.user.tenant_id, period_id],

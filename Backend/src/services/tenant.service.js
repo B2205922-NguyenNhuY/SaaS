@@ -84,7 +84,7 @@ exports.createTenant = async (body) => {
 
     const [roles] = await connection.execute(
       "SELECT role_id FROM role WHERE tenVaiTro = ?",
-      ["TenantAdmin"]
+      ["tenant_admin"]
     );
     
     if (roles.length === 0) {
