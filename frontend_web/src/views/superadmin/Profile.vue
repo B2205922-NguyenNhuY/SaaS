@@ -34,7 +34,7 @@
             </div>
             <div class="field">
               <label>Email</label>
-              <input :value="authStore.user?.email" disabled class="input-disabled" />
+              <input :value="profileForm.email" disabled class="input-disabled" />
             </div>
           </div>
           <div class="field">

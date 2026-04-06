@@ -4,8 +4,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Tổng quan hệ thống</h1>
-        <p class="page-sub">Chào mừng, {{ authStore.user?.hoTen || 'Super Admin' }} · {{ today }}</p>
-      </div>
+        <p class="page-sub">Chào mừng, {{ authStore.user?.hoTen || authStore.user?.email?.split('@')[0] || 'Super Admin' }} · {{ today }}</p>      </div>
     </div>
 
     <div class="stats-grid">

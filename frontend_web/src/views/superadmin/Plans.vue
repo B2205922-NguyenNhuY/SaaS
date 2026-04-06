@@ -505,7 +505,7 @@ select { height: 40px; padding: 0 12px; border: 1.5px solid #d4e4d4; border-radi
 .badge--gray { background: #f4f4f4; color: #6b7280; }
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
-.modal { background: white; border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+.modal { background: white; border-radius: 16px; width: 100%; max-width: 1000px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
 .modal--sm { max-width: 400px; }
 .modal--md { max-width: 480px; }
 
