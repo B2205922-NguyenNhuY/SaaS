@@ -72,6 +72,12 @@ exports.update = async (tenant_id, merchant_id, body) => {
     if (!isValidPhone(soDienThoai)) throw Object.assign(new Error("Invalid soDienThoai"), { statusCode: 400 });
     if (!isValidDateOnly(ngayThamGiaKinhDoanh)) throw Object.assign(new Error("ngayThamGiaKinhDoanh must be YYYY-MM-DD"), { statusCode: 400 });
 
+    if (await M.checkDuplicatePhone({
+          soDienThoai: soDienThoai,
+          tenant_id: tenant_id,
+          excludeId: merchant_id
+        })) {throw Object.assign(new Error("Số Điện Thoại đã tồn tại trong Tenant này"), { statusCode: 400 });}
+
     if (CCCD !== current.CCCD) {
       if (await M.hasAnyCharge(conn, tenant_id, merchant_id))
         throw Object.assign(new Error("Không thể đổi CCCD vì tiểu thương đã phát sinh khoản thu"), { statusCode: 409 });

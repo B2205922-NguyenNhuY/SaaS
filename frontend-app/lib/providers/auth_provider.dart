@@ -80,9 +80,10 @@ class AuthProvider extends ChangeNotifier {
       await FirebaseMessaging.instance
           .unsubscribeFromTopic("merchant_$id");
     }
+    print("gọi hàm logout");
     await _authService.logout();
     await _storageService.clearSession();
-
+    print("đã gọi hàm logout");
     token = null;
     role = null;
     name = null;
@@ -143,6 +144,9 @@ class AuthProvider extends ChangeNotifier {
       email: email ?? '',
       id: id ?? '',
     );
+    final savedToken = await StorageService().getToken();
+    print("✅ SAVED TOKEN: $savedToken");
+
     print("id: $id");
     if (role == AppRoles.merchant && id != null) {
       final userId = int.tryParse(id!);

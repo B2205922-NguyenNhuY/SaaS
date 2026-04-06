@@ -133,7 +133,10 @@ class _DebtsScreenState extends State<DebtsScreen> {
                         ? null
                         : () => context.push(
                               '/collector/merchant-detail',
-                              extra: item.merchantId,
+                              extra: {
+                              'merchantId': item.merchantId,
+                              'chargeId': item.chargeId,
+                            },
                             ),
                   ),
                 ),

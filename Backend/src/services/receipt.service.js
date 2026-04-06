@@ -22,11 +22,11 @@ exports.createReceipt = async (data, user) => {
         statusCode: 400,
       });
     }
-    if (data.hinhThucThanhToan === "chuyen_khoan" && !data.anhChupThanhToan) {
-      throw Object.assign(new Error("Chuyển khoản phải có ảnh xác nhận"), {
-        statusCode: 400,
-      });
-    }
+    // if (data.hinhThucThanhToan === "chuyen_khoan" && !data.anhChupThanhToan) {
+    //   throw Object.assign(new Error("Chuyển khoản phải có ảnh xác nhận"), {
+    //     statusCode: 400,
+    //   });
+    // }
 
     if (
       data.hinhThucThanhToan !== "tien_mat" &&
@@ -49,9 +49,10 @@ exports.createReceipt = async (data, user) => {
     }
 
     let merchantId = user.id;
-
+    let collectorId = null;
     // 2. KIỂM TRA SHIFT (CA LÀM VIỆC) - Tránh lỗi Foreign Key
     if(user.role === 'collector') {
+       collectorId = user.id;
        merchantId = await receiptModel.getMerchantByCharge(tenant_id, data.charges[0].charge_id);
       const activeShift = await shiftModel.getActiveShift(user.id, tenant_id);
       if (!activeShift) {
@@ -132,10 +133,11 @@ exports.createReceipt = async (data, user) => {
         connection,
       );
     }
-
+    console.log("merchantId:", merchantId);
+    console.log("collectorId:", collectorId);
     await auditLogModel.createAuditLog(connection, {
       tenant_id: tenant_id,
-      merchant_id: user.id,
+      user_id: collectorId || null,
       hanhDong: "THANH_TOAN_THANH_CONG",
       entity_type: "receipt",
       entity_id: receipt_id,
@@ -145,6 +147,7 @@ exports.createReceipt = async (data, user) => {
         charges: data.charges,
         transId: data.transId || null,
       },
+      merchant_id: merchantId,
     });
     if (data.shift_id) {
       const [[totals]] = await connection.query(

@@ -7,11 +7,12 @@ import '../models/receipt_detail.dart';
 import '../models/receipt_item.dart';
 import '../models/shift_info.dart';
 import '../models/zone_item.dart';
+import '../core/services/api_services.dart';
 import 'api_client.dart';
 import 'dart:convert';
 
 class CollectorService {
-  final ApiClient _api = ApiClient();
+  final ApiService _api = ApiService();
 
   Future<ShiftInfo?> getActiveShift() async {
     try {
@@ -31,7 +32,7 @@ class CollectorService {
   }
 
   Future<void> endShift(int shiftId) async {
-    await _api.post('/shifts/end', body: {'shift_id': shiftId});
+    await _api.post('/shifts/end', data: {'shift_id': shiftId});
   }
 
   Future<List<ShiftInfo>> getShifts({
@@ -241,7 +242,7 @@ class CollectorService {
       return;
     }
 
-    await _api.post('/charges/$chargeId/receipts', body: {
+    await _api.post('/charges/$chargeId/receipts', data: {
       'soTienThu': amount,
       'hinhThucThanhToan': paymentMethod,
       'ghiChu': note,

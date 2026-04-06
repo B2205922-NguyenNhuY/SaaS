@@ -47,6 +47,9 @@ class StorageService {
   // ================= GET TOKEN =================
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+
+  print("🔥 TOKEN lấy từ storage: $token");
     return prefs.getString(_tokenKey);
   }
 

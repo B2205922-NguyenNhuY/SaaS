@@ -20,6 +20,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final taxCtrl = TextEditingController();
   final joinDateCtrl = TextEditingController();
     DateTime? selectedDate;
+    String? errorMessage;
 
   @override
   void initState() {
@@ -106,9 +107,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
               const SizedBox(height: 30),
 
+              if (errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+
               ElevatedButton(
                 onPressed: () async {
                   if (!_formKey.currentState!.validate()) return;
+
+                  setState(() {
+                    errorMessage = null; // reset lỗi cũ
+                  });
 
                   try {
                     await provider.updateProfile({
@@ -129,11 +143,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       );
                     }
                   } catch (e) {
+                    setState(() {
+                      errorMessage =
+                          e.toString().replaceAll("Exception: ", ""); // ✅ bỏ Exception
+                    });
+
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.toString())),
+                      SnackBar(content: Text(errorMessage!)),
                     );
                   }
                 },
+                  
                 child: provider.isLoading
                     ? const CircularProgressIndicator()
                     : const Text("Lưu thay đổi"),

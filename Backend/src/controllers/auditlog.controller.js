@@ -1,4 +1,4 @@
-const service = require("../services/auditlog.service");
+const service = require("../services/auditLog.service");
 
 // GET /audit-logs
 exports.getAllLogs = async (req, res, next) => {

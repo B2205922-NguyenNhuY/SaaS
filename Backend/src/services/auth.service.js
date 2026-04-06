@@ -4,6 +4,7 @@ const admin  = require("firebase-admin");
 
 const authModel = require("../models/auth.model");
 const userModel = require("../models/users.model");
+const auditLogModel = require("../models/auditLog.model");
 
 const SALT_ROUNDS = 10;
 
@@ -67,6 +68,21 @@ exports.login = async (body) => {
                 { expiresIn: "60d" }
             );
 
+            await auditLogModel.createAuditLog({
+                  tenant_id: null,
+                  user_id: null,
+                  hanhDong: "LOGIN",
+                  entity_type: "super_admin",
+                  entity_id: superAdmin.admin_id,
+                  giaTriMoi: {
+                    email: superAdmin.email,
+                    name: superAdmin.hoTen,
+                    soDienThoai: superAdmin.soDienThoai,
+                  },
+                  super_admin_id: superAdmin.admin_id,
+                  merchant_id: null,
+                });
+
             return {
                 message: "Super admin login successful",
                 token,
@@ -107,6 +123,21 @@ exports.login = async (body) => {
             { expiresIn: "60d" }
         );
 
+        await auditLogModel.createAuditLog({
+                  tenant_id: user.tenant_id,
+                  user_id: user.user_id,
+                  hanhDong: "LOGIN",
+                  entity_type: "user",
+                  entity_id: user.user_id,
+                  giaTriMoi: {
+                    email: user.email,
+                    hoTen: user.hoTen,
+                    soDienThoai: user.soDienThoai,
+                    role: user.tenVaiTro,
+                  },
+                  merchant_id: null,
+                });
+
         return {
             message: "User login successful",
             token,
@@ -146,6 +177,19 @@ exports.login = async (body) => {
                 process.env.JWT_SECRET,
                 { expiresIn: "60d" }
             );
+
+            await auditLogModel.createAuditLog({
+                  tenant_id: merchant.tenant_id,
+                  user_id: null,
+                  hanhDong: "LOGIN",
+                  entity_type: "merchant",
+                  entity_id: merchant.merchant_id,
+                  giaTriMoi: {
+                    hoTen: merchant.hoTen,
+                    soDienThoai: merchant.soDienThoai,
+                  },
+                  merchant_id: merchant.merchant_id,
+                });
 
             return {
                 message: "Merchant login successful",

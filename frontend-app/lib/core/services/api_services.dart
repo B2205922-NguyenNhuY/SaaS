@@ -1,11 +1,14 @@
 import 'package:dio/dio.dart';
+import 'dart:io';
 import 'package:go_router/go_router.dart';
 import '../../services/storage_service.dart';
 import '../../main.dart'; // 🔥 để dùng navigatorKey
+import 'package:http_parser/http_parser.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
+
   bool _isRedirecting = false;
 
   late Dio _dio;
@@ -23,23 +26,22 @@ class ApiService {
       ),
     );
 
+    // ================= INTERCEPTOR =================
     _dio.interceptors.add(
       InterceptorsWrapper(
-        // ================= REQUEST =================
         onRequest: (options, handler) async {
           final token = await _storage.getToken();
           print("🔥 TOKEN = $token");
 
           if (token != null && token.isNotEmpty) {
             options.headers["Authorization"] = "Bearer $token";
-          } else {
-            print("❌ NO TOKEN ATTACHED");
           }
+          print("🔥 TOKEN LOGOUT CHECK = [$token]");
+          print("🔥 PATH = ${options.path}");
 
           return handler.next(options);
         },
 
-        // ================= ERROR =================
         onError: (DioException e, handler) async {
           if (e.response?.statusCode == 401) {
             print("❌ Token expired → logout");
@@ -47,10 +49,8 @@ class ApiService {
             if (_isRedirecting) return handler.next(e);
             _isRedirecting = true;
 
-            // 🔥 clear session
             await _storage.clearSession();
 
-            // 🔥 redirect về login
             Future.delayed(const Duration(milliseconds: 300), () {
               final context = navigatorKey.currentContext;
 
@@ -67,37 +67,86 @@ class ApiService {
       ),
     );
 
-    /// log debug
     _dio.interceptors.add(
-      LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-      ),
+      LogInterceptor(requestBody: true, responseBody: true),
     );
   }
 
-  // ================= GET =================
-  Future<dynamic> get(String path,
-      {Map<String, dynamic>? query}) async {
+  // ================= BASIC METHODS =================
+
+  Future<dynamic> get(String path, {Map<String, dynamic>? query}) async {
     final res = await _dio.get(path, queryParameters: query);
     return res.data;
   }
 
-  // ================= POST =================
-  Future<dynamic> post(String path, dynamic data) async {
-    final res = await _dio.post(path, data: data);
+  Future<dynamic> post(String path, {Map<String, dynamic>? data}) async {
+    final res = await _dio.post(path, data: data ?? {});
     return res.data;
   }
 
-  // ================= PUT =================
-  Future<dynamic> put(String path, dynamic data) async {
-    final res = await _dio.put(path, data: data);
+  Future<dynamic> put(String path, {Map<String, dynamic>? data}) async {
+    final res = await _dio.put(path, data: data ?? {});
     return res.data;
   }
 
-  // ================= DELETE =================
-  Future<dynamic> delete(String path) async {
-    final res = await _dio.delete(path);
+  Future<dynamic> delete(String path, {Map<String, dynamic>? data}) async {
+    final res = await _dio.delete(path, data: data);
     return res.data;
+  }
+
+  // ================= MULTIPART =================
+
+  Future<dynamic> postMultipart(
+    String path, {
+    Map<String, String>? fields,
+    String? fileField,
+    String? filePath,
+  }) async {
+    final formData = FormData();
+
+    // fields
+    if (fields != null) {
+      fields.forEach((key, value) {
+        formData.fields.add(MapEntry(key, value));
+      });
+    }
+
+    // file
+    if (fileField != null &&
+        filePath != null &&
+        filePath.trim().isNotEmpty) {
+      formData.files.add(
+        MapEntry(
+          fileField,
+          await MultipartFile.fromFile(
+            filePath,
+            filename: filePath.split('/').last,
+          ),
+        ),
+      );
+    }
+
+    final res = await _dio.post(
+      path,
+      data: formData,
+      options: Options(
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      ),
+    );
+
+    return res.data;
+  }
+
+  // ================= ERROR CHECK =================
+
+  bool isOfflineError(Object error) {
+    if (error is DioException) {
+      return error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout;
+    }
+
+    return error is SocketException;
   }
 }
