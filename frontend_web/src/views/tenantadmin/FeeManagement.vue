@@ -491,7 +491,7 @@ function fmtDate(d: string) { return d ? new Date(d).toLocaleDateString('vi-VN')
 .tabs { display: flex; gap: 4px; background: white; border: 1px solid #e2ede2; border-radius: 12px; padding: 4px; width: fit-content; }
 .tab { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 16px; background: none; border: none; border-radius: 9px; font-size: 13px; font-family: 'Be Vietnam Pro', sans-serif; color: #6b836b; cursor: pointer; transition: all .15s; white-space: nowrap; }
 .tab:hover { background: #f0f7f0; color: #2d6e2d; }
-.tab--active { background: #CCFF66; color: #1a3d00; font-weight: 600; }
+.tab--active { background: #a2c8a2; color: #1a3d00; font-weight: 600; }
 .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .search-wrap { flex: 1; min-width: 180px; max-width: 260px; position: relative; display: flex; align-items: center; }
 .search-wrap svg { position: absolute; left: 11px; color: #94a894; pointer-events: none; }

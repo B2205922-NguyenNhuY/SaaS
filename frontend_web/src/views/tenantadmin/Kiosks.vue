@@ -177,7 +177,10 @@
           <option value="ended">Đã kết thúc</option>
           <option value="">Tất cả</option>
         </select>
-        <button class="btn-outline" @click="resetAFilters">Reset</button>
+        <button class="btn-outline" @click="resetKFilters">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+          Reset
+        </button>
       </div>
       <div class="table-panel">
         <div class="table-wrap">
@@ -657,7 +660,7 @@ function initials(n: string) { return (n || '?').split(' ').map((w:string) => w[
 .tabs { display: flex; gap: 4px; background: white; border: 1px solid #e2ede2; border-radius: 12px; padding: 4px; width: fit-content; }
 .tab { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 16px; background: none; border: none; border-radius: 9px; font-size: 13px; font-family: 'Be Vietnam Pro', sans-serif; color: #6b836b; cursor: pointer; transition: all .15s; white-space: nowrap; }
 .tab:hover { background: #f0f7f0; color: #2d6e2d; }
-.tab--active { background: #CCFF66; color: #1a3d00; font-weight: 600; }
+.tab--active { background: #a2c8a2; color: #1a3d00; font-weight: 600; }
 .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .search-wrap { flex: 1; min-width: 160px; max-width: 240px; position: relative; display: flex; align-items: center; }
 .search-wrap svg { position: absolute; left: 11px; color: #94a894; pointer-events: none; }
