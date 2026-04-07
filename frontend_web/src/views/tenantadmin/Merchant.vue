@@ -302,7 +302,7 @@ async function fetchData() {
     const res = await api.get('/merchant', { params })
     items.value = (res.data.data || []).map((m: any) => ({
       ...m,
-      has_kiosk: m.has_active_assignment ?? false
+      has_kiosk: !!m.has_active_assignment
     }))
     meta.value = res.data.meta || { total: 0, totalPages: 1 }
   } catch { items.value = [] }

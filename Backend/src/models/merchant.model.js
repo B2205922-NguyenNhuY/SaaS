@@ -128,7 +128,17 @@ exports.list = async (tenant_id, filters, pg) => {
   );
 
   const [rows] = await db.query(
-    `SELECT m.* FROM merchant m WHERE ${sql} ORDER BY m.${sort} ${order} LIMIT ? OFFSET ?`,
+    `SELECT m.*,
+      EXISTS (
+        SELECT 1 FROM kiosk_assignment ka
+        WHERE ka.tenant_id = m.tenant_id
+          AND ka.merchant_id = m.merchant_id
+          AND ka.trangThai = 'active'
+      ) AS has_active_assignment
+    FROM merchant m
+    WHERE ${sql}
+    ORDER BY m.${sort} ${order}
+    LIMIT ? OFFSET ?`,
     [...params, pg.limit, pg.offset]
   );
 
