@@ -14,16 +14,22 @@ exports.createPayment = async (req, res) => {
             return res.status(400).json({ message: "Chưa chọn khoản phí" });
         }
         const results = await Promise.all(
-          chargeIds.map((c) =>
-            debtService.getDebtsByCharge(c, req.user)
-          )
+          chargeIds.map((c) => debtService.getDebtsByCharge(c, req.user))
         );
         const flattenedResults = results.flat();
         const totalAmount = flattenedResults.reduce((sum, item) => sum + parseFloat(item.amount), 0);
-        console.log("totalAmount:", totalAmount);
-        const ngrokUrl = "https://sneakily-bronchitic-harriet.ngrok-free.dev"; 
-        
+        const ngrokUrl = "https://sneakily-bronchitic-harriet.ngrok-free.dev";
         const payUrl = await momoService.generateMomoLink(req.user, chargeIds, totalAmount, ngrokUrl);
+
+        await auditLogModel.createAuditLog({
+          tenant_id: req.user.tenant_id,
+          user_id: req.user.id,
+          hanhDong: "THANH_TOAN_MOMO_INIT",
+          entity_type: "charge",
+          entity_id: chargeIds[0],
+          giaTriMoi: { chargeIds, totalAmount },
+        });
+
         res.json({ payUrl, chargeIds });
     } catch (error) {
         res.status(500).json({ error: error.message });

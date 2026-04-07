@@ -5,12 +5,14 @@ const receiptService = require("../services/receipt.service");
 exports.createCharge = async (req, res, next) => {
   try {
     const result = await chargeService.createCharge(req.body, req.user);
-    res
-      .status(201)
-      .json({ message: "Charge created", charge_id: result.insertId });
-  } catch (err) {
-    next(err);
-  }
+    await logAudit(req, {
+      action: "CREATE_CHARGE",
+      entity_type: "charge",
+      entity_id: result.insertId,
+      newValue: req.body,
+    });
+    res.status(201).json({ message: "Charge created", charge_id: result.insertId });
+  } catch (err) { next(err); }
 };
 
 exports.getChargesByPeriod = async (req, res, next) => {
@@ -47,19 +49,27 @@ exports.getChargesByMerchant = async (req, res, next) => {
 exports.updateChargeStatus = async (req, res, next) => {
   try {
     await chargeService.updateChargeStatus(req.params.id, req.body, req.user);
+    await logAudit(req, {
+      action: "UPDATE_CHARGE_STATUS",
+      entity_type: "charge",
+      entity_id: req.params.id,
+      newValue: req.body,
+    });
     res.json({ message: "Charge status updated" });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 exports.updateDebtStatus = async (req, res, next) => {
   try {
     await chargeService.updateDebtStatus(req.params.id, req.body, req.user);
+    await logAudit(req, {
+      action: "UPDATE_DEBT_STATUS",
+      entity_type: "charge",
+      entity_id: req.params.id,
+      newValue: req.body,
+    });
     res.json({ message: "Debt status updated" });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 exports.getChargeHistory = async (req, res, next) => {
@@ -218,70 +228,54 @@ exports.getMyCharges = async (req, res, next) => {
     next(err);
   }
 };
+
 exports.createReceiptForCharge = async (req, res, next) => {
   try {
     const charge_id = Number(req.params.id || req.params.charge_id);
     const amount = Number(req.body.soTien || req.body.soTienThu);
-
     const uploadedImagePath = req.file
       ? `/uploads/receipts/${req.file.filename}`
       : req.body.anhChupThanhToan || null;
-    console.log("data:", {
-        soTienThu: amount,
-        hinhThucThanhToan: req.body.hinhThucThanhToan,
-        ghiChu: req.body.ghiChu || null,
-        anhChupThanhToan: uploadedImagePath,
-        thoiGianThu: req.body.thoiGianThu,
-        shift_id: req.body.shift_id,
-        charges: [{ charge_id, amount }],
-      });
 
     if (req.body.hinhThucThanhToan === "chuyen_khoan" && !uploadedImagePath) {
-      return res.status(400).json({
-        message: "Chuyển khoản phải có ảnh xác nhận",
-      });
+      return res.status(400).json({ message: "Chuyển khoản phải có ảnh xác nhận" });
     }
 
-    const result = await receiptService.createReceipt(
-      {
-        soTienThu: amount,
-        hinhThucThanhToan: req.body.hinhThucThanhToan,
-        ghiChu: req.body.ghiChu || null,
-        anhChupThanhToan: uploadedImagePath,
-        thoiGianThu: req.body.thoiGianThu,
-        shift_id: req.body.shift_id,
-        charges: [{ charge_id, amount }],
-      },
-      req.user,
-    );
+    const result = await receiptService.createReceipt({
+      soTienThu: amount,
+      hinhThucThanhToan: req.body.hinhThucThanhToan,
+      ghiChu: req.body.ghiChu || null,
+      anhChupThanhToan: uploadedImagePath,
+      thoiGianThu: req.body.thoiGianThu,
+      shift_id: req.body.shift_id,
+      charges: [{ charge_id, amount }],
+    }, req.user);
+
+    await logAudit(req, {
+      action: "CREATE_RECEIPT",
+      entity_type: "receipt",
+      entity_id: result.insertId || null,
+      newValue: { charge_id, amount, hinhThucThanhToan: req.body.hinhThucThanhToan },
+    });
 
     res.status(201).json(result);
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
-exports.generateCharges = async (req, res) => {
-    try {
-      console.log(req.user);
-        const { period_id } = req.body;
-        const { tenant_id } = req.user;
+exports.generateCharges = async (req, res, next) => {
+  try {
+    const { period_id } = req.body;
+    if (!period_id) return res.status(400).json({ message: "Thiếu period_id" });
 
-        if (!period_id) {
-            return res.status(400).json({ message: "Thiếu period_id" });
-        }
+    const result = await chargeService.generateChargesLogic(req.user.tenant_id, period_id);
 
-        const result = await chargeService.generateChargesLogic(tenant_id, period_id);
-        
-        return res.status(201).json({
-            success: true,
-            ...result
-        });
+    await logAudit(req, {
+      action: "GENERATE_CHARGES",
+      entity_type: "collection_period",
+      entity_id: period_id,
+      newValue: result,
+    });
 
-    } catch (error) {
-        console.error("Generate Charge Error:", error);
-        return res.status(error.statusCode || 500).json({ 
-            message: error.message || "Lỗi máy chủ" 
-        });
-    }
+    res.status(201).json({ success: true, ...result });
+  } catch (err) { next(err); }
 };

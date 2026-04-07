@@ -1,6 +1,7 @@
 const feeAssignmentModel = require("../models/feeAssignment.model");
 const feeAssignmentService = require("../services/feeAssignment.service");
 const { logAudit } = require("../utils/audit");
+
 exports.createAssignment = async (req, res, next) => {
   try {
     const t = req.user.tenant_id;
@@ -34,6 +35,7 @@ exports.createAssignment = async (req, res, next) => {
     next(err);
   }
 };
+
 exports.listAssignments = async (req, res, next) => {
   try {
     res.json(
@@ -47,6 +49,7 @@ exports.listAssignments = async (req, res, next) => {
     next(err);
   }
 };
+
 exports.getAssignmentById = async (req, res, next) => {
   try {
     const row = await feeAssignmentModel.getById(
@@ -59,6 +62,7 @@ exports.getAssignmentById = async (req, res, next) => {
     next(err);
   }
 };
+
 exports.getAssignmentsByTarget = async (req, res, next) => {
   try {
     const { target_type, target_id } = req.query;
@@ -74,6 +78,7 @@ exports.getAssignmentsByTarget = async (req, res, next) => {
     next(err);
   }
 };
+
 exports.getAssignmentsByFee = async (req, res, next) => {
   try {
     const data = await feeAssignmentModel.getAssignmentsByFee(
@@ -86,6 +91,7 @@ exports.getAssignmentsByFee = async (req, res, next) => {
     next(err);
   }
 };
+
 exports.updateAssignment = async (req, res, next) => {
   try {
     const old = await feeAssignmentModel.getById(
@@ -121,6 +127,7 @@ exports.updateAssignment = async (req, res, next) => {
     next(err);
   }
 };
+
 exports.deactivateAssignment = async (req, res, next) => {
   try {
     const old = await feeAssignmentModel.getById(

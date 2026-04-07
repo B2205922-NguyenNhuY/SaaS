@@ -59,14 +59,6 @@ exports.list = async (req, res, next) => {
   }
 };
 
-exports.getById = async (req, res, next) => {
-  try {
-    res.json(await S.getById(req.user.tenant_id, Number(req.params.id)));
-  } catch (e) {
-    next(e);
-  }
-};
-
 exports.endAssignment = async (req, res, next) => {
   try {
     const id = Number(req.params.id);

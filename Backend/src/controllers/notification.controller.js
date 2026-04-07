@@ -1,15 +1,20 @@
 const notificationService = require("../services/notification.service");
+const auditLogModel = require("../models/auditLog.model");
 
 exports.createNotification = async (req, res, next) => {
   try {
     const result = await notificationService.createNotification(req.body, req.user);
+    await logAudit(req, {
+      action: "CREATE_NOTIFICATION",
+      entity_type: "notification",
+      entity_id: result.insertId,
+      newValue: req.body,
+    });
     res.status(201).json({
       message: "Notification created",
       notification_id: result.insertId,
     });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
 exports.getNotifications = async (req, res, next) => {
@@ -34,14 +39,11 @@ exports.getNotifications = async (req, res, next) => {
 exports.getMyNotifications = async (req, res, next) => {
   try {
     const result = await notificationService.getMyNotifications(req.user);
-    console.log("user:", req.user);
-    
     res.json(result);
   } catch (err) {
     next(err);
   }
 };
-
 
 exports.getUnreadCount = async (req, res, next) => {
   try {

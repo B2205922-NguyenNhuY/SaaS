@@ -69,56 +69,14 @@ exports.googleLogin = async (req, res, next) => {
 
 exports.logout = async (req, res, next) => {
   try {
-    const user = req.user;
-    console.log("user", user);
-    if(user.role === "super_admin") {
-      await auditLogModel.createAuditLog({
-                      tenant_id: null,
-                      user_id: null,
-                      hanhDong: "LOGOUT",
-                      entity_type: "super_admin",
-                      entity_id: user.id,
-                      giaTriMoi: {
-                        role: user.role,
-                      },
-                      super_admin_id: user.id,
-                      merchant_id: null,
-                    });
-    } else if( user.role === "merchant") {
-      await auditLogModel.createAuditLog({
-                      tenant_id: user.tenant_id,
-                      user_id: null,
-                      hanhDong: "LOGOUT",
-                      entity_type: "merchant",
-                      entity_id: user.id,
-                      giaTriMoi: {
-                        role: user.role,
-                      },
-                      super_admin_id: null,
-                      merchant_id: user.id,
-                    });
-    } else {
-      await auditLogModel.createAuditLog({
-                      tenant_id: user.tenant_id,
-                      user_id: user.id,
-                      hanhDong: "LOGOUT",
-                      entity_type: "user",
-                      entity_id: user.id,
-                      giaTriMoi: {
-                        role: user.role,
-                      },
-                      super_admin_id: null,
-                      merchant_id: null,
-                    });
-    }
-
-    
-
-    return res.status(200).json({
-      message: "Logout successful - please remove token on client",
+    await logAudit(req, {
+      action: "LOGOUT",
+      entity_type: req.user.role === "super_admin" ? "super_admin"
+                 : req.user.role === "merchant"    ? "merchant"
+                 : "user",
+      entity_id: req.user.id,
+      newValue: { role: req.user.role },
     });
-
-  } catch (error) {
-    next(error);
-  }
+    return res.status(200).json({ message: "Logout successful - please remove token on client" });
+  } catch (error) { next(error); }
 };

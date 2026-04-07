@@ -13,8 +13,9 @@ async function logAudit(req, { action, entity_type = null, entity_id = null, old
 
     await auditLogModel.createAuditLog({
       tenant_id: req.user.tenant_id || null,
-      user_id: isSuperAdmin ? null : (req.user.id || null),
-      super_admin_id: isSuperAdmin ? (req.user.id || null) : null,
+      user_id: isSuperAdmin || req.user.role === 'merchant' ? null : req.user.id,
+      super_admin_id: isSuperAdmin ? req.user.id : null,
+      merchant_id: req.user.role === 'merchant' ? req.user.id : null, 
       hanhDong: action,
       entity_type: entity_type || null,
       entity_id: entity_id ? Number(entity_id) : null,
