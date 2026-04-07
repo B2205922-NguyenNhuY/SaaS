@@ -3,17 +3,19 @@ const db = require("../config/db");
 exports.createAuditLog = async (...args) => {
   const connection = args.length === 2 ? args[0] : db;
   const data = args.length === 2 ? args[1] : args[0];
+
   const {
     tenant_id,
     user_id,
     super_admin_id,
-    merchant_id, 
+    merchant_id,
     hanhDong,
     entity_type,
     entity_id,
     giaTriCu,
     giaTriMoi,
   } = data;
+
   const [result] = await connection.execute(
     `INSERT INTO audit_log
       (tenant_id, user_id, super_admin_id, hanhDong, entity_type, entity_id, giaTriCu, giaTriMoi, ip_address, merchant_id)
@@ -22,16 +24,16 @@ exports.createAuditLog = async (...args) => {
       tenant_id || null,
       user_id || null,
       super_admin_id || null,
-      merchant_id || null,
       hanhDong,
       entity_type || null,
       entity_id ? Number(entity_id) : null,
       giaTriCu ? JSON.stringify(giaTriCu) : null,
       giaTriMoi ? JSON.stringify(giaTriMoi) : null,
       data.ip_address || null,
-      merchant_id || null
+      merchant_id || null,
     ],
   );
+
   return result;
 };
 

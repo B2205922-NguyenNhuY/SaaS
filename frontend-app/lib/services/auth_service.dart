@@ -5,7 +5,6 @@ import 'storage_service.dart';
 import 'package:dio/dio.dart';
 import '../core/services/api_services.dart';
 
-
 class AuthService {
   final ApiService _api = ApiService();
   final StorageService _storage = StorageService();
@@ -40,7 +39,6 @@ class AuthService {
 
       print("✅ login thành công");
       return res;
-
     } on DioException catch (e) {
       throw Exception(_handleDioError(e));
     } catch (e) {
@@ -56,7 +54,6 @@ class AuthService {
       await _api.post('/auth/logout');
 
       print("✅ logout thành công");
-
     } on DioException catch (e) {
       // ❗ logout lỗi vẫn cho pass (quan trọng)
       print("❌ logout lỗi nhưng vẫn tiếp tục");
@@ -113,5 +110,3 @@ class AuthService {
     }
   }
 }
-
-  
