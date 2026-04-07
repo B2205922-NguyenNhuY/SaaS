@@ -304,7 +304,12 @@ function renderChart() {
     const label   = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
     const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
     labels.push(label)
-    counts.push(allAuditLogs.filter(l => (l.thoiGianThucHien || '').startsWith(dateStr)).length)
+    counts.push(allAuditLogs.filter(l => {
+      if (!l.thoiGianThucHien) return false
+      const localDate = new Date(l.thoiGianThucHien)
+      const localDateStr = `${localDate.getFullYear()}-${String(localDate.getMonth()+1).padStart(2,'0')}-${String(localDate.getDate()).padStart(2,'0')}`
+      return localDateStr === dateStr
+    }).length)
   }
   chartInstance = new Chart(chartCanvas.value, {
     type: 'line',
