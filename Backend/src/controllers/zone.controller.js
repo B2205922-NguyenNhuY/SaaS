@@ -1,8 +1,20 @@
 const S = require("../services/zone.service");
+const auditLogModel = require("../models/auditLog.model");
 
 exports.create = async (req, res, next) => {
   try {
-    res.status(201).json(await S.create(req.user.tenant_id, req.body));
+    const result = await S.create(req.user.tenant_id, req.body);
+
+    await auditLogModel.createAuditLog({
+      tenant_id: req.user.tenant_id,
+      user_id: req.user.id,
+      hanhDong: "CREATE_ZONE",
+      entity_type: "zone",
+      entity_id: result.zone_id,
+      giaTriMoi: req.body,
+    });
+
+    res.status(201).json(result);
   } catch (e) {
     next(e);
   }
@@ -10,9 +22,21 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    res.json(
-      await S.update(req.user.tenant_id, Number(req.params.id), req.body),
-    );
+    const id = Number(req.params.id);
+    const old = await S.getById(req.user.tenant_id, id);
+    const result = await S.update(req.user.tenant_id, id, req.body);
+
+    await auditLogModel.createAuditLog({
+      tenant_id: req.user.tenant_id,
+      user_id: req.user.id,
+      hanhDong: "UPDATE_ZONE",
+      entity_type: "zone",
+      entity_id: id,
+      giaTriCu: old,
+      giaTriMoi: req.body,
+    });
+
+    res.json(result);
   } catch (e) {
     next(e);
   }
@@ -20,9 +44,21 @@ exports.update = async (req, res, next) => {
 
 exports.updateStatus = async (req, res, next) => {
   try {
-    res.json(
-      await S.updateStatus(req.user.tenant_id, Number(req.params.id), req.body),
-    );
+    const id = Number(req.params.id);
+    const old = await S.getById(req.user.tenant_id, id);
+    const result = await S.updateStatus(req.user.tenant_id, id, req.body);
+
+    await auditLogModel.createAuditLog({
+      tenant_id: req.user.tenant_id,
+      user_id: req.user.id,
+      hanhDong: "UPDATE_ZONE_STATUS",
+      entity_type: "zone",
+      entity_id: id,
+      giaTriCu: { trangThai: old.trangThai },
+      giaTriMoi: { trangThai: req.body.trangThai },
+    });
+
+    res.json(result);
   } catch (e) {
     next(e);
   }
