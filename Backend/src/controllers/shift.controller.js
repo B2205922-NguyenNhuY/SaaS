@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const shiftService = require("../services/shift.service");
+const { logAudit } = require("../utils/audit");
 
 exports.startShift = async (req, res, next) => {
   try {

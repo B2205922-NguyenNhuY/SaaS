@@ -1,5 +1,6 @@
 const notificationService = require("../services/notification.service");
 const auditLogModel = require("../models/auditLog.model");
+const { logAudit } = require("../utils/audit");
 
 exports.createNotification = async (req, res, next) => {
   try {

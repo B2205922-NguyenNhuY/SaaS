@@ -167,15 +167,16 @@ const routes = [
         name: 'Zone',
         component: () => import('@/views/tenantadmin/Zone.vue'),
         meta: {title: 'Khu vực'},
-      },   
-      {
-        path: 'payment-success',
-        name: 'Payment',
-        component: () => import('@/views/tenantadmin/Payment.vue'),
-        meta: {title: 'Thanh toán thành công'},
-      },     
+      },       
     ],
   },
+
+  {
+    path: '/payment-success',
+    name: 'Payment',
+    component: () => import('@/views/tenantadmin/Payment.vue'),
+    meta: {title: 'Thanh toán thành công'}
+  }, 
 
   {
     path: '/',
@@ -204,7 +205,7 @@ router.beforeEach((to, _from, next) => {
 
   // 1. Route cần login nhưng chưa login
   if (requiresAuth && !authStore.isAuthenticated) {
-    if (to.path !== '/login') return next('/login') // ✅ chỉ redirect 1 lần
+    if (to.path !== '/login') return next('/login')
     return next() // đã ở /login thì tiếp tục
   }
 

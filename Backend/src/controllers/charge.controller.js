@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const chargeService = require("../services/charge.service");
 const receiptService = require("../services/receipt.service");
+const { logAudit } = require("../utils/audit");
 
 exports.createCharge = async (req, res, next) => {
   try {

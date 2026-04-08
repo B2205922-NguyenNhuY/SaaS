@@ -35,8 +35,8 @@ exports.createCheckoutSession = async (user, body) => {
       subscription_data: {
         metadata: { tenant_id, plan_id, payment_id },
       },
-      success_url: "http://localhost:3000/payment-success",
-      cancel_url: "http://localhost:3000/payment-cancel",
+      success_url: "http://localhost:5173/payment-success",
+      cancel_url: "http://localhost:5173/tenant-admin/plans",
     });
 
     await connection.commit();
