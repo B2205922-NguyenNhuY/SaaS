@@ -274,64 +274,49 @@ exports.insertAutoCharges = async (tenant_id, period_id, loaiKy) => {
             donGiaApDung, hinhThucApDung, discountApDung, soTienPhaiThu, trangThai
         )
         SELECT 
-            t.tenant_id, ?, t.kiosk_id, t.merchant_id, t.fee_id,
-            t.donGia, t.hinhThuc, t.mucMienGiam,
-            (t.donGia) * (1 - (t.mucMienGiam / 100)),
+            k.tenant_id, ?, k.kiosk_id, ka.merchant_id, 
+            fs.fee_id, fs.donGia, fs.hinhThuc, fa.mucMienGiam,
+            fs.donGia * (1 - fa.mucMienGiam / 100),
             'chua_thu'
-        FROM (
-            SELECT 
-                k.tenant_id, k.kiosk_id, k.dienTich, ka.merchant_id, 
-                fs.fee_id, fs.donGia, fs.hinhThuc, fa.mucMienGiam,
-                -- Gán điểm ưu tiên: Kiosk (1), Zone (2), Type (3)
-                ROW_NUMBER() OVER (
-                    PARTITION BY k.kiosk_id 
-                    ORDER BY CASE fa.target_type 
-                                WHEN 'kiosk' THEN 1 
-                                WHEN 'zone' THEN 2 
-                                WHEN 'kiosk_type' THEN 3 
-                             END ASC
-                ) as priority_rank
-            FROM kiosk k
-            JOIN kiosk_assignment ka ON k.kiosk_id = ka.kiosk_id AND ka.trangThai = 'active'
-            JOIN fee_assignment fa ON (
-                (fa.target_type = 'kiosk' AND fa.target_id = k.kiosk_id) OR
-                (fa.target_type = 'zone' AND fa.target_id = k.zone_id) OR
-                (fa.target_type = 'kiosk_type' AND fa.target_id = k.type_id)
-            )
-            JOIN fee_schedule fs ON fa.fee_id = fs.fee_id
-            WHERE k.tenant_id = ? 
-              AND k.trangThai = 'occupied'
-              AND fa.trangThai = 'active'
-              AND fs.hinhThuc = ?
-              AND (? = 'ngay' OR NOT EXISTS (
-                SELECT 1 FROM fee_assignment fa2
-                JOIN fee_schedule fs2 ON fa2.fee_id = fs2.fee_id
-                WHERE fs2.hinhThuc = 'ngay'
-                  AND fa2.trangThai = 'active'
-                  AND (
-                      (fa2.target_type = 'kiosk' AND fa2.target_id = k.kiosk_id)
-                  )
-              ) )
-              AND NOT EXISTS (
-                  SELECT 1 FROM charge c 
-                  WHERE c.kiosk_id = k.kiosk_id AND c.period_id = ?
-              )
-        ) AS t
-        WHERE t.priority_rank = 1; -- Chỉ lấy bản ghi có mức ưu tiên cao nhất cho mỗi Kiosk
+        FROM kiosk k
+        JOIN kiosk_assignment ka 
+          ON k.kiosk_id = ka.kiosk_id 
+          AND ka.tenant_id = k.tenant_id
+          AND ka.trangThai = 'active'
+          AND ka.ngayBatDau <= (SELECT ngayKetThuc FROM collection_period WHERE period_id = ? AND tenant_id = ?)
+        JOIN fee_assignment fa ON (
+            (fa.target_type = 'kiosk'      AND fa.target_id = k.kiosk_id) OR
+            (fa.target_type = 'zone'       AND fa.target_id = k.zone_id)  OR
+            (fa.target_type = 'kiosk_type' AND fa.target_id = k.type_id)
+        )
+        AND fa.tenant_id = k.tenant_id
+        AND fa.trangThai = 'active'
+        JOIN fee_schedule fs 
+            ON fa.fee_id = fs.fee_id
+            AND fs.tenant_id = k.tenant_id
+            AND fs.hinhThuc = ?
+        WHERE k.tenant_id = ? 
+          AND k.trangThai = 'occupied'
+          -- Chưa có khoản thu cho kiosk+period+fee này
+          AND NOT EXISTS (
+              SELECT 1 FROM charge c 
+              WHERE c.kiosk_id = k.kiosk_id 
+                AND c.period_id = ?
+                AND c.fee_id = fs.fee_id
+                AND c.tenant_id = k.tenant_id
+          )
     `;
-    const [result] = await db.execute(sql, [period_id, tenant_id, loaiKy, loaiKy, period_id]);
-    console.log(result);
-    
-      const [rows] = await db.execute(
-        `SELECT DISTINCT merchant_id 
-        FROM charge 
-        WHERE tenant_id = ? AND period_id = ?`,
+
+    const [result] = await db.execute(sql, [period_id, period_id, tenant_id, loaiKy, tenant_id, period_id]);
+
+    const [rows] = await db.execute(
+        `SELECT DISTINCT merchant_id FROM charge WHERE tenant_id = ? AND period_id = ?`,
         [tenant_id, period_id]
-      );
-      console.log(rows);
+    );
+
     return {
-      count: result.affectedRows,
-      Ids: rows.map(r => r.merchant_id)
+        count: result.affectedRows,
+        Ids: rows.map(r => r.merchant_id)
     };
 };
 

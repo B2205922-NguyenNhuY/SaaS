@@ -150,26 +150,39 @@ exports.listCharges = async (req, res, next) => {
     `;
 
     const [[{ total }]] = await db.query(
-      `SELECT COUNT(*) AS total
-       ${baseJoin}
-       WHERE ${where.join(" AND ")}`,
+      `SELECT COUNT(DISTINCT CONCAT(c.kiosk_id, '-', c.period_id)) AS total
+      ${baseJoin}
+      WHERE ${where.join(" AND ")}`,
       params,
     );
 
     const [rows] = await db.query(
       `SELECT
-          c.*,
-          (c.soTienPhaiThu - c.soTienDaThu) AS soTienConLai,
+          MIN(c.charge_id) AS charge_id,
+          c.kiosk_id,
+          c.merchant_id,
+          c.period_id,
           k.maKiosk,
           k.zone_id,
           z.tenKhu,
           z.market_id,
           mk.tenCho,
           me.hoTen AS merchantName,
-          p.tenKyThu
+          p.tenKyThu,
+          SUM(c.soTienPhaiThu) AS soTienPhaiThu,
+          SUM(c.soTienDaThu) AS soTienDaThu,
+          SUM(c.soTienPhaiThu - c.soTienDaThu) AS soTienConLai,
+          CASE
+            WHEN SUM(c.soTienDaThu) >= SUM(c.soTienPhaiThu) THEN 'da_thu'
+            WHEN SUM(c.soTienDaThu) > 0 THEN 'no'
+            ELSE MIN(c.trangThai)
+          END AS trangThai
         ${baseJoin}
         WHERE ${where.join(" AND ")}
-        ORDER BY c.created_at DESC
+        GROUP BY c.kiosk_id, c.merchant_id, c.period_id,
+                k.maKiosk, k.zone_id, z.tenKhu, z.market_id,
+                mk.tenCho, me.hoTen, p.tenKyThu
+        ORDER BY MIN(c.created_at) DESC
         LIMIT ? OFFSET ?`,
       [...params, req.pagination.limit, req.pagination.offset],
     );
