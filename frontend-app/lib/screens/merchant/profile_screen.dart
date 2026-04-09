@@ -90,8 +90,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ...assignments.map((a) => _kioskItem(a)).toList(),
 
           const SizedBox(height: 80),
-     ], // ✅ nhớ đóng children
-  ), // ✅ nhớ đóng ListView
+        ], // ✅ nhớ đóng children
+      ), // ✅ nhớ đóng ListView
 
            bottomNavigationBar: Padding(
             padding: const EdgeInsets.all(16),
@@ -109,6 +109,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             icon: const Icon(Icons.edit),
                             label: const Text("Chỉnh sửa thông tin"),
                         ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    /// 🔐 CHANGE PASSWORD
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          _showChangePasswordDialog(context);
+                        },
+                        icon: const Icon(Icons.lock_outline),
+                        label: const Text("Đổi mật khẩu"),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orange,
+                          side: const BorderSide(color: Colors.orange),
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 10),
@@ -286,3 +304,153 @@ void _confirmLogout(BuildContext context) {
   );
 }
 
+void _showChangePasswordDialog(BuildContext context) {
+  final oldPassCtrl = TextEditingController();
+  final newPassCtrl = TextEditingController();
+  final confirmCtrl = TextEditingController();
+
+  bool obscureOld = true;
+  bool obscureNew = true;
+  bool obscureConfirm = true;
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          final provider = context.watch<MerchantProvider>();
+
+          return AlertDialog(
+            title: const Text("Đổi mật khẩu"),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+
+                  /// 🔐 OLD PASSWORD
+                  TextField(
+                    controller: oldPassCtrl,
+                    obscureText: obscureOld,
+                    decoration: InputDecoration(
+                      labelText: "Mật khẩu cũ",
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureOld
+                            ? Icons.visibility
+                            : Icons.visibility_off),
+                        onPressed: () =>
+                            setState(() => obscureOld = !obscureOld),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  /// 🔐 NEW PASSWORD
+                  TextField(
+                    controller: newPassCtrl,
+                    obscureText: obscureNew,
+                    decoration: InputDecoration(
+                      labelText: "Mật khẩu mới",
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureNew
+                            ? Icons.visibility
+                            : Icons.visibility_off),
+                        onPressed: () =>
+                            setState(() => obscureNew = !obscureNew),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  /// 🔐 CONFIRM PASSWORD
+                  TextField(
+                    controller: confirmCtrl,
+                    obscureText: obscureConfirm,
+                    decoration: InputDecoration(
+                      labelText: "Nhập lại mật khẩu",
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureConfirm
+                            ? Icons.visibility
+                            : Icons.visibility_off),
+                        onPressed: () => setState(
+                            () => obscureConfirm = !obscureConfirm),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            actions: [
+
+              /// ❌ CANCEL
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text("Hủy"),
+              ),
+
+              /// ✅ CONFIRM
+              ElevatedButton(
+                onPressed: provider.isLoading
+                    ? null
+                    : () async {
+                        final oldPass = oldPassCtrl.text.trim();
+                        final newPass = newPassCtrl.text.trim();
+                        final confirm = confirmCtrl.text.trim();
+
+                        /// ✅ validate
+                        if (oldPass.isEmpty ||
+                            newPass.isEmpty ||
+                            confirm.isEmpty) {
+                          _showMsg(context, "Vui lòng nhập đầy đủ");
+                          return;
+                        }
+
+                        if (newPass.length < 6) {
+                          _showMsg(context, "Mật khẩu phải >= 6 ký tự");
+                          return;
+                        }
+
+                        if (newPass != confirm) {
+                          _showMsg(context, "Mật khẩu không khớp");
+                          return;
+                        }
+
+                        try {
+                          await context
+                              .read<MerchantProvider>()
+                              .changePassword(
+                                oldPassword: oldPass,
+                                newPassword: newPass,
+                              );
+
+                          Navigator.pop(dialogContext);
+
+                          _showMsg(context, "Đổi mật khẩu thành công");
+
+                        } catch (e) {
+                          _showMsg(context, e.toString());
+                        }
+                      },
+
+                child: provider.isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Xác nhận"),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+void _showMsg(BuildContext context, String msg) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(msg)),
+  );
+}

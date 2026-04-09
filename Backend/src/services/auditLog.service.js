@@ -31,6 +31,18 @@ exports.getLogs = async (user, query, pagination) => {
     params.push(query.entity_id);
   }
 
+  if (query.keyword) {
+    where.push(`
+      (
+        al.entity_type LIKE ? OR
+        al.hanhDong LIKE ? 
+      )
+    `);
+
+    const keyword = `%${query.keyword}%`;
+    params.push(keyword, keyword, keyword, keyword);
+  }
+
   const whereSQL = where.join(" AND ");
 
   const total = await auditLogModel.count(whereSQL, params);

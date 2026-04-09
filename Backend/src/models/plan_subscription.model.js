@@ -219,7 +219,7 @@ exports.checkDuplicate = async (tenant_id) => {
 //Kiểm tra Gói còn hiệu lực
 exports.checkSubscription = async (tenant_id) => {
     const [rows] = await db.execute(
-        "SELECT * FROM plan_subscription WHERE tenant_id=? AND trangThai='active' AND ngayKetThuc>NOW()",
+        "SELECT * FROM plan_subscription WHERE tenant_id=? AND trangThai IN ('active','trial') AND ngayKetThuc>NOW()",
         [tenant_id]
     );
 
@@ -252,7 +252,7 @@ exports.getActiveByTenantForUpdate = async (tenant_id) => {
 //Tìm gói tenant đang đăng ký
 exports.getPlanByTenantSubscribed = async (tenant_id) => {
     const [rows] = await db.execute(
-        "SELECT p.* FROM plan_subscription ps JOIN plan p ON ps.plan_id = p.plan_id WHERE ps.tenant_id=? AND ps.trangThai='active'",
+        "SELECT p.* FROM plan_subscription ps JOIN plan p ON ps.plan_id = p.plan_id WHERE ps.tenant_id=? AND ps.trangThai IN ('active','trial')",
         [tenant_id]
     );
 

@@ -92,7 +92,7 @@ exports.updateStatus = async (req, res, next) => {
 exports.updatePassword = async (req, res, next) => {
   try {
     const id  = Number(req.params.id);
-    const out = await S.updatePassword(req.user.tenant_id, id, req.body.newPassword);
+    const out = await S.updatePassword(req.user.tenant_id, id, req.body);
     await logAudit(req, {
       action: "UPDATE_MERCHANT_PASSWORD",
       entity_type: "merchant",

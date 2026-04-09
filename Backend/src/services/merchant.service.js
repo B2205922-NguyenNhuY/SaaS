@@ -137,13 +137,31 @@ exports.updateStatus = async (tenant_id, merchant_id, trangThai) => {
   }
 };
 
-exports.updatePassword = async (tenant_id, merchant_id, newPassword) => {
+exports.updatePassword = async (tenant_id, merchant_id, data) => {
+  const { oldPassword, newPassword } = data;
+
+  if (!oldPassword || !newPassword) {
+    throw Object.assign(new Error("Thiếu dữ liệu"), { statusCode: 400 });
+  }
+
   if (!newPassword || newPassword.length < 6)
     throw Object.assign(new Error("Mật khẩu phải ít nhất 6 ký tự"), { statusCode: 400 });
 
   const merchant = await M.getById(tenant_id, merchant_id);
   if (!merchant) throw Object.assign(new Error("Merchant not found"), { statusCode: 404 });
 
+  const isMatch = await bcrypt.compare(
+    oldPassword,
+    merchant.password_hash // nhớ đúng field DB
+  );
+
+  if (!isMatch) {
+    throw Object.assign(
+      new Error("Mật khẩu cũ không đúng"),
+      { statusCode: 400 }
+    );
+  }
+  
   const password_hash = await bcrypt.hash(newPassword, 10);
   await M.updatePassword(tenant_id, merchant_id, password_hash);
   return { ok: true };

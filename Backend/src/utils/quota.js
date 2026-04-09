@@ -5,7 +5,7 @@ async function getActivePlan(tenant_id) {
     `SELECT p.*
      FROM plan_subscription ps
      JOIN plan p ON p.plan_id = ps.plan_id
-     WHERE ps.tenant_id = ? AND ps.trangThai = 'active'
+     WHERE ps.tenant_id = ? AND ps.trangThai IN ('active','trial')
      ORDER BY ps.subscription_id DESC
      LIMIT 1`,
     [tenant_id],
@@ -14,17 +14,18 @@ async function getActivePlan(tenant_id) {
 }
 
 async function assertMarketQuota(tenant_id) {
+  
   const plan = await getActivePlan(tenant_id);
   if (!plan) return;
 
   const limit = Number(plan.gioiHanSoCho || 0);
   if (limit <= 0) return;
-
+  
   const [[{ total }]] = await db.query(
     "SELECT COUNT(*) total FROM market WHERE tenant_id = ?",
     [tenant_id],
   );
-
+  
   if (Number(total) >= limit) {
     const err = new Error("Đã vượt quá số lượng chợ cho phép của gói");
     err.statusCode = 400;

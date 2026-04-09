@@ -1,6 +1,7 @@
 const feeService = require("../services/feeSchedule.service");
 const feeModel = require("../models/feeSchedule.model");
 const { logAudit } = require("../utils/audit");
+
 exports.createFee = async (req, res, next) => {
   try {
     const dup = await feeModel.checkDuplicate(

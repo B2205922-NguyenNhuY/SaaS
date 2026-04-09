@@ -1,4 +1,5 @@
 import '../core/services/api_services.dart';
+import 'storage_service.dart';
 
 class MerchantService {
   final ApiService _api = ApiService();
@@ -35,5 +36,16 @@ class MerchantService {
   Future<void> updateProfile(Map<String, dynamic> data) async {
     final api = ApiService();
     await api.put('/merchant/update', data: data);
+  }
+
+  Future<void> changePassword(Map<String, dynamic> data) async {
+    final storage = StorageService();
+
+    final userId = await storage.getUserId();
+    
+    await _api.put(
+      '/merchant/$userId/password',
+      data: data,
+    );
   }
 }

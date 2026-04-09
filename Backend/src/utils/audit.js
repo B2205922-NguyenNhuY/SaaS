@@ -2,7 +2,7 @@ const auditLogModel = require('../models/auditLog.model');
 
 async function logAudit(req, { action, entity_type = null, entity_id = null, oldValue = null, newValue = null }) {
   try {
-    console.log("req:", req)
+    
     if (!req || !req.user || !action) return;
 
     const isSuperAdmin = req.user.role === 'super_admin';

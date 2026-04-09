@@ -52,6 +52,28 @@ class MerchantProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      await _service.changePassword({
+        "oldPassword": oldPassword,
+        "newPassword": newPassword,
+      });
+
+    } catch (e) {
+      print("changePassword error: $e");
+      rethrow; // để UI bắt lỗi
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // ================= TOTAL DEBT =================
   Future<void> fetchTotalDebt() async {
     isLoading = true;

@@ -53,6 +53,15 @@ class StorageService {
     return prefs.getString(_tokenKey);
   }
 
+  Future<String?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_idKey);
+
+    print("🔥 USER ID từ storage: $id");
+
+    return id;
+  }
+
   // ================= GET ROLE =================
   Future<String?> getRole() async {
     final prefs = await SharedPreferences.getInstance();

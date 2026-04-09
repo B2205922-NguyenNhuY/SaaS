@@ -103,21 +103,34 @@ exports.updateFee = async (fee_id, data, user) => {
 
 // Xóa biểu phí
 exports.deleteFee = async (fee_id, user) => {
-  const oldFee = await feeScheduleModel.getFeeById(fee_id, user.tenant_id);
+  try {
+    const oldFee = await feeScheduleModel.getFeeById(fee_id, user.tenant_id);
 
-  const result = await feeScheduleModel.deleteFeeSchedule(
-    fee_id,
-    user.tenant_id,
-  );
+    const result = await feeScheduleModel.deleteFeeSchedule(
+      fee_id,
+      user.tenant_id,
+    );
 
-  await auditLogModel.createAuditLog({
-    tenant_id: user.tenant_id,
-    user_id: user.id,
-    hanhDong: "DELETE_FEE",
-    entity_type: "fee_schedule",
-    entity_id: fee_id,
-    giaTriCu: oldFee,
-  });
+    await auditLogModel.createAuditLog({
+      tenant_id: user.tenant_id,
+      user_id: user.id,
+      hanhDong: "DELETE_FEE",
+      entity_type: "fee_schedule",
+      entity_id: fee_id,
+      giaTriCu: oldFee,
+    });
 
-  return result;
+    return result;
+   } catch (err) {
+
+    // 💥 FK constraint → đang bị dùng
+    if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+      const error = new Error("Phí này đang được áp dụng");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // lỗi khác → ném tiếp
+    throw err;
+  }
 };

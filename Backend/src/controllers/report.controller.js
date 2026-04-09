@@ -93,7 +93,7 @@ exports.exportRevenueExcel = async (req, res, next) => {
       { header: "Giá trị", key: "value", width: 25 },
     ];
     sheet1.addRow({ title: "Tổng doanh thu", value: data.tongThu });
-    sheet1.addRow({ title: "Doanh thu chuyển khoản (Stripe)", value: data.tongThuChuyenKhoan });
+    sheet1.addRow({ title: "Doanh thu chuyển khoản", value: data.tongThuChuyenKhoan });
     sheet1.addRow({ title: "Doanh thu tiền mặt", value: data.tongThuTienMat });
     
     const sheet2 = workbook.addWorksheet("Theo chợ");

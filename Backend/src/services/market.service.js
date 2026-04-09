@@ -40,7 +40,7 @@ async function hasPlan(tenant_id) {
     `SELECT COUNT(*) AS cnt
      FROM plan_subscription
      WHERE tenant_id = ?
-       AND trangThai = 'active'
+       AND trangThai IN ('active','trial')
        AND ngayKetThuc > NOW()`,
     [tenant_id],
   );

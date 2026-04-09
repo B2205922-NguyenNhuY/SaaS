@@ -7,7 +7,7 @@ const db = require('../config/db');
 const { sendToMerchant } = require("../services/fcm.service");
 
 // JOB 1: SINH PHÍ THÁNG (01:00 ngày đầu tháng)
-cron.schedule('0 0 9 * *', async () => {
+cron.schedule('0 0 1 * *', async () => {
     console.log(`[${new Date().toISOString()}] --- BẮT ĐẦU SINH PHÍ THÁNG ---`);
     await processAutoCharges('month');
 });
@@ -55,7 +55,6 @@ cron.schedule('31 21 * * *', async () => {
                     body: "Bạn có khoản nợ quá hạn",
                 },
             });
-            console.log(res);
             console.log(`[Overdue] Đã báo nợ cho Merchant ${merchant_id} - Số tiền: `);
         }
     } catch (err) {
@@ -88,6 +87,8 @@ async function processAutoCharges(type) {
                     periodId = await collectionPeriodService.getOrCreateDailyPeriod(tenant.tenant_id);
                 }
 
+                console.log("PeriodId:", periodId);
+                console.log("Tenantid:", tenant);
                 if (periodId) {
                     const result = await chargeService.generateChargesLogic(tenant.tenant_id, periodId);
                     

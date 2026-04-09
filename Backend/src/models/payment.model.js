@@ -65,6 +65,8 @@ exports.updatePaymentFailed = async (payment_id, tenant_id) => {
 };
 
 exports.getPaymentHistory = async (tenant_id, limit, offset) => {
+  const safeLimit = Number(limit) || 10;
+  const safeOffset = Number(offset) || 0;
   const [rows] = await db.execute(
     `SELECT 
       p.payment_id,
@@ -89,7 +91,7 @@ exports.getPaymentHistory = async (tenant_id, limit, offset) => {
     LEFT JOIN plan pl ON ps.plan_id = pl.plan_id
     WHERE p.tenant_id = ?
     ORDER BY p.created_at DESC
-    LIMIT ? OFFSET ?`,
+    LIMIT ${safeLimit} OFFSET ${safeOffset}`,
     [tenant_id, limit, offset]
   );
   return rows;

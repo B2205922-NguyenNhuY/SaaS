@@ -6,6 +6,7 @@ const userModel = require("../models/users.model");
 const receiptService = require("../services/receipt.service");
 const debtService = require("../services/debt.service");
 const db = require("../config/db");
+const { logAudit } = require("../utils/audit");
 
 exports.createPayment = async (req, res) => {
     try {

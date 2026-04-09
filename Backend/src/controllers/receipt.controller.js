@@ -1,5 +1,6 @@
 const receiptService = require("../services/receipt.service");
 const auditLogModel = require("../models/auditLog.model");
+const { logAudit } = require("../utils/audit");
 
 // Tạo receipt
 exports.createReceipt = async (req, res, next) => {
