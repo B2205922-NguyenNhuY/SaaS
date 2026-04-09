@@ -45,7 +45,7 @@ exports.handleStripeWebhook = async (req) => {
             trangThai: "active",
             payment_status: "paid",
             ngayBatDau: new Date(),
-            ngayKetThuc: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+            ngayKetThuc: new Date(new Date().setMonth(new Date().getMonth() + 1))
           }
         );
 
