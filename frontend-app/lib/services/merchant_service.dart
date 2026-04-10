@@ -43,7 +43,7 @@ class MerchantService {
 
     final userId = await storage.getUserId();
     
-    await _api.put(
+    await _api.patch(
       '/merchant/$userId/password',
       data: data,
     );

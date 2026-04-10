@@ -96,13 +96,7 @@ class MerchantAppBar extends StatelessWidget
           },
         ),
 
-        /// ⚙️ SETTINGS
-        IconButton(
-          icon: const Icon(Icons.settings),
-          onPressed: () {
-           context.push('/settings');
-          },
-        ),
+        
 
         const SizedBox(width: 8),
       ],

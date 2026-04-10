@@ -407,6 +407,7 @@ class CollectorProvider extends ChangeNotifier {
         imagePath: imagePath,
         collectedAt: now,
       );
+      print("pay offline");
 
       _applyLocalChargePayment(charge.chargeId, amount);
       await loadActiveShift();
@@ -414,6 +415,7 @@ class CollectorProvider extends ChangeNotifier {
       return 'online';
     } catch (e) {
       if (!_service.isOfflineError(e)) {
+        errorMessage = _cleanError(e);
         rethrow;
       }
 

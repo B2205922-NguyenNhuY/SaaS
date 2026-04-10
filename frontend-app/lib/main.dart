@@ -42,16 +42,17 @@ import 'screens/collector/receipt_detail_screen.dart';
 import 'screens/collector/receipt_history_screen.dart';
 import 'screens/collector/shift_history_screen.dart';
 
-import 'firebase_options.dart';
+//import 'firebase_options.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // await Firebase.initializeApp(
+  //   options: DefaultFirebaseOptions.currentPlatform,
+  // );
+  await Firebase.initializeApp();
   await NotificationService.init();
   //await PushNotificationService.initialize(); 
   //await FirebaseMessaging.instance.requestPermission();

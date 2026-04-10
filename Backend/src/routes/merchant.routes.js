@@ -27,6 +27,6 @@ router.post("/", verifyToken, (req, res, next) => { next() }, authorizeRoles(ROL
 router.get("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN, ROLES.COLLECTOR), C.detail);
 router.put("/:id", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.update);
 router.patch("/:id/status", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.updateStatus);
-router.patch("/:id/password", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN), C.updatePassword);
+router.patch("/:id/password", verifyToken, authorizeRoles(ROLES.TENANT_ADMIN, ROLES.MERCHANT), C.updatePassword);
 
 module.exports = router;

@@ -23,13 +23,6 @@ exports.startShift = async (user, body) => {
       thoiGianBatDauCa: new Date(),
     });
 
-    await auditLogModel.createAuditLog({
-      tenant_id: user.tenant_id,
-      user_id: user.id,
-      hanhDong: "START_SHIFT",
-      entity_type: "shift",
-      entity_id: result.insertId,
-    });
 
     await connection.commit();
 
@@ -93,13 +86,6 @@ exports.endShift = async (shift_id, user) => {
       entity_id: shift_id,
     });
 
-    await auditLogModel.createAuditLog({
-      tenant_id: user.tenant_id,
-      user_id: user.id,
-      hanhDong: "END_SHIFT",
-      entity_type: "shift",
-      entity_id: parseInt(shift_id),
-    });
 
     await connection.commit();
     return true;
