@@ -322,6 +322,7 @@ async function openEdit(plan: any) {
       gioiHanUser: p.gioiHanUser !== undefined ? p.gioiHanUser : form.gioiHanUser,
       gioiHanSoKiosk: p.gioiHanSoKiosk !== undefined ? p.gioiHanSoKiosk : form.gioiHanSoKiosk,
       gioiHanSoCho: p.gioiHanSoCho !== undefined ? p.gioiHanSoCho : form.gioiHanSoCho,
+      stripe_price_id: p.stripe_price_id !== undefined ? p.stripe_price_id : form.stripe_price_id,
     })
   } catch {}
 }

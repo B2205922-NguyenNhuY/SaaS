@@ -213,21 +213,21 @@ exports.recalculateChargesByTarget = async (
 ) => {
   discount = discount || 0;
 
-  const finalAmount = newPrice - (newPrice * discount) / 100;
+   const finalAmount = newPrice - (newPrice * discount) / 100;
 
-  let condition = "";
+   let condition = "";
 
-  if (target_type === "zone") {
-    condition = "k.zone_id = ?";
+   if (target_type === "zone") {
+     condition = "k.zone_id = ?";
   }
 
-  if (target_type === "kiosk") {
-    condition = "c.kiosk_id = ?";
-  }
+   if (target_type === "kiosk") {
+     condition = "c.kiosk_id = ?";
+   }
 
-  if (target_type === "kiosk_type") {
-    condition = "k.type_id = ?";
-  }
+   if (target_type === "kiosk_type") {
+     condition = "k.type_id = ?";
+   }
 
   const sql = `
         UPDATE charge c
@@ -274,31 +274,44 @@ exports.insertAutoCharges = async (tenant_id, period_id, loaiKy) => {
             donGiaApDung, hinhThucApDung, discountApDung, soTienPhaiThu, trangThai
         )
         SELECT 
-            t.tenant_id, ?, t.kiosk_id, t.merchant_id,
-            t.fee_id, t.donGia, t.hinhThuc, t.mucMienGiam,
+            t.tenant_id,
+            ?,  -- period_id
+            t.kiosk_id,
+            t.merchant_id,
+            t.fee_id,
+            t.donGia,
+            t.hinhThuc,
+            t.mucMienGiam,
             t.donGia * (1 - IFNULL(t.mucMienGiam, 0) / 100),
             'chua_thu'
         FROM (
             SELECT 
-                k.tenant_id, k.kiosk_id, ka.merchant_id,
-                fs.fee_id, fs.donGia, fs.hinhThuc, fa.mucMienGiam,
+                k.tenant_id,
+                k.kiosk_id,
+                ka.merchant_id,
+                fs.fee_id,
+                fs.donGia,
+                fs.hinhThuc,
+                fa.mucMienGiam,
 
-                -- 🔥 Ưu tiên phạm vi: kiosk > zone > type
                 ROW_NUMBER() OVER (
-                    PARTITION BY k.kiosk_id, fs.hinhThuc, fs.fee_id
-                    ORDER BY CASE fa.target_type
-                                WHEN 'kiosk' THEN 1
-                                WHEN 'zone' THEN 2
-                                WHEN 'kiosk_type' THEN 3
-                            END
-                ) AS priority_scope
+                    PARTITION BY k.kiosk_id
+                    ORDER BY 
+                        CASE fa.target_type
+                            WHEN 'kiosk' THEN 1
+                            WHEN 'zone' THEN 2
+                            WHEN 'kiosk_type' THEN 3
+                        END
+                ) AS rn
 
             FROM kiosk k
 
+            -- kỳ thu
             JOIN collection_period cp 
               ON cp.period_id = ? 
             AND cp.tenant_id = k.tenant_id
 
+            -- kiosk đang hoạt động
             JOIN kiosk_assignment ka 
               ON k.kiosk_id = ka.kiosk_id 
             AND ka.tenant_id = k.tenant_id
@@ -309,59 +322,57 @@ exports.insertAutoCharges = async (tenant_id, period_id, loaiKy) => {
                 OR ka.ngayKetThuc >= cp.ngayBatDau
             )
 
+            -- fee_assignment với logic CHẶN
             JOIN fee_assignment fa 
               ON fa.tenant_id = k.tenant_id
             AND fa.trangThai = 'active'
             AND (
-                (fa.target_type = 'kiosk' AND fa.target_id = k.kiosk_id) OR
-                (fa.target_type = 'zone' AND fa.target_id = k.zone_id) OR
-                (fa.target_type = 'kiosk_type' AND fa.target_id = k.type_id)
+                -- ✅ luôn match kiosk
+                (fa.target_type = 'kiosk' AND fa.target_id = k.kiosk_id)
+
+                OR
+
+                -- ✅ chỉ fallback khi KHÔNG có kiosk fee
+                (
+                  NOT EXISTS (
+                    SELECT 1
+                    FROM fee_assignment fa_check
+                    WHERE fa_check.tenant_id = k.tenant_id
+                      AND fa_check.target_type = 'kiosk'
+                      AND fa_check.target_id = k.kiosk_id
+                      AND fa_check.trangThai = 'active'
+                  )
+                  AND (
+                    (fa.target_type = 'zone' AND fa.target_id = k.zone_id)
+                    OR
+                    (fa.target_type = 'kiosk_type' AND fa.target_id = k.type_id)
+                  )
+                )
             )
 
+            -- thông tin phí
             JOIN fee_schedule fs 
-              ON fa.fee_id = fs.fee_id
+              ON fs.fee_id = fa.fee_id
             AND fs.tenant_id = k.tenant_id
 
             WHERE k.tenant_id = ?
               AND k.trangThai = 'occupied'
 
-              -- 🔥 Ưu tiên loại kỳ: nếu có NGÀY → bỏ THÁNG
-              AND (
-                  ( ? = 'ngay' AND fs.hinhThuc = 'ngay' )
-
-                  OR (
-                      ? = 'thang' 
-                      AND fs.hinhThuc = 'thang'
-                      AND NOT EXISTS (
-                          SELECT 1
-                          FROM fee_assignment fa2
-                          JOIN fee_schedule fs2 ON fa2.fee_id = fs2.fee_id
-                          WHERE fs2.hinhThuc = 'ngay'
-                            AND fa2.trangThai = 'active'
-                            AND fa2.tenant_id = k.tenant_id
-                            AND (
-                                (fa2.target_type = 'kiosk' AND fa2.target_id = k.kiosk_id) OR
-                                (fa2.target_type = 'zone' AND fa2.target_id = k.zone_id) OR
-                                (fa2.target_type = 'kiosk_type' AND fa2.target_id = k.type_id)
-                            )
-                      )
-                  )
-              )
-
-              -- chống duplicate
+              -- ❌ chỉ 1 charge / kiosk / kỳ
               AND NOT EXISTS (
                   SELECT 1 FROM charge c
                   WHERE c.kiosk_id = k.kiosk_id
                     AND c.period_id = ?
-                    AND c.fee_id = fs.fee_id
                     AND c.tenant_id = k.tenant_id
               )
 
         ) t
-        WHERE t.priority_scope = 1;
+
+        -- chỉ lấy fee tốt nhất
+        WHERE t.rn = 1;
     `;
 
-    const [result] = await db.execute(sql, [period_id, period_id, tenant_id, loaiKy, loaiKy, period_id]);
+    const [result] = await db.execute(sql, [period_id, period_id, tenant_id, period_id]);
 
     const [rows] = await db.execute(
         `SELECT DISTINCT merchant_id FROM charge WHERE tenant_id = ? AND period_id = ?`,

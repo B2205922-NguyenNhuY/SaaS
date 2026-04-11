@@ -1,7 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt    = require("jsonwebtoken");
 const admin  = require("firebase-admin");
-
+const tenantModel = require("../models/tenant.model");
 const authModel = require("../models/auth.model");
 const userModel = require("../models/users.model");
 const auditLogModel = require("../models/auditLog.model");
@@ -105,6 +105,11 @@ exports.login = async (body) => {
             throw Object.assign(new Error("Account is not active"),{ statusCode: 403 });
         }
 
+        const tenant = await tenantModel.getTenantById(user.tenant_id);
+        if(tenant.trangThai !== 'active'){
+            throw Object.assign(new Error("Tenant is not active"),{ statusCode: 403 });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password_hash);
 
         if(!isMatch) {
@@ -158,6 +163,11 @@ exports.login = async (body) => {
         if (merchant) {
             if (merchant.trangThai !== "active") {
                 throw Object.assign(new Error("Account is not active"), { statusCode: 403 });
+            }
+
+            const tenant = await tenantModel.getTenantById(merchant.tenant_id);
+            if(tenant.trangThai !== 'active'){
+                throw Object.assign(new Error("Tenant is not active"),{ statusCode: 403 });
             }
 
             const isMatch = await bcrypt.compare(password, merchant.password_hash);

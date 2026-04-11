@@ -95,7 +95,42 @@ exports.listByTenant = async (tenant_id, pagination, query = {}) => {
     params,
   );
   const [rows] = await db.query(
-    `SELECT fa.*, fs.tenBieuPhi, fs.donGia, fs.hinhThuc FROM fee_assignment fa JOIN fee_schedule fs ON fa.fee_id = fs.fee_id AND fa.tenant_id = fs.tenant_id WHERE ${where.join(" AND ")} ORDER BY fa.created_at DESC LIMIT ? OFFSET ?`,
+    `SELECT 
+        fa.*, 
+        fs.tenBieuPhi, 
+        fs.donGia, 
+        fs.hinhThuc,
+
+        -- tên target
+        CASE 
+          WHEN fa.target_type = 'kiosk_type' THEN kt.tenLoai
+          WHEN fa.target_type = 'zone' THEN z.tenKhu
+          WHEN fa.target_type = 'kiosk' THEN k.maKiosk
+          ELSE NULL
+        END AS targetName
+
+     FROM fee_assignment fa
+
+     JOIN fee_schedule fs 
+       ON fa.fee_id = fs.fee_id 
+      AND fa.tenant_id = fs.tenant_id
+
+     LEFT JOIN kiosk_type kt 
+       ON fa.target_type = 'kiosk_type' 
+      AND fa.target_id = kt.type_id
+
+     LEFT JOIN zone z 
+       ON fa.target_type = 'zone' 
+      AND fa.target_id = z.zone_id
+
+     LEFT JOIN kiosk k 
+       ON fa.target_type = 'kiosk' 
+      AND fa.target_id = k.kiosk_id
+
+     WHERE ${where.join(" AND ")}
+
+     ORDER BY fa.created_at DESC 
+     LIMIT ? OFFSET ?`,
     [...params, pagination.limit, pagination.offset],
   );
   return {

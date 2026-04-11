@@ -7,13 +7,13 @@ const db = require('../config/db');
 const { sendToMerchant } = require("../services/fcm.service");
 
 // JOB 1: SINH PHÍ THÁNG (01:00 ngày đầu tháng)
-cron.schedule('0 0 1 * *', async () => {
+cron.schedule('0 1 1 * *', async () => {
     console.log(`[${new Date().toISOString()}] --- BẮT ĐẦU SINH PHÍ THÁNG ---`);
     await processAutoCharges('month');
 });
 
 // JOB 2: SINH PHÍ NGÀY (01:00 mỗi ngày)
-cron.schedule('0 1 * * *', async () => {
+cron.schedule('30 0 * * *', async () => {
     console.log(`[${new Date().toISOString()}] --- BẮT ĐẦU SINH PHÍ NGÀY ---`);
     await processAutoCharges('day');
 });
@@ -48,13 +48,7 @@ cron.schedule('31 21 * * *', async () => {
                 'tenant'
             );
 
-            const res = await admin.messaging().send({
-                topic: "merchant_${merchant_id}",
-                notification: {
-                    title: "Cảnh báo",
-                    body: "Bạn có khoản nợ quá hạn",
-                },
-            });
+            
             console.log(`[Overdue] Đã báo nợ cho Merchant ${merchant_id} - Số tiền: `);
         }
     } catch (err) {

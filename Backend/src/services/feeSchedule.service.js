@@ -35,13 +35,8 @@ exports.getFeeDetail = async (fee_id, user) => {
 
 // Cập nhật biểu phí
 exports.updateFee = async (fee_id, data, user) => {
-  if (!fee_id) {
-    throw new Error("Fee ID is required");
-  }
-
-  if (!user || !user.tenant_id) {
-    throw new Error("User information is missing");
-  }
+  if (!fee_id) throw new Error("Fee ID is required");
+  if (!user || !user.tenant_id) throw new Error("User information is missing");
 
   const connection = await db.getConnection();
 
@@ -49,36 +44,10 @@ exports.updateFee = async (fee_id, data, user) => {
     await connection.beginTransaction();
 
     const tenant_id = user.tenant_id;
-
     const oldFee = await feeScheduleModel.getFeeById(fee_id, tenant_id);
-    if (!oldFee) {
-      throw new Error("Fee not found");
-    }
+    if (!oldFee) throw new Error("Fee not found");
 
     await feeScheduleModel.updateFeeSchedule(fee_id, tenant_id, data);
-
-    const assignments = await feeAssignmentModel.getAssignmentsByFee(
-      tenant_id,
-      fee_id,
-    );
-
-    if (
-      assignments &&
-      assignments.length > 0 &&
-      data.donGia &&
-      data.donGia !== oldFee.donGia
-    ) {
-      for (const a of assignments) {
-        await chargeModel.recalculateChargesByTarget(
-          connection,
-          tenant_id,
-          a.target_type,
-          a.target_id,
-          data.donGia,
-          a.mucMienGiam || 0,
-        );
-      }
-    }
 
     await auditLogModel.createAuditLog({
       tenant_id,
@@ -94,7 +63,6 @@ exports.updateFee = async (fee_id, data, user) => {
     return { success: true };
   } catch (err) {
     await connection.rollback();
-    console.error("Error in updateFee service:", err);
     throw err;
   } finally {
     connection.release();

@@ -134,7 +134,7 @@
                   <td>
                     <span class="badge badge--gray">{{ targetTypeLabel(a.target_type) }}</span>
                   </td>
-                  <td class="cell-sub">{{ a.target_id }}</td>
+                  <td class="cell-sub">{{ a.targetName }}</td>
                   <td class="cell-money">{{ fmtMoney(a.donGia) }}</td>
                   <td class="cell-sub">{{ a.mucMienGiam ? a.mucMienGiam + '%' : '—' }}</td>
                   <td class="cell-date">{{ fmtDate(a.ngayApDung) }}</td>

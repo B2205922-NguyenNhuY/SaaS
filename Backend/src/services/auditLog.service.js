@@ -40,7 +40,7 @@ exports.getLogs = async (user, query, pagination) => {
     `);
 
     const keyword = `%${query.keyword}%`;
-    params.push(keyword, keyword, keyword, keyword);
+    params.push(keyword, keyword);
   }
 
   const whereSQL = where.join(" AND ");

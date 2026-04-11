@@ -86,8 +86,6 @@ exports.update = async (tenant_id, merchant_id, body) => {
     if (current.trangThai !== "inactive" && trangThai === "inactive") {
       if (await M.hasActiveAssignment(conn, tenant_id, merchant_id))
         throw Object.assign(new Error("Không thể khóa tiểu thương vì còn kiosk đang được gán"), { statusCode: 409 });
-      if (await M.hasOutstandingDebt(conn, tenant_id, merchant_id))
-        throw Object.assign(new Error("Không thể khóa tiểu thương vì vẫn còn công nợ"), { statusCode: 409 });
     }
 
     await M.updateInfo(conn, tenant_id, merchant_id, {
@@ -120,8 +118,6 @@ exports.updateStatus = async (tenant_id, merchant_id, trangThai) => {
     if (current.trangThai !== "inactive" && trangThai === "inactive") {
       if (await M.hasActiveAssignment(conn, tenant_id, merchant_id))
         throw Object.assign(new Error("Không thể khóa tiểu thương vì còn kiosk đang được gán"), { statusCode: 409 });
-      if (await M.hasOutstandingDebt(conn, tenant_id, merchant_id))
-        throw Object.assign(new Error("Không thể khóa tiểu thương vì vẫn còn công nợ"), { statusCode: 409 });
     }
 
     await M.updateStatus(conn, tenant_id, merchant_id, trangThai);
