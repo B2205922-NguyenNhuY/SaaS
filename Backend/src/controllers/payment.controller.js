@@ -22,14 +22,6 @@ exports.createPayment = async (req, res) => {
         const ngrokUrl = "https://sneakily-bronchitic-harriet.ngrok-free.dev";
         const payUrl = await momoService.generateMomoLink(req.user, chargeIds, totalAmount, ngrokUrl);
 
-        await auditLogModel.createAuditLog({
-          tenant_id: req.user.tenant_id,
-          user_id: req.user.id,
-          hanhDong: "THANH_TOAN_MOMO_INIT",
-          entity_type: "charge",
-          entity_id: chargeIds[0],
-          giaTriMoi: { chargeIds, totalAmount },
-        });
 
         res.json({ payUrl, chargeIds });
     } catch (error) {

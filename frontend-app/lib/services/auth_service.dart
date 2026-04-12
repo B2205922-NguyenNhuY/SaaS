@@ -42,7 +42,7 @@ class AuthService {
     } on DioException catch (e) {
       throw Exception(_handleDioError(e));
     } catch (e) {
-      throw Exception("Lỗi không xác định khi đăng nhập");
+      throw Exception(e.toString());
     }
   }
 
